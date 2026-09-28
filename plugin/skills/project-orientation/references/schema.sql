@@ -418,6 +418,7 @@ CREATE TABLE public.domains (
     bought_by uuid,
     bought_via public.actor_via,
     auto_renew boolean DEFAULT true NOT NULL,
+    tenant_id uuid,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
     CONSTRAINT domains_registrar_check CHECK (((registrar IS NULL) OR (registrar = ANY (ARRAY['porkbun'::text])))),
     CONSTRAINT domains_status_check CHECK ((status = ANY (ARRAY['external'::text, 'approved'::text, 'buying'::text, 'registered'::text, 'attaching'::text, 'ready'::text, 'failed'::text, 'released'::text]))),
@@ -842,6 +843,7 @@ CREATE TABLE public.mailboxes (
     connected_by uuid,
     probed_at timestamp with time zone,
     status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    tenant_id uuid,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 200))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
@@ -1689,6 +1691,7 @@ CREATE TABLE public.tasks (
     close_note text,
     segment_id uuid,
     signal text,
+    domain_id uuid,
     CONSTRAINT tasks_check CHECK (((status = 'open'::text) = (closed_at IS NULL))),
     CONSTRAINT tasks_priority_check CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text]))),
     CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text])) AND (strategy_id IS NOT NULL)))),
@@ -1781,6 +1784,25 @@ CREATE TABLE public.warmup_sends (
     placement_at timestamp with time zone,
     CONSTRAINT warmup_sends_placement_check CHECK ((placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_status_check CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text])))
+);
+
+
+--
+-- Name: workspace_tenants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.workspace_tenants (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    name text NOT NULL,
+    admin_email public.citext NOT NULL,
+    key bytea NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    max_domains integer DEFAULT 500 NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT workspace_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 600))),
+    CONSTRAINT workspace_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
 
 
@@ -2489,6 +2511,22 @@ ALTER TABLE ONLY public.warmup_sends
 
 
 --
+-- Name: workspace_tenants workspace_tenants_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workspace_tenants
+    ADD CONSTRAINT workspace_tenants_name_key UNIQUE (name);
+
+
+--
+-- Name: workspace_tenants workspace_tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workspace_tenants
+    ADD CONSTRAINT workspace_tenants_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ix_address_checks__pending; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3144,6 +3182,14 @@ ALTER TABLE ONLY public.domains
 
 
 --
+-- Name: domains domains_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domains
+    ADD CONSTRAINT domains_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.workspace_tenants(id);
+
+
+--
 -- Name: enrollments enrollments_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3413,6 +3459,14 @@ ALTER TABLE ONLY public.mailboxes
 
 ALTER TABLE ONLY public.mailboxes
     ADD CONSTRAINT mailboxes_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id);
+
+
+--
+-- Name: mailboxes mailboxes_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mailboxes
+    ADD CONSTRAINT mailboxes_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.workspace_tenants(id);
 
 
 --
@@ -4336,6 +4390,14 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: tasks tasks_domain_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_domain_id_fkey FOREIGN KEY (domain_id) REFERENCES public.domains(id) ON DELETE CASCADE;
+
+
+--
 -- Name: tasks tasks_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4520,6 +4582,14 @@ ALTER TABLE ONLY public.warmup_sends
 
 
 --
+-- Name: workspace_tenants workspace_tenants_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workspace_tenants
+    ADD CONSTRAINT workspace_tenants_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
 -- PostgreSQL database dump complete
 --
 
@@ -4584,4 +4654,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928110000'),
     ('20260928120000'),
     ('20260928130000'),
-    ('20260928135907');
+    ('20260928135907'),
+    ('20260928144558');
