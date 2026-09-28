@@ -76,6 +76,8 @@ Do not buy an address for a contact at a DNC domain, or for one already `rejecte
    ```
 
    Store `invalid` addresses too (with `emailStatus: "invalid"`) so nobody buys them again.
+   The contact keeps its company even when the address is on another domain (a group domain like
+   `global.ntt` for a contact at `services.global.ntt`); only `companyDomain` moves it.
 7. **Not found** → `"facts":{"email_search":{"value":"not_found","source":"bettercontact","note":"2026-09-24"}}`.
    For contacts worth a second try (top persona, strong signal) submit them to FullEnrich
    (`contact.emails` only) and verify the same way. Otherwise the contact goes LinkedIn-only.
