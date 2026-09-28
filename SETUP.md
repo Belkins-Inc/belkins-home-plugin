@@ -105,5 +105,5 @@ bh projects
 
 Tell the person, in a few lines: setup is complete; from now on open Claude Code in
 `~/work/belkins-home` (`cd ~/work/belkins-home && claude`, or choose that folder in the desktop app),
-start each session by naming the client, and run `claude plugin marketplace update belkins-home`
-when a skill mentions a command `bh --help` does not list.
+start each session by naming the client. The plugin updates itself there; `claude plugin marketplace
+update belkins-home` does it at once.

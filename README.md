@@ -35,17 +35,22 @@ Code the plugin puts it on the PATH by itself; `bh setup` adds it for your own t
 ## Your working directory
 
 Its `CLAUDE.md` keeps Claude on client work — through `bh`, never editing platform code — and its
-`.claude/settings.json` lets `bh` run without a prompt each time. Say which client in your first
+`.claude/settings.json` lets `bh` run without a prompt each time and keeps the plugin up to date. Say which client in your first
 message; the session picks the project.
 
 ## Updating
+
+Claude Code started in the working directory keeps the plugin and `bh` current by itself: its
+`.claude/settings.json` turns auto-update on for this marketplace. A new version is fetched in the
+background within minutes of the first message and applies from the next session (or
+`/reload-plugins`). A working directory made before that setting existed gets it from the install
+command run again, or `bh setup`. By hand, any time:
 
 ```sh
 claude plugin marketplace update belkins-home
 ```
 
-Do it when a skill names a command `bh --help` does not list, or run the install command again. Re-copy
-`workspace/` only if its `CLAUDE.md` changed.
+Re-copy `workspace/` only if its `CLAUDE.md` changed.
 
 ## Something is wrong
 

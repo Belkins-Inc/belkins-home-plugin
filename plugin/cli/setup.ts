@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { access, appendFile, cp, mkdir, readFile, rm, symlink } from 'node:fs/promises'
+import { access, appendFile, cp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -11,7 +11,8 @@ import { BhError } from './client.ts'
  * `bh` on the PATH of the person's own terminal (Claude Code already puts the plugin's bin/ on its
  * shell's). It runs as `node <plugin>/cli/cli.ts setup`, so the agent that sets a teammate up never
  * has to download and run a script — which its permission check refuses. Each part checks first,
- * so a second run changes nothing.
+ * so a second run changes nothing — except that a directory made from an older template gets what
+ * the template's settings now say about the plugin.
  */
 export async function setup(dir?: string) {
   const { bin, workspace: template } = await layout()
@@ -23,8 +24,30 @@ export async function setup(dir?: string) {
     await cp(template, target, { recursive: true })
     workspace = 'created'
   }
+  const settings = await pluginSettings(template, target)
   const path = process.platform === 'win32' ? windowsPath(bin) : await posixPath(bin)
-  return { workspace: target, [workspace]: true, path, next: 'bh login' }
+  return { workspace: target, [workspace]: true, settings, path, next: 'bh login' }
+}
+
+/** The settings keys the template owns: the marketplace, auto-updated, and the plugin in it. */
+const PLUGIN_KEYS = ['extraKnownMarketplaces', 'enabledPlugins'] as const
+
+/**
+ * The template's plugin entries written into the directory's .claude/settings.json, so Claude Code
+ * started there keeps the plugin current by itself. Everything else in the file — permissions a
+ * person added — is left as it is.
+ */
+async function pluginSettings(template: string, target: string): Promise<'updated' | 'kept'> {
+  const file = join(target, '.claude', 'settings.json')
+  const wanted = JSON.parse(await readFile(join(template, '.claude', 'settings.json'), 'utf8'))
+  const text = await readFile(file, 'utf8').catch(() => '{}')
+  const current = JSON.parse(text) as Record<string, Record<string, unknown> | undefined>
+  for (const key of PLUGIN_KEYS) current[key] = { ...current[key], ...wanted[key] }
+  const next = `${JSON.stringify(current, null, 2)}\n`
+  if (next === text) return 'kept'
+  await mkdir(join(target, '.claude'), { recursive: true })
+  await writeFile(file, next)
+  return 'updated'
 }
 
 /** Where bin/ and the workspace template are: the published plugin, or the platform repository. */
