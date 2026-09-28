@@ -1,7 +1,7 @@
 \restrict dbmate
 
--- Dumped from database version 18.4
--- Dumped by pg_dump version 18.4
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1468,8 +1468,29 @@ CREATE TABLE public.replies (
     last_nudged_at timestamp with time zone,
     nudges integer DEFAULT 0 NOT NULL,
     slack_ref text,
+    template_id uuid,
     CONSTRAINT replies_check CHECK (((status <> ALL (ARRAY['approved'::text, 'sending'::text, 'sent'::text])) OR (approved_at IS NOT NULL))),
     CONSTRAINT replies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'approved'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'discarded'::text, 'superseded'::text])))
+);
+
+
+--
+-- Name: reply_templates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reply_templates (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    strategy_id uuid NOT NULL,
+    classification text NOT NULL,
+    body text NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    approved_by uuid NOT NULL,
+    approved_via public.actor_via NOT NULL,
+    approved_at timestamp with time zone DEFAULT now() NOT NULL,
+    archived_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT reply_templates_archived_check CHECK (((status = 'archived'::text) = (archived_at IS NOT NULL))),
+    CONSTRAINT reply_templates_status_check CHECK ((status = ANY (ARRAY['active'::text, 'archived'::text])))
 );
 
 
@@ -2570,6 +2591,14 @@ ALTER TABLE ONLY public.replies
 
 
 --
+-- Name: reply_templates reply_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reply_templates
+    ADD CONSTRAINT reply_templates_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3303,6 +3332,13 @@ CREATE UNIQUE INDEX ux_project_members__one_owner ON public.project_members USIN
 --
 
 CREATE UNIQUE INDEX ux_replies__one_draft ON public.replies USING btree (thread_id) WHERE (status = 'draft'::text);
+
+
+--
+-- Name: ux_reply_templates__one_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_reply_templates__one_active ON public.reply_templates USING btree (strategy_id, classification) WHERE (status = 'active'::text);
 
 
 --
@@ -4513,11 +4549,35 @@ ALTER TABLE ONLY public.replies
 
 
 --
+-- Name: replies replies_template_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.replies
+    ADD CONSTRAINT replies_template_id_fkey FOREIGN KEY (template_id) REFERENCES public.reply_templates(id);
+
+
+--
 -- Name: replies replies_thread_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.replies
     ADD CONSTRAINT replies_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reply_templates reply_templates_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reply_templates
+    ADD CONSTRAINT reply_templates_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.users(id);
+
+
+--
+-- Name: reply_templates reply_templates_strategy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reply_templates
+    ADD CONSTRAINT reply_templates_strategy_id_fkey FOREIGN KEY (strategy_id) REFERENCES public.strategies(id);
 
 
 --
@@ -5228,4 +5288,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928164326'),
     ('20260928164532'),
     ('20260928170214'),
-    ('20260928170353');
+    ('20260928170353'),
+    ('20260928213708');

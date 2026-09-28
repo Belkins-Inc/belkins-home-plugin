@@ -200,6 +200,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   reply approve <id> [--body <final text>] (a person only) | reply discard <id>
   reply revise <id> --body <text> | --body-file <path> [--note <for the approver>]   a new version of a draft
   reply rewrite <id> --ask <what to change>   the server agent rewrites it (a person only) | reply versions <id>
+  reply-templates <strategy-id>          the fixed answers the engine sends on its own, by kind of reply
+  reply-template approve <strategy-id> --class interested|meeting|question --body <text> | --body-file <path>
+                                         slots {first_name} {company}; replaces that kind's answer (a person only)
+  reply-template archive <id>            take an automatic answer out of use (a person only)
   providers                              what bh call reaches, whether it is configured, prices, credits left
   providers price <provider> --usd <n>   the dollar price of one credit (an admin); books earlier calls at it
   limits                                 what each paid tool has left, how fast it goes, and which are low
@@ -1185,6 +1189,52 @@ async function main(argv: string[]): Promise<void> {
           ...(o['follow-up'] ? { followUpOn: o['follow-up'] } : {}),
           ...(o.return ? { returnDate: o.return } : {}),
         }),
+      )
+    case 'reply-templates':
+      if (!sub)
+        throw new BhError(
+          'Which strategy?',
+          { hint: 'bh reply-templates <strategy-id>; bh strategies lists them' },
+          2,
+        )
+      return out(await call(config, 'GET', `/strategies/${sub}/reply-templates`))
+    case 'reply-template':
+      if (sub === 'approve') {
+        if (!arg)
+          throw new BhError(
+            'Which strategy?',
+            { hint: 'bh reply-template approve <strategy-id> --class … --body-file …' },
+            2,
+          )
+        if (!o.class)
+          throw new BhError(
+            'Which kind of reply does it answer?',
+            { hint: '--class interested, meeting or question' },
+            2,
+          )
+        const text = o['body-file'] ? await readFile(o['body-file'], 'utf8') : o.body
+        if (!text)
+          throw new BhError('What does it say?', { hint: '--body <text> or --body-file <path>' }, 2)
+        return out(
+          await call(config, 'POST', `/strategies/${arg}/reply-templates`, {
+            classification: o.class,
+            body: text,
+          }),
+        )
+      }
+      if (sub === 'archive') {
+        if (!arg)
+          throw new BhError(
+            'Which template?',
+            { hint: 'bh reply-templates <strategy-id> lists their ids' },
+            2,
+          )
+        return out(await call(config, 'POST', `/reply-templates/${arg}/archive`, {}))
+      }
+      throw new BhError(
+        'Which reply-template command?',
+        { hint: 'bh reply-template approve|archive' },
+        2,
       )
     case 'replies':
       return out(
