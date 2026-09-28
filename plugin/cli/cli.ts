@@ -47,6 +47,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   task open --title <t> --assignee <email> [--priority urgent] [--due <iso>] [--done-when <text>] [--body <b>]
   task list [--status open|done|cancelled]
   task close <id> [--status done|cancelled] [--note <text>] | task reopen <id>
+  task assign <id> --assignee <email> [--note <text>]   hand an open task to someone else; Slack tells them afresh
   session end --summary <text>           the hand-over: done, left, to watch
   segments | segment create --name <n> [--body <definition>] [--criteria <json>] [--estimate <n>]
   segment update <id> [--name <n>] [--body <definition>] [--criteria <json>] [--estimate <n>] [--status active|paused|exhausted|archived]
@@ -572,6 +573,13 @@ async function main(argv: string[]): Promise<void> {
       break
     case 'task':
       if (sub === 'reopen') return out(await call(config, 'POST', `/tasks/${arg}/reopen`, {}))
+      if (sub === 'assign')
+        return out(
+          await call(config, 'POST', `/tasks/${arg}/assign`, {
+            assignee: o.assignee,
+            ...(o.note ? { note: o.note } : {}),
+          }),
+        )
       if (sub === 'open') {
         return out(
           await call(config, 'POST', `/projects/${p()}/tasks`, {
