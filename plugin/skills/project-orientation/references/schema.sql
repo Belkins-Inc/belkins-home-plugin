@@ -1667,8 +1667,10 @@ CREATE TABLE public.tasks (
     closed_via public.actor_via,
     close_note text,
     segment_id uuid,
+    signal text,
     CONSTRAINT tasks_check CHECK (((status = 'open'::text) = (closed_at IS NULL))),
     CONSTRAINT tasks_priority_check CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text]))),
+    CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text])) AND (strategy_id IS NOT NULL)))),
     CONSTRAINT tasks_status_check CHECK ((status = ANY (ARRAY['open'::text, 'done'::text, 'cancelled'::text])))
 );
 
@@ -2784,6 +2786,13 @@ CREATE UNIQUE INDEX ux_slack_workspaces__connected ON public.slack_workspaces US
 --
 
 CREATE UNIQUE INDEX ux_tasks__open_segment ON public.tasks USING btree (segment_id) WHERE ((status = 'open'::text) AND (segment_id IS NOT NULL));
+
+
+--
+-- Name: ux_tasks__open_signal; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_tasks__open_signal ON public.tasks USING btree (strategy_id, signal) WHERE ((status = 'open'::text) AND (signal IS NOT NULL));
 
 
 --
@@ -4512,4 +4521,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260925165622'),
     ('20260926105043'),
     ('20260928093726'),
-    ('20260928110000');
+    ('20260928110000'),
+    ('20260928120000');
