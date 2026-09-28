@@ -194,9 +194,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   slack channel <#channel|id|none>       change where this project's nudges go; "none" leaves it quiet
   slack disconnect                       (an admin only)
   slack post (--body <text> | --body-file <path|->) [--to <#channel|email>] [--thread <link|ts>]
+             [--mention <email|name|member id, ...>]
                                          the bot says it, in Markdown: to a channel, to a person by
                                          email, or to the project's channel; --thread answers under
-                                         a message (Slack's "Copy link")
+                                         a message (Slack's "Copy link"); --mention notifies people,
+                                         found by email, by name as Slack shows it, or by member id
 `
 
 /** A list flag: items split on "|" (titles can hold commas), or on "," when there is no "|". */
@@ -356,6 +358,7 @@ async function main(argv: string[]): Promise<void> {
       calendar: { type: 'string' },
       slots: { type: 'string' },
       thread: { type: 'string' },
+      mention: { type: 'string' },
       at: { type: 'string' },
       outcome: { type: 'string' },
       feedback: { type: 'string' },
@@ -1390,6 +1393,7 @@ async function main(argv: string[]): Promise<void> {
           text,
           ...(o.to ? { to: o.to } : {}),
           ...(o.thread ? { thread: o.thread } : {}),
+          ...(o.mention ? { mention: list(o.mention) } : {}),
         }
         // Named somewhere, or answering a thread, it needs no project; otherwise it is the project's channel.
         return out(
