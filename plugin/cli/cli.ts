@@ -196,6 +196,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   reply rewrite <id> --ask <what to change>   the server agent rewrites it (a person only) | reply versions <id>
   providers                              what bh call reaches, whether it is configured, prices, credits left
   providers price <provider> --usd <n>   the dollar price of one credit (an admin); books earlier calls at it
+  limits                                 what each paid tool has left, how fast it goes, and which are low
+  limits read                            read every balance now (an admin)
+  limits set <tool> --below <n>|off      alert #home-alerts below this (an admin); limits reset <tool> to the default
   call <provider> <METHOD> <path?query> [--body <json> | --body-file <path|->] [--again]
        [--strategy <id>] [--segment <id>] [--source <id>] [--search <id>] [--company <id>] [--contact <id>]
                                          the provider's answer on stdout, untouched; cost on stderr
@@ -354,6 +357,7 @@ async function main(argv: string[]): Promise<void> {
       'first-name': { type: 'string' },
       'last-name': { type: 'string' },
       usd: { type: 'string' },
+      below: { type: 'string' },
       estimate: { type: 'string' },
       cursor: { type: 'string' },
       query: { type: 'string' },
@@ -1027,6 +1031,26 @@ async function main(argv: string[]): Promise<void> {
         )
       }
       return out(await call(config, 'GET', '/providers'))
+    case 'limits':
+      if (sub === 'read') return out(await call(config, 'POST', '/limits/read', {}))
+      if (sub === 'set') {
+        if (!arg || !o.below)
+          throw new BhError(
+            'Which tool, below how much?',
+            { hint: 'bh limits set bouncer --below 1000   (or --below off)' },
+            2,
+          )
+        return out(
+          await call(config, 'PUT', `/limits/${arg}`, {
+            alertBelow: o.below === 'off' ? null : Number(o.below),
+          }),
+        )
+      }
+      if (sub === 'reset') {
+        if (!arg) throw new BhError('Which tool?', { hint: 'bh limits reset bouncer' }, 2)
+        return out(await call(config, 'DELETE', `/limits/${arg}`))
+      }
+      return out(await call(config, 'GET', '/limits'))
     case 'call': {
       const [, name, method, path] = pos
       if (name === 'show') return out(await call(config, 'GET', `/provider-calls/${method}`))

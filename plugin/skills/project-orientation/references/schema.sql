@@ -1997,6 +1997,49 @@ CREATE TABLE public.tasks (
 
 
 --
+-- Name: tool_alerts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tool_alerts (
+    tool text NOT NULL,
+    since timestamp with time zone DEFAULT now() NOT NULL,
+    posted_at timestamp with time zone,
+    slack_ref text
+);
+
+
+--
+-- Name: tool_balances; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tool_balances (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    tool text NOT NULL,
+    at timestamp with time zone DEFAULT now() NOT NULL,
+    unit text NOT NULL,
+    balance numeric,
+    plan numeric,
+    error text,
+    CONSTRAINT tool_balances_read_check CHECK (((balance IS NULL) <> (error IS NULL))),
+    CONSTRAINT tool_balances_unit_check CHECK ((unit = ANY (ARRAY['credits'::text, 'usd'::text])))
+);
+
+
+--
+-- Name: tool_limits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tool_limits (
+    tool text NOT NULL,
+    alert_below numeric,
+    set_by uuid NOT NULL,
+    set_via public.actor_via NOT NULL,
+    set_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT tool_limits_alert_below_check CHECK (((alert_below IS NULL) OR (alert_below >= (0)::numeric)))
+);
+
+
+--
 -- Name: triage_holds; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2783,6 +2826,30 @@ ALTER TABLE ONLY public.threads
 
 
 --
+-- Name: tool_alerts tool_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tool_alerts
+    ADD CONSTRAINT tool_alerts_pkey PRIMARY KEY (tool);
+
+
+--
+-- Name: tool_balances tool_balances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tool_balances
+    ADD CONSTRAINT tool_balances_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tool_limits tool_limits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tool_limits
+    ADD CONSTRAINT tool_limits_pkey PRIMARY KEY (tool);
+
+
+--
 -- Name: triage_holds triage_holds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3131,6 +3198,13 @@ CREATE INDEX ix_warmup_sends__mailbox_day ON public.warmup_sends USING btree (ma
 --
 
 CREATE INDEX ix_warmup_sends__seed ON public.warmup_sends USING btree (mailbox_id, seed_address);
+
+
+--
+-- Name: tool_balances_tool_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX tool_balances_tool_at_idx ON public.tool_balances USING btree (tool, at DESC);
 
 
 --
@@ -5023,6 +5097,14 @@ ALTER TABLE ONLY public.threads
 
 
 --
+-- Name: tool_limits tool_limits_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tool_limits
+    ADD CONSTRAINT tool_limits_set_by_fkey FOREIGN KEY (set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: triage_holds triage_holds_actor_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5143,4 +5225,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928153058'),
     ('20260928163329'),
     ('20260928163330'),
-    ('20260928164326');
+    ('20260928164326'),
+    ('20260928164532');
