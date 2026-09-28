@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Bash(bh *)", "Bash(gh issue create *)", "Bash(gh issue list *)"],
+    "deny": ["Bash(git clone *)", "Bash(gh repo clone *)"]
+  }
+}
