@@ -113,6 +113,182 @@ end
 $$;
 
 
+--
+-- Name: ensure_event_partitions(integer, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ensure_event_partitions(p_ahead integer DEFAULT 3, p_from timestamp with time zone DEFAULT now()) RETURNS integer
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $_$
+declare
+  first_month date := date_trunc('month', p_from at time zone 'UTC')::date;
+  m           date;
+  lo          timestamptz;
+  hi          timestamptz;
+  part        text;
+  created     integer := 0;
+begin
+  -- Creating a partition takes a lock on events that waits for writers; better to give up and try
+  -- tomorrow (there are months to spare) than to hold every writer behind a long queue.
+  perform set_config('lock_timeout', '5s', true);
+  for m in
+    select (first_month + make_interval(months => i))::date
+      from generate_series(0, greatest(p_ahead, 0)) as i
+    union
+    select distinct date_trunc('month', at at time zone 'UTC')::date from events_default
+    order by 1
+  loop
+    part := 'events_' || to_char(m, 'YYYY_MM');
+    continue when to_regclass('public.' || part) is not null;
+    lo := m::timestamp at time zone 'UTC';
+    hi := (m + interval '1 month')::timestamp at time zone 'UTC';
+    if exists (select 1 from events_default where at >= lo and at < hi) then
+      -- Rows the net caught: moved into a table of their own, which then becomes the month's
+      -- partition (attaching checks the rows fit, and that none is left behind in the default).
+      lock table events_default in access exclusive mode;
+      execute format('create table public.%I (like public.events including defaults including constraints)', part);
+      execute format(
+        'with moved as (delete from public.events_default where at >= $1 and at < $2 returning *) '
+        'insert into public.%I select * from moved', part) using lo, hi;
+      execute format('alter table public.events attach partition public.%I for values from (%L) to (%L)',
+                     part, lo, hi);
+    else
+      execute format('create table public.%I partition of public.events for values from (%L) to (%L)',
+                     part, lo, hi);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'bhn_reader') then
+      execute format('grant select on public.%I to bhn_reader', part);
+    end if;
+    created := created + 1;
+  end loop;
+  return created;
+end $_$;
+
+
+--
+-- Name: replan_on_company(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.replan_on_company() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  update enrollments e
+     set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
+    from contacts c
+   where c.id = e.contact_id and c.company_id = new.id and e.status = 'active';
+  return null;
+end
+$$;
+
+
+--
+-- Name: replan_on_contact(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.replan_on_contact() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  update enrollments
+     set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
+   where contact_id = new.id and status = 'active';
+  return null;
+end
+$$;
+
+
+--
+-- Name: replan_on_enrollment(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.replan_on_enrollment() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if (old.status, old.starts_at, old.paused_until, old.mailbox_id, old.linkedin_account_id, old.contact_id)
+     is distinct from
+     (new.status, new.starts_at, new.paused_until, new.mailbox_id, new.linkedin_account_id, new.contact_id)
+  then
+    new.planned_until := null;
+    new.next_message_id := null;
+    new.replan_at := clock_timestamp();
+  end if;
+  return new;
+end
+$$;
+
+
+--
+-- Name: replan_on_messages_inserted(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.replan_on_messages_inserted() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  update enrollments
+     set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
+   where id in (select enrollment_id from inserted);
+  return null;
+end
+$$;
+
+
+--
+-- Name: replan_on_messages_updated(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.replan_on_messages_updated() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  update enrollments
+     set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
+   where id in (
+     select n.enrollment_id
+       from after_rows n join before_rows o on o.id = n.id
+      where (o.status, o.accepted_at, o.sent_at, o.written_at)
+            is distinct from (n.status, n.accepted_at, n.sent_at, n.written_at));
+  return null;
+end
+$$;
+
+
+--
+-- Name: replan_on_project(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.replan_on_project() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  update enrollments e
+     set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
+    from strategies s
+   where s.id = e.strategy_id and s.project_id = new.id and e.status = 'active';
+  return null;
+end
+$$;
+
+
+--
+-- Name: replan_on_strategy(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.replan_on_strategy() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  update enrollments
+     set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
+   where strategy_id = new.id and status = 'active';
+  return null;
+end
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -454,7 +630,8 @@ CREATE TABLE public.daily_sends (
     key text NOT NULL,
     sent integer DEFAULT 0 NOT NULL,
     CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text])))
-);
+)
+WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
 
 --
@@ -544,6 +721,10 @@ CREATE TABLE public.enrollments (
     start_offset_days integer,
     stuck_code text,
     stuck_step integer,
+    next_message_id uuid,
+    next_due_at timestamp with time zone,
+    planned_until timestamp with time zone,
+    replan_at timestamp with time zone,
     CONSTRAINT enrollments_check CHECK (((status = 'stopped'::text) = (stop_reason IS NOT NULL))),
     CONSTRAINT enrollments_check1 CHECK (((status <> 'scheduled'::text) OR (starts_at IS NOT NULL))),
     CONSTRAINT enrollments_check2 CHECK (((kind = 'first'::text) OR (follows_enrollment_id IS NOT NULL))),
@@ -554,7 +735,8 @@ CREATE TABLE public.enrollments (
     CONSTRAINT enrollments_stop_reason_check CHECK ((stop_reason = ANY (ARRAY['replied'::text, 'unsubscribed'::text, 'dnc'::text, 'no_channel_left'::text, 'sender_gone'::text, 'manual'::text, 'wrong_person'::text]))),
     CONSTRAINT enrollments_stuck_code_check CHECK ((stuck_code = ANY (ARRAY['no_copy'::text, 'linkedin_not_configured'::text, 'mailbox_disconnected'::text, 'linkedin_disconnected'::text, 'other'::text]))),
     CONSTRAINT enrollments_stuck_code_with_reason CHECK ((((stuck_code IS NULL) = (stuck_reason IS NULL)) AND ((stuck_step IS NULL) OR (stuck_code IS NOT NULL))))
-);
+)
+WITH (fillfactor='85', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
 
 --
@@ -607,7 +789,8 @@ CREATE TABLE public.messages (
     CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'wrong_person'::text, 'other'::text]))),
     CONSTRAINT messages_skip_code_with_reason CHECK (((skip_code IS NULL) = (skip_reason IS NULL))),
     CONSTRAINT messages_status_check CHECK ((status = ANY (ARRAY['needs_copy'::text, 'ready'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text, 'cancelled'::text])))
-);
+)
+WITH (fillfactor='90', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
 
 --
@@ -710,11 +893,11 @@ CREATE TABLE public.event_types (
 --
 
 CREATE TABLE public.events (
-    id bigint NOT NULL,
-    project_id uuid NOT NULL,
-    at timestamp with time zone DEFAULT now() NOT NULL,
-    type text NOT NULL,
-    actor_via public.actor_via DEFAULT 'engine'::public.actor_via NOT NULL,
+    id bigint CONSTRAINT events_id_not_null1 NOT NULL,
+    project_id uuid CONSTRAINT events_project_id_not_null1 NOT NULL,
+    at timestamp with time zone DEFAULT now() CONSTRAINT events_at_not_null1 NOT NULL,
+    type text CONSTRAINT events_type_not_null1 NOT NULL,
+    actor_via public.actor_via DEFAULT 'engine'::public.actor_via CONSTRAINT events_actor_via_not_null1 NOT NULL,
     actor_user_id uuid,
     summary text,
     strategy_id uuid,
@@ -724,7 +907,32 @@ CREATE TABLE public.events (
     mailbox_id uuid,
     meeting_id uuid,
     task_id uuid,
-    data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    data jsonb DEFAULT '{}'::jsonb CONSTRAINT events_data_not_null1 NOT NULL,
+    CONSTRAINT events_check CHECK (((actor_via = 'engine'::public.actor_via) OR (actor_user_id IS NOT NULL)))
+)
+PARTITION BY RANGE (at);
+
+
+--
+-- Name: events_default; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.events_default (
+    id bigint CONSTRAINT events_id_not_null1 NOT NULL,
+    project_id uuid CONSTRAINT events_project_id_not_null1 NOT NULL,
+    at timestamp with time zone DEFAULT now() CONSTRAINT events_at_not_null1 NOT NULL,
+    type text CONSTRAINT events_type_not_null1 NOT NULL,
+    actor_via public.actor_via DEFAULT 'engine'::public.actor_via CONSTRAINT events_actor_via_not_null1 NOT NULL,
+    actor_user_id uuid,
+    summary text,
+    strategy_id uuid,
+    segment_id uuid,
+    enrollment_id uuid,
+    contact_id uuid,
+    mailbox_id uuid,
+    meeting_id uuid,
+    task_id uuid,
+    data jsonb DEFAULT '{}'::jsonb CONSTRAINT events_data_not_null1 NOT NULL,
     CONSTRAINT events_check CHECK (((actor_via = 'engine'::public.actor_via) OR (actor_user_id IS NOT NULL)))
 );
 
@@ -934,7 +1142,8 @@ CREATE TABLE public.mailboxes (
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 200))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
     CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
-);
+)
+WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
 
 
 --
@@ -1893,6 +2102,13 @@ CREATE TABLE public.workspace_tenants (
 
 
 --
+-- Name: events_default; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.events ATTACH PARTITION public.events_default DEFAULT;
+
+
+--
 -- Name: address_checks address_checks_contact_id_address_provider_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2073,7 +2289,15 @@ ALTER TABLE ONLY public.event_types
 --
 
 ALTER TABLE ONLY public.events
-    ADD CONSTRAINT events_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT events_pkey PRIMARY KEY (id, at);
+
+
+--
+-- Name: events_default events_default_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.events_default
+    ADD CONSTRAINT events_default_pkey PRIMARY KEY (id, at);
 
 
 --
@@ -2621,6 +2845,34 @@ ALTER TABLE ONLY public.workspace_tenants
 
 
 --
+-- Name: ix_events__project_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_events__project_at ON ONLY public.events USING btree (project_id, at DESC);
+
+
+--
+-- Name: events_default_project_id_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX events_default_project_id_at_idx ON public.events_default USING btree (project_id, at DESC);
+
+
+--
+-- Name: ix_events__strategy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_events__strategy ON ONLY public.events USING btree (strategy_id, type, at) WHERE (strategy_id IS NOT NULL);
+
+
+--
+-- Name: events_default_strategy_id_type_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX events_default_strategy_id_type_at_idx ON public.events_default USING btree (strategy_id, type, at) WHERE (strategy_id IS NOT NULL);
+
+
+--
 -- Name: ix_address_checks__pending; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2670,6 +2922,13 @@ CREATE INDEX ix_enrollments__mailbox ON public.enrollments USING btree (mailbox_
 
 
 --
+-- Name: ix_enrollments__next_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_enrollments__next_due ON public.enrollments USING btree (next_due_at) WHERE ((status = 'active'::text) AND (next_message_id IS NOT NULL));
+
+
+--
 -- Name: ix_enrollments__paused; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2684,17 +2943,10 @@ CREATE INDEX ix_enrollments__scheduled ON public.enrollments USING btree (starts
 
 
 --
--- Name: ix_events__project_at; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_enrollments__to_plan; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_events__project_at ON public.events USING btree (project_id, at DESC);
-
-
---
--- Name: ix_events__strategy; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_events__strategy ON public.events USING btree (strategy_id, type, at) WHERE (strategy_id IS NOT NULL);
+CREATE INDEX ix_enrollments__to_plan ON public.enrollments USING btree (planned_until NULLS FIRST) WHERE (status = 'active'::text);
 
 
 --
@@ -3027,6 +3279,27 @@ CREATE UNIQUE INDEX ux_warmup_sends__rfc ON public.warmup_sends USING btree (rfc
 
 
 --
+-- Name: events_default_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.events_pkey ATTACH PARTITION public.events_default_pkey;
+
+
+--
+-- Name: events_default_project_id_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.ix_events__project_at ATTACH PARTITION public.events_default_project_id_at_idx;
+
+
+--
+-- Name: events_default_strategy_id_type_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.ix_events__strategy ATTACH PARTITION public.events_default_strategy_id_type_at_idx;
+
+
+--
 -- Name: segment_usage _RETURN; Type: RULE; Schema: public; Owner: -
 --
 
@@ -3087,6 +3360,27 @@ CREATE OR REPLACE VIEW public.source_usage AS
 
 
 --
+-- Name: companies companies_replan; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER companies_replan AFTER UPDATE OF timezone ON public.companies FOR EACH ROW WHEN ((old.timezone IS DISTINCT FROM new.timezone)) EXECUTE FUNCTION public.replan_on_company();
+
+
+--
+-- Name: contacts contacts_replan; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER contacts_replan AFTER UPDATE OF timezone ON public.contacts FOR EACH ROW WHEN ((old.timezone IS DISTINCT FROM new.timezone)) EXECUTE FUNCTION public.replan_on_contact();
+
+
+--
+-- Name: enrollments enrollments_replan; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER enrollments_replan BEFORE UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION public.replan_on_enrollment();
+
+
+--
 -- Name: messages messages_count_sent_insert; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3098,6 +3392,34 @@ CREATE TRIGGER messages_count_sent_insert AFTER INSERT ON public.messages FOR EA
 --
 
 CREATE TRIGGER messages_count_sent_update AFTER UPDATE OF status ON public.messages FOR EACH ROW WHEN (((new.status = 'sent'::text) AND (old.status IS DISTINCT FROM 'sent'::text))) EXECUTE FUNCTION public.count_message_sent();
+
+
+--
+-- Name: messages messages_replan_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER messages_replan_insert AFTER INSERT ON public.messages REFERENCING NEW TABLE AS inserted FOR EACH STATEMENT EXECUTE FUNCTION public.replan_on_messages_inserted();
+
+
+--
+-- Name: messages messages_replan_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER messages_replan_update AFTER UPDATE ON public.messages REFERENCING OLD TABLE AS before_rows NEW TABLE AS after_rows FOR EACH STATEMENT EXECUTE FUNCTION public.replan_on_messages_updated();
+
+
+--
+-- Name: projects projects_replan; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER projects_replan AFTER UPDATE OF timezone ON public.projects FOR EACH ROW WHEN ((old.timezone IS DISTINCT FROM new.timezone)) EXECUTE FUNCTION public.replan_on_project();
+
+
+--
+-- Name: strategies strategies_replan; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER strategies_replan AFTER UPDATE OF status, send_days, window_start, window_end ON public.strategies FOR EACH ROW WHEN (((((old.status IS DISTINCT FROM new.status) OR (old.send_days IS DISTINCT FROM new.send_days)) OR (old.window_start IS DISTINCT FROM new.window_start)) OR (old.window_end IS DISTINCT FROM new.window_end))) EXECUTE FUNCTION public.replan_on_strategy();
 
 
 --
@@ -3451,27 +3773,27 @@ ALTER TABLE ONLY public.enrollments
 
 
 --
--- Name: events events_actor_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: events events_actor_user_id_fkey1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.events
-    ADD CONSTRAINT events_actor_user_id_fkey FOREIGN KEY (actor_user_id) REFERENCES public.users(id);
-
-
---
--- Name: events events_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.events
-    ADD CONSTRAINT events_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+ALTER TABLE public.events
+    ADD CONSTRAINT events_actor_user_id_fkey1 FOREIGN KEY (actor_user_id) REFERENCES public.users(id);
 
 
 --
--- Name: events events_type_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: events events_project_id_fkey1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.events
-    ADD CONSTRAINT events_type_fkey FOREIGN KEY (type) REFERENCES public.event_types(type);
+ALTER TABLE public.events
+    ADD CONSTRAINT events_project_id_fkey1 FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: events events_type_fkey1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.events
+    ADD CONSTRAINT events_type_fkey1 FOREIGN KEY (type) REFERENCES public.event_types(type);
 
 
 --
@@ -4815,4 +5137,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928144558'),
     ('20260928152026'),
     ('20260928152037'),
-    ('20260928153058');
+    ('20260928152922'),
+    ('20260928153058'),
+    ('20260928163329'),
+    ('20260928163330');
