@@ -1469,6 +1469,7 @@ CREATE TABLE public.replies (
     nudges integer DEFAULT 0 NOT NULL,
     slack_ref text,
     template_id uuid,
+    cc text[] DEFAULT '{}'::text[] NOT NULL,
     CONSTRAINT replies_check CHECK (((status <> ALL (ARRAY['approved'::text, 'sending'::text, 'sent'::text])) OR (approved_at IS NOT NULL))),
     CONSTRAINT replies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'approved'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'discarded'::text, 'superseded'::text])))
 );
@@ -1489,6 +1490,7 @@ CREATE TABLE public.reply_templates (
     approved_at timestamp with time zone DEFAULT now() NOT NULL,
     archived_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    cc text[] DEFAULT '{}'::text[] NOT NULL,
     CONSTRAINT reply_templates_archived_check CHECK (((status = 'archived'::text) = (archived_at IS NOT NULL))),
     CONSTRAINT reply_templates_status_check CHECK ((status = ANY (ARRAY['active'::text, 'archived'::text])))
 );
@@ -5289,4 +5291,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928164532'),
     ('20260928170214'),
     ('20260928170353'),
-    ('20260928213708');
+    ('20260928213708'),
+    ('20260928214915');

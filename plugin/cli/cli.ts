@@ -201,8 +201,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   reply revise <id> --body <text> | --body-file <path> [--note <for the approver>]   a new version of a draft
   reply rewrite <id> --ask <what to change>   the server agent rewrites it (a person only) | reply versions <id>
   reply-templates <strategy-id>          the fixed answers the engine sends on its own, by kind of reply
-  reply-template approve <strategy-id> --class interested|meeting|question --body <text> | --body-file <path>
-                                         slots {first_name} {company}; replaces that kind's answer (a person only)
+  reply-template approve <strategy-id> --class interested|meeting|question --body <text> | --body-file <path> [--cc a@x.com,b@y.com]
+                                         slots {first_name} {company}; --cc copies people in the open; replaces that kind's answer (a person only)
   reply-template archive <id>            take an automatic answer out of use (a person only)
   providers                              what bh call reaches, whether it is configured, prices, credits left
   providers price <provider> --usd <n>   the dollar price of one credit (an admin); books earlier calls at it
@@ -394,6 +394,7 @@ async function main(argv: string[]): Promise<void> {
       'message-limit': { type: 'string' },
       'domain-cap': { type: 'string' },
       class: { type: 'string' },
+      cc: { type: 'string' },
       'follow-up': { type: 'string' },
       return: { type: 'string' },
       'body-file': { type: 'string' },
@@ -1219,6 +1220,14 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', `/strategies/${arg}/reply-templates`, {
             classification: o.class,
             body: text,
+            ...(o.cc
+              ? {
+                  cc: o.cc
+                    .split(',')
+                    .map((a) => a.trim())
+                    .filter(Boolean),
+                }
+              : {}),
           }),
         )
       }
