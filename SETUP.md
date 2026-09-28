@@ -8,38 +8,70 @@ Rules for the whole setup:
 
 - **Never ask for a token in chat.** The person connects by approving a link in their browser
   (step 2); no token is copied by anyone.
-- Tell the person before anything that needs `sudo`, opens a system dialog or installs software.
+- Tell the person before anything that needs `sudo` or opens a system dialog; the rest you run yourself.
 - Do not clone or read any other repository, and do not write code. If a step fails in a way this
   file does not cover, stop and show the person the exact error.
 
 ## 1. Install
 
-One script installs what is missing (git, Node 24+, Claude Code's CLI), the plugin, `bh` on the PATH
-and the working directory `~/work/belkins-home`. It checks before each step, so running it again is
-safe. Run `uname -s` to pick it:
+**Never download a script and run it** (`curl … | bash`, `irm … | iex`, a saved `.ps1`): this
+session's permission check refuses it, and the person would be left doing it by hand. Every step
+below is a plain command you run yourself, one at a time, checking first. Run `uname -s` to know the
+machine: `Darwin` is macOS, `Linux` is Linux, `MINGW…` / `MSYS…` (or no `uname` in PowerShell) is
+Windows — no WSL is needed.
 
-- `Darwin` (macOS) or `Linux`:
+### a. Node 24 or newer
+
+Check: `node -v` prints `v24` or higher.
+
+- Windows: `winget install --id OpenJS.NodeJS.LTS --exact --silent --accept-package-agreements --accept-source-agreements`.
+  This shell does not see the new PATH until Claude Code restarts: for the rest of the setup put
+  `export PATH="/c/Program Files/nodejs:$APPDATA/npm:$PATH";` in front of each command (in
+  PowerShell: `$env:Path = "C:\Program Files\nodejs;$env:APPDATA\npm;$env:Path";`).
+- macOS with Homebrew (`brew -v` works): `brew install node`.
+- macOS or Linux without it — Node's official build into `~/.local`, nothing run from the download:
 
   ```sh
-  curl -fsSL https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.sh | bash
+  arch=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/'); os=$(uname -s | tr A-Z a-z)
+  file=$(curl -fsSL https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt | grep -o "node-v[0-9.]*-$os-$arch.tar.gz" | head -1)
+  mkdir -p ~/.local && curl -fsSL "https://nodejs.org/dist/latest-v24.x/$file" | tar -xz -C ~/.local --strip-components=1
   ```
 
-- Windows (`MINGW…` / `MSYS…` from Git Bash, or no `uname` at all in PowerShell) — no WSL:
+  Then `export PATH="$HOME/.local/bin:$PATH"` in front of each later command.
 
-  ```sh
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.ps1 | iex"
-  ```
+A `v22` or older left on the PATH is the most common failure later: `which -a node` must show the new
+one first.
 
-Run it with a timeout of ten minutes. Run by you, it leaves out `bh login` (step 2 does it).
+### b. git
 
-- It stops at a dialog, a `sudo` password or a winget prompt it cannot answer: give the person the
-  same one line to paste into their own terminal (PowerShell on Windows), wait until they say it
-  finished, then carry on.
-- On macOS without git it opens a system dialog: the person clicks *Install*, waits, and you run the
-  script again.
-- It ends with `Done.` Check: `bh --help` prints the command list. If `bh` is not found in this
-  session's shell yet, call it by its path for the rest of the setup:
-  `node ~/.claude/plugins/marketplaces/belkins-home/plugin/cli/cli.ts`.
+Check: `git --version`. Claude Code installs the plugin with it.
+
+- Windows: `winget install --id Git.Git --exact --silent --accept-package-agreements --accept-source-agreements`
+  (then `/c/Program Files/Git/cmd` on the PATH as above).
+- macOS: `xcode-select --install` opens a system dialog; the person clicks *Install* and waits.
+- Linux: `sudo apt-get install -y git` (tell the person the password prompt is theirs).
+
+### c. The plugin
+
+Check: `claude --version`. If there is no `claude` in this shell (the desktop app has its own),
+install the CLI with npm: `npm install -g @anthropic-ai/claude-code`. Then:
+
+```sh
+claude plugin marketplace add Belkins-Inc/belkins-home-plugin
+claude plugin install belkins-home@belkins-home
+```
+
+If the marketplace is already there, `claude plugin marketplace update belkins-home` instead of `add`.
+
+### d. The working directory, and `bh` on the PATH
+
+```sh
+node $HOME/.claude/plugins/marketplaces/belkins-home/plugin/cli/cli.ts setup
+```
+
+It copies the working directory to `~/work/belkins-home` and puts `bh` on the PATH of the person's
+own terminal; a second run changes nothing. This session's shell does not see it yet: **in the
+steps below, `bh` means `node $HOME/.claude/plugins/marketplaces/belkins-home/plugin/cli/cli.ts`**.
 
 ## 2. Connect `bh` to their account
 

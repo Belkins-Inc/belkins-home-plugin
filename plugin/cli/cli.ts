@@ -16,9 +16,12 @@ import {
 } from './config.ts'
 import { readInput, readRows } from './input.ts'
 import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
+import { setup } from './setup.ts'
 
 const USAGE = `bh <command> [options] — JSON out, errors verbatim.
 
+  setup [--dir <path>]                  once, after the plugin is installed: the working directory
+                                         (~/work/belkins-home) and bh on your terminal's PATH
   login [--api <url>] [--no-browser]    connect: prints a link to approve in the browser (production by default);
                                          in a terminal it waits, elsewhere run bh login --wait after approving
   login --wait                           collect the token once the link is approved
@@ -364,6 +367,7 @@ async function main(argv: string[]): Promise<void> {
       metric: { type: 'string' },
       threshold: { type: 'string' },
       verdict: { type: 'string' },
+      dir: { type: 'string' },
     },
   })
   const config = await loadConfig()
@@ -386,6 +390,8 @@ async function main(argv: string[]): Promise<void> {
 
   if (!cmd || o.help) return void process.stdout.write(USAGE)
   switch (cmd) {
+    case 'setup':
+      return out(await setup(o.dir))
     case 'login': {
       if (o.token) {
         const next = { ...config, ...(o.api ? { api: o.api } : {}), token: o.token }

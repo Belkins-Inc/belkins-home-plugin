@@ -6,33 +6,31 @@ green `main`; do not edit it here — a change made here is overwritten by the n
 
 ## Install
 
-One command, on a bare machine — it installs whatever is missing (Node 24+, git, Claude Code), the
-plugin, `bh`, and your working directory `~/work/belkins-home`, then gives you a link to approve with
-your Google sign-in; nobody copies a token. Running it again is safe.
-
-macOS or Linux, in Terminal:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.sh | bash
-```
-
-Windows, in PowerShell — no WSL needed:
-
-```powershell
-irm https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.ps1 | iex
-```
-
-An admin must have added you first (Admin → People on https://home-next.belkins.io). Then open Claude
-Code in `~/work/belkins-home` and name the client in your first message.
-
-Or let Claude Code do it: give it this one line and it runs the same script, step by step with you:
+Install Claude Code (https://claude.com/claude-code — the desktop app or the CLI; on Windows no WSL
+is needed), open it, and give it this one line:
 
 ```
 Set me up for Belkins Home: follow https://github.com/Belkins-Inc/belkins-home-plugin/blob/main/SETUP.md
 ```
 
+The agent installs whatever is missing (Node 24+, git), the plugin, `bh` and your working directory
+`~/work/belkins-home`, then gives you a link to approve with your Google sign-in — you type nothing,
+and nobody copies a token. An admin must have added you first (Admin → People on
+https://home-next.belkins.io). Then open Claude Code in `~/work/belkins-home` and name the client in
+your first message.
+
+Without Claude Code yet, one command does the same, Claude Code included:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.sh | bash   # macOS, Linux
+```
+
+```powershell
+irm https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.ps1 | iex          # Windows PowerShell
+```
+
 `bh` is TypeScript that Node 24 runs as it is: no dependencies and nothing to build. Inside Claude
-Code the plugin puts it on the PATH by itself; the script also adds it for your own terminal.
+Code the plugin puts it on the PATH by itself; `bh setup` adds it for your own terminal.
 
 ## Your working directory
 

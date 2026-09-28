@@ -63,22 +63,8 @@ fi
 claude plugin install belkins-home@belkins-home
 [ -x "$marketplace/plugin/bin/bh" ] || fail "the plugin did not install: no $marketplace/plugin/bin/bh"
 
-step 'bh on the PATH'
-mkdir -p "$HOME/.local/bin"
-ln -sf "$marketplace/plugin/bin/bh" "$HOME/.local/bin/bh"
-case $(basename "${SHELL:-bash}") in
-zsh) rc=$HOME/.zshrc ;;
-*) rc=$HOME/.bashrc ;;
-esac
-# shellcheck disable=SC2016
-line='export PATH="$HOME/.local/bin:$PATH"'
-grep -qsF "$line" "$rc" || printf '\n%s\n' "$line" >>"$rc"
-
-step 'The working directory'
-if [ ! -f "$workspace/CLAUDE.md" ]; then
-  mkdir -p "$workspace"
-  cp -R "$marketplace/workspace/." "$workspace/"
-fi
+step 'The working directory, and bh on the PATH'
+node "$marketplace/plugin/cli/cli.ts" setup >/dev/null
 
 step 'Connect bh to your account'
 if bh whoami >/dev/null 2>&1; then

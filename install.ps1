@@ -8,7 +8,6 @@
 $ErrorActionPreference = 'Stop'
 
 $Marketplace = Join-Path $HOME '.claude\plugins\marketplaces\belkins-home'
-$Workspace = Join-Path $HOME 'work\belkins-home'
 
 function Step($text) { Write-Host "==> $text" -ForegroundColor Cyan }
 function Have($name) { [bool](Get-Command $name -ErrorAction SilentlyContinue) }
@@ -58,18 +57,10 @@ claude plugin install belkins-home@belkins-home
 $Bin = Join-Path $Marketplace 'plugin\bin'
 if (-not (Test-Path (Join-Path $Bin 'bh.cmd'))) { throw "the plugin did not install: no $Bin\bh.cmd" }
 
-Step 'bh on the PATH'
-$UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if (($UserPath -split ';') -notcontains $Bin) {
-  [Environment]::SetEnvironmentVariable('Path', (@($UserPath, $Bin) | Where-Object { $_ }) -join ';', 'User')
-}
+Step 'The working directory, and bh on the PATH'
+node (Join-Path $Marketplace 'plugin\cli\cli.ts') setup
+if ($LASTEXITCODE -ne 0) { throw 'bh setup failed: run this again' }
 Refresh-Path
-
-Step 'The working directory'
-if (-not (Test-Path (Join-Path $Workspace 'CLAUDE.md'))) {
-  New-Item -ItemType Directory -Force -Path $Workspace | Out-Null
-  Copy-Item -Recurse -Force (Join-Path $Marketplace 'workspace\*') $Workspace
-}
 
 Step 'Connect bh to your account'
 # cmd swallows the output: Windows PowerShell would turn a native command's redirected stderr into
@@ -85,4 +76,4 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 Write-Host ''
-Write-Host "Done. Open Claude Code in $Workspace and name the client in your first message." -ForegroundColor Green
+Write-Host "Done. Open Claude Code in $(Join-Path $HOME 'work\belkins-home') and name the client in your first message." -ForegroundColor Green
