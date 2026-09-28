@@ -41,6 +41,78 @@ CREATE TYPE public.actor_via AS ENUM (
 );
 
 
+--
+-- Name: count_daily_send(date, text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.count_daily_send(p_day date, p_scope text, p_key text) RETURNS void
+    LANGUAGE sql
+    AS $$
+  insert into daily_sends (day, scope, key, sent) values (p_day, p_scope, p_key, 1)
+  on conflict (day, scope, key) do update set sent = daily_sends.sent + 1
+$$;
+
+
+--
+-- Name: count_message_sent(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.count_message_sent() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+declare
+  d date := (new.sent_at at time zone 'UTC')::date;
+  r record;
+begin
+  select e.mailbox_id, e.linkedin_account_id, e.sender_id, st.id as strategy_id, st.project_id,
+         coalesce(mb.project_id, la.project_id) as channel_project
+    into r
+    from enrollments e
+    join strategies st on st.id = e.strategy_id
+    left join mailboxes mb on mb.id = e.mailbox_id
+    left join linkedin_accounts la on la.id = e.linkedin_account_id
+   where e.id = new.enrollment_id;
+  if not found or new.sent_at is null then
+    return null;
+  end if;
+  if new.channel = 'email' then
+    if r.mailbox_id is not null then
+      perform count_daily_send(d, 'mailbox', r.mailbox_id::text);
+    end if;
+    if new.to_address like '%@%' then
+      perform count_daily_send(d, 'recipient_domain',
+        r.project_id::text || ':' || lower(split_part(new.to_address, '@', 2)));
+    end if;
+  elsif r.linkedin_account_id is not null then
+    perform count_daily_send(d, new.channel, r.linkedin_account_id::text);
+  end if;
+  if new.position = 1 then
+    perform count_daily_send(d, 'strategy_first', r.strategy_id::text);
+  end if;
+  if r.channel_project is null then
+    perform count_daily_send(d, 'shared_sender', r.project_id::text || ':' || r.sender_id::text);
+  end if;
+  return null;
+end
+$$;
+
+
+--
+-- Name: count_warmup_sent(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.count_warmup_sent() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if new.sent_at is not null then
+    perform count_daily_send((new.sent_at at time zone 'UTC')::date, 'mailbox', new.mailbox_id::text);
+  end if;
+  return null;
+end
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -369,6 +441,19 @@ CREATE TABLE public.contacts (
     departed_via public.actor_via,
     CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL))),
     CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text])))
+);
+
+
+--
+-- Name: daily_sends; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.daily_sends (
+    day date NOT NULL,
+    scope text NOT NULL,
+    key text NOT NULL,
+    sent integer DEFAULT 0 NOT NULL,
+    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text])))
 );
 
 
@@ -1935,6 +2020,14 @@ ALTER TABLE ONLY public.contacts
 
 
 --
+-- Name: daily_sends daily_sends_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.daily_sends
+    ADD CONSTRAINT daily_sends_pkey PRIMARY KEY (day, scope, key);
+
+
+--
 -- Name: dnc dnc_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2569,6 +2662,27 @@ CREATE INDEX ix_domains__project_status ON public.domains USING btree (project_i
 
 
 --
+-- Name: ix_enrollments__mailbox; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_enrollments__mailbox ON public.enrollments USING btree (mailbox_id) WHERE (mailbox_id IS NOT NULL);
+
+
+--
+-- Name: ix_enrollments__paused; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_enrollments__paused ON public.enrollments USING btree (paused_until) WHERE (status = 'paused'::text);
+
+
+--
+-- Name: ix_enrollments__scheduled; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_enrollments__scheduled ON public.enrollments USING btree (starts_at) WHERE (status = 'scheduled'::text);
+
+
+--
 -- Name: ix_events__project_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2611,10 +2725,24 @@ CREATE INDEX ix_meetings__cancel_at ON public.meetings USING btree (cancel_at) W
 
 
 --
+-- Name: ix_messages__claimed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_messages__claimed ON public.messages USING btree (claimed_until) WHERE (status = 'sending'::text);
+
+
+--
 -- Name: ix_messages__due; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_messages__due ON public.messages USING btree (due_at) WHERE (status = 'ready'::text);
+
+
+--
+-- Name: ix_messages__enrollment; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_messages__enrollment ON public.messages USING btree (enrollment_id);
 
 
 --
@@ -2955,6 +3083,34 @@ CREATE OR REPLACE VIEW public.source_usage AS
    FROM (public.segment_sources so
      LEFT JOIN public.segment_companies sc ON ((sc.source_id = so.id)))
   GROUP BY so.id;
+
+
+--
+-- Name: messages messages_count_sent_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER messages_count_sent_insert AFTER INSERT ON public.messages FOR EACH ROW WHEN ((new.status = 'sent'::text)) EXECUTE FUNCTION public.count_message_sent();
+
+
+--
+-- Name: messages messages_count_sent_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER messages_count_sent_update AFTER UPDATE OF status ON public.messages FOR EACH ROW WHEN (((new.status = 'sent'::text) AND (old.status IS DISTINCT FROM 'sent'::text))) EXECUTE FUNCTION public.count_message_sent();
+
+
+--
+-- Name: warmup_sends warmup_sends_count_sent_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER warmup_sends_count_sent_insert AFTER INSERT ON public.warmup_sends FOR EACH ROW WHEN ((new.status = 'sent'::text)) EXECUTE FUNCTION public.count_warmup_sent();
+
+
+--
+-- Name: warmup_sends warmup_sends_count_sent_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER warmup_sends_count_sent_update AFTER UPDATE OF status ON public.warmup_sends FOR EACH ROW WHEN (((new.status = 'sent'::text) AND (old.status IS DISTINCT FROM 'sent'::text))) EXECUTE FUNCTION public.count_warmup_sent();
 
 
 --
@@ -4655,4 +4811,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928120000'),
     ('20260928130000'),
     ('20260928135907'),
-    ('20260928144558');
+    ('20260928144558'),
+    ('20260928152026');
