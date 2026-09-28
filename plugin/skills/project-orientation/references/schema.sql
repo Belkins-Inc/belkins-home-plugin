@@ -1061,6 +1061,7 @@ CREATE TABLE public.projects (
     setup_skipped text[] DEFAULT '{}'::text[] NOT NULL,
     setup_skipped_by uuid,
     setup_skipped_via public.actor_via,
+    warmup_enabled_via public.actor_via,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
@@ -4449,4 +4450,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260925154259'),
     ('20260925154433'),
     ('20260925165622'),
-    ('20260926105043');
+    ('20260926105043'),
+    ('20260928093726');
