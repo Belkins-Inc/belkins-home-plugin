@@ -7,7 +7,9 @@ description: Works a project's inbox — confirms or corrects the engine's class
 
 The engine has already acted on every reply before you see it: at ingest, any human reply stopped
 the lead's plan; seconds later the classifier gave it one of eleven classes and ran that class's
-rules. Your job is to confirm or correct the class (a new class or date re-runs the rules), answer
+rules. An auto-reply does not stop the plan at ingest, except one that plainly says the person has
+left the company ("I am no longer with Lactalis"): that stops it at once (`stop_reason =
+wrong_person`) and marks the contact departed, so no strategy enrolls them again. Your job is to confirm or correct the class (a new class or date re-runs the rules), answer
 what needs an answer, and hand dated follow-ups to the right place. Replies that wait cost meetings: in the
 simulation four confirmed meetings were lost to a week of untriaged replies.
 
@@ -32,6 +34,7 @@ The same rules run whether the engine, a person or an agent sets the class:
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `unsubscribe`           | adds the sender's address to dnc (`unsubscribed`), stops the lead (`stop_reason = unsubscribed`), cancels unsent steps; set by a person or a session, it waits 60 s first (`bh triage undo <id>` takes it back)                                                                                                                                             |
 | `out_of_office`         | pauses the lead until the day after `--return`; no date, or one over 90 days out, pauses a week from the reply. If ingest had stopped the lead for this note, its steps come back, unless a person also wrote in the lead's threads or the contact is live elsewhere |
+| `wrong_person`          | stops a lead still live (`stop_reason = wrong_person`), cancels unsent steps — the case is an auto-reply ("no longer with the company", "this mailbox is no longer monitored") that ingest let through; a person's reply already stopped it (`replied`) and stays so. Whether the contact left is read from the words at ingest, not from the class: a departed contact is refused by enroll, `bh reengage` and `bh lead resume` |
 | `not_now`               | stores `--follow-up` as `follow_up_on`; nothing is scheduled until someone runs `bh reengage`                                                                                                                                                                        |
 | `interested`, `meeting` | only when the engine classified: an urgent task "Answer <lead>" for the person who launched the strategy, done when a reply is sent                                                                                                                                  |
 | everything else         | nothing beyond the stop ingest already made (a person may put the lead back: `bh lead resume`, step 5)                                                                                                                                                              |
@@ -142,6 +145,9 @@ offer; re-engagements and referrals made or handed to whom; what to watch>"`.
 - Classing a polite unsubscribe ("I'd rather not get any more of these") as `not_interested`: the
   unsubscribe outranks it, and a miss keeps writing to someone who asked us to stop.
 - Classing an away note that names a colleague as `referral`: it stays `out_of_office`.
+- Classing "I have left the company, write to purchasing@" as `other` or `out_of_office`: a note
+  that the person is gone is `wrong_person` (or `referral` when it names someone), or the plan goes
+  on writing to a dead mailbox. A named colleague still gets `bh refer`.
 - An unsubscribe from a different address than the one we wrote to: the engine blocks the address
   that wrote; add the contact's own address too (`bh dnc add --kind email`), and the domain
   (`--kind domain`) when they speak for the company ("remove all of us").

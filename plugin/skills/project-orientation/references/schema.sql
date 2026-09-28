@@ -364,6 +364,9 @@ CREATE TABLE public.contacts (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     archived_at timestamp with time zone,
+    departed_at timestamp with time zone,
+    departed_by uuid,
+    departed_via public.actor_via,
     CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL))),
     CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text])))
 );
@@ -462,7 +465,7 @@ CREATE TABLE public.enrollments (
     CONSTRAINT enrollments_kind_check CHECK ((kind = ANY (ARRAY['first'::text, 're_engagement'::text, 'referral'::text]))),
     CONSTRAINT enrollments_pause_reason_check CHECK ((pause_reason = ANY (ARRAY['out_of_office'::text, 'company_meeting'::text, 'manual'::text, 'held_back'::text]))),
     CONSTRAINT enrollments_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'active'::text, 'paused'::text, 'completed'::text, 'stopped'::text]))),
-    CONSTRAINT enrollments_stop_reason_check CHECK ((stop_reason = ANY (ARRAY['replied'::text, 'unsubscribed'::text, 'dnc'::text, 'no_channel_left'::text, 'sender_gone'::text, 'manual'::text]))),
+    CONSTRAINT enrollments_stop_reason_check CHECK ((stop_reason = ANY (ARRAY['replied'::text, 'unsubscribed'::text, 'dnc'::text, 'no_channel_left'::text, 'sender_gone'::text, 'manual'::text, 'wrong_person'::text]))),
     CONSTRAINT enrollments_stuck_code_check CHECK ((stuck_code = ANY (ARRAY['no_copy'::text, 'linkedin_not_configured'::text, 'mailbox_disconnected'::text, 'linkedin_disconnected'::text, 'other'::text]))),
     CONSTRAINT enrollments_stuck_code_with_reason CHECK ((((stuck_code IS NULL) = (stuck_reason IS NULL)) AND ((stuck_step IS NULL) OR (stuck_code IS NOT NULL))))
 );
@@ -515,7 +518,7 @@ CREATE TABLE public.messages (
     CONSTRAINT messages_check2 CHECK (((channel <> 'linkedin_invite'::text) OR (length(body) <= 300))),
     CONSTRAINT messages_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT messages_position_check CHECK (("position" >= 1)),
-    CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'other'::text]))),
+    CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'wrong_person'::text, 'other'::text]))),
     CONSTRAINT messages_skip_code_with_reason CHECK (((skip_code IS NULL) = (skip_reason IS NULL))),
     CONSTRAINT messages_status_check CHECK ((status = ANY (ARRAY['needs_copy'::text, 'ready'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text, 'cancelled'::text])))
 );
@@ -3085,6 +3088,14 @@ ALTER TABLE ONLY public.contacts
 
 
 --
+-- Name: contacts contacts_departed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contacts
+    ADD CONSTRAINT contacts_departed_by_fkey FOREIGN KEY (departed_by) REFERENCES public.users(id);
+
+
+--
 -- Name: contacts contacts_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4572,4 +4583,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928093726'),
     ('20260928110000'),
     ('20260928120000'),
-    ('20260928130000');
+    ('20260928130000'),
+    ('20260928135907');
