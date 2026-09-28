@@ -929,6 +929,7 @@ CREATE TABLE public.mailboxes (
     probed_at timestamp with time zone,
     status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
     tenant_id uuid,
+    read_claimed_until timestamp with time zone,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 200))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
@@ -4813,4 +4814,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928135907'),
     ('20260928144558'),
     ('20260928152026'),
+    ('20260928152037'),
     ('20260928153058');
