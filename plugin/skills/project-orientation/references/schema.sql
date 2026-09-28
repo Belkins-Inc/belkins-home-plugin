@@ -260,6 +260,26 @@ CREATE VIEW public.calendar_free_slots AS
 
 
 --
+-- Name: cli_logins; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cli_logins (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    device_hash bytea NOT NULL,
+    user_code text NOT NULL,
+    client_name text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    approved_by uuid,
+    approved_at timestamp with time zone,
+    token_id uuid,
+    claimed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT cli_logins_check CHECK (((approved_by IS NULL) = (approved_at IS NULL))),
+    CONSTRAINT cli_logins_check1 CHECK (((claimed_at IS NULL) OR (approved_at IS NOT NULL)))
+);
+
+
+--
 -- Name: client_questions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1806,6 +1826,30 @@ ALTER TABLE ONLY public.calendars
 
 
 --
+-- Name: cli_logins cli_logins_device_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cli_logins
+    ADD CONSTRAINT cli_logins_device_hash_key UNIQUE (device_hash);
+
+
+--
+-- Name: cli_logins cli_logins_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cli_logins
+    ADD CONSTRAINT cli_logins_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cli_logins cli_logins_user_code_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cli_logins
+    ADD CONSTRAINT cli_logins_user_code_key UNIQUE (user_code);
+
+
+--
 -- Name: client_questions client_questions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2932,6 +2976,22 @@ ALTER TABLE ONLY public.calendars
 
 ALTER TABLE ONLY public.calendars
     ADD CONSTRAINT calendars_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id);
+
+
+--
+-- Name: cli_logins cli_logins_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cli_logins
+    ADD CONSTRAINT cli_logins_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: cli_logins cli_logins_token_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cli_logins
+    ADD CONSTRAINT cli_logins_token_id_fkey FOREIGN KEY (token_id) REFERENCES public.api_tokens(id) ON DELETE SET NULL;
 
 
 --
@@ -4451,4 +4511,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260925154433'),
     ('20260925165622'),
     ('20260926105043'),
-    ('20260928093726');
+    ('20260928093726'),
+    ('20260928110000');

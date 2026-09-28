@@ -15,10 +15,14 @@ import {
   saveSessionProject,
 } from './config.ts'
 import { readInput, readRows } from './input.ts'
+import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
 
 const USAGE = `bh <command> [options] — JSON out, errors verbatim.
 
-  login --api <url> --token <token>     save where the engine is and who you are
+  login [--api <url>] [--no-browser]    connect: prints a link to approve in the browser (production by default);
+                                         in a terminal it waits, elsewhere run bh login --wait after approving
+  login --wait                           collect the token once the link is approved
+  login --api <url> --token <token>     save a token made by hand
   use [<project>]                       the project later commands act on; with no slug, which one and why.
                                          Inside Claude Code it holds for that session only, so parallel
                                          sessions each keep their own; --project or BH_PROJECT beats it
@@ -256,6 +260,8 @@ async function main(argv: string[]): Promise<void> {
     options: {
       api: { type: 'string' },
       token: { type: 'string' },
+      wait: { type: 'boolean' },
+      'no-browser': { type: 'boolean' },
       project: { type: 'string' },
       name: { type: 'string' },
       timezone: { type: 'string' },
@@ -381,11 +387,21 @@ async function main(argv: string[]): Promise<void> {
   if (!cmd || o.help) return void process.stdout.write(USAGE)
   switch (cmd) {
     case 'login': {
-      const next = {
-        ...config,
-        ...(o.api ? { api: o.api } : {}),
-        ...(o.token ? { token: o.token } : {}),
+      if (o.token) {
+        const next = { ...config, ...(o.api ? { api: o.api } : {}), token: o.token }
+        await saveConfig(next)
+        return out({ saved: CONFIG_PATH, api: next.api, me: await call(next, 'GET', '/me') })
       }
+      if (!o.wait) {
+        const pending = await startLogin(o.api ?? config.api ?? DEFAULT_API, !o['no-browser'])
+        const minutes = Math.round((new Date(pending.expiresAt).getTime() - Date.now()) / 60_000)
+        if (!process.stdout.isTTY)
+          return out({ open: pending.link, expiresInMinutes: minutes, next: 'bh login --wait' })
+        process.stderr.write(
+          `Open this link, sign in and approve (valid ${minutes} minutes):\n\n  ${pending.link}\n\nWaiting…\n`,
+        )
+      }
+      const { email: _, ...next } = await waitForLogin(config)
       await saveConfig(next)
       return out({ saved: CONFIG_PATH, api: next.api, me: await call(next, 'GET', '/me') })
     }

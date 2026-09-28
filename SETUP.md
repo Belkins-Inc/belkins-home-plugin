@@ -6,8 +6,8 @@ one line what you are doing before each step. Speak to the person in the languag
 
 Rules for the whole setup:
 
-- **Never ask for the token in chat and never type it yourself.** The person runs `bh login` in their
-  own terminal (step 7).
+- **Never ask for a token in chat.** The person connects by approving a link in their browser
+  (step 7); no token is copied by anyone.
 - Ask before anything that needs `sudo` or opens a system dialog; tell the person what will appear.
 - Do not clone or read any other repository, and do not write code. If a step fails in a way this
   file does not cover, stop and show the person the exact error.
@@ -74,19 +74,22 @@ cp -R ~/.claude/plugins/marketplaces/belkins-home/workspace ~/work/belkins-home
 Skip the copy if `~/work/belkins-home/CLAUDE.md` already exists. Client work always starts from this
 directory: its `CLAUDE.md` keeps the agent on client work through `bh`.
 
-## 7. The account and the token (the person does this)
+## 7. Connect `bh` to their account
 
-Tell the person:
+An admin must have added them first — Admin → People on https://home-next.belkins.io, with their
+`@belkins.io` address, and to the projects they will work. Without that, sign-in answers "has no
+access yet": they ask their admin, and you carry on from here when they are added.
 
-1. An admin must have added them — Admin → People on https://home-next.belkins.io, with their
-   `@belkins.io` address, and to the projects they will work. If they have not been added, sign-in
-   answers "has no access yet": they ask their admin and come back.
-2. Sign in to https://home-next.belkins.io with Google, open **Admin → People → Your tokens for
-   Claude Code → New token**, and copy the line it prints.
-3. Paste that line **in their own terminal** (Terminal on macOS), not in this chat. It looks like
-   `bh login --api https://home-next.belkins.io/api --token bhn_…`.
+Run `bh login`. It answers with a link (`open`) and opens it in their browser where it can:
 
-Wait until they say it is done.
+```json
+{ "open": "https://home-next.belkins.io/cli/BCDF-GHJK", "expiresInMinutes": 10, "next": "bh login --wait" }
+```
+
+Give the person the link as a clickable link and tell them: open it, sign in with Google, check the
+computer name and code, and press **Connect**. Then run `bh login --wait` with a timeout of ten
+minutes — it returns as soon as they have pressed Connect, and saves their token itself. If it
+answers that the link expired, run `bh login` again and give them the new link.
 
 ## 8. It works
 
@@ -96,7 +99,7 @@ bh projects
 ```
 
 - `whoami` shows their address: logged in.
-- `401` / `unauthorized`: the token was mistyped, revoked, or is from staging — back to step 7.
+- `401` / `unauthorized`: the token was revoked — back to step 7.
 - `projects` is empty: they are in the organisation but in no project — their admin adds them.
 
 ## 9. Done

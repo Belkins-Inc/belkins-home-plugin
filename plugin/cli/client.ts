@@ -16,10 +16,12 @@ export async function call(
   method: string,
   path: string,
   body?: unknown,
+  /** Sent without a token — a login starts before there is one, and a stale one would be refused. */
+  anonymous = false,
 ): Promise<unknown> {
-  const api = process.env.BH_API ?? config.api
-  if (!api) throw new BhError('No API set', { hint: 'bh login --api <url> --token <token>' }, 2)
-  const token = process.env.BH_TOKEN ?? config.token
+  const api = process.env.BH_API || config.api
+  if (!api) throw new BhError('No API set', { hint: 'bh login' }, 2)
+  const token = anonymous ? undefined : process.env.BH_TOKEN || config.token
   const headers: Record<string, string> = { accept: 'application/json' }
   if (token) headers.authorization = `Bearer ${token}`
   if (body !== undefined) headers['content-type'] = 'application/json'

@@ -20,7 +20,7 @@ ln -s ~/.claude/plugins/marketplaces/belkins-home/plugin/bin/bh /usr/local/bin/b
 The skills call `bh`, so the plugin carries it: `bin/bh` runs `plugin/cli/cli.ts` in the published
 plugin, or `packages/bh` when the plugin is installed from this repository (Node 24 runs it as it is
 — nothing to install or build), and the link puts it on the PATH. What the published repository
-holds is `.github/scripts/build-plugin-repo.sh` and `distribution/`. Then `bh login --api <engine URL> --token <your token>`; inside Claude Code the
+holds is `.github/scripts/build-plugin-repo.sh` and `distribution/`. Then `bh login`, which prints a link to approve in the browser; inside Claude Code the
 agent runs `bh use <project>` for each session itself, so parallel sessions work different projects.
 
 Being added to the platform, getting a token, which environment to point at and where to work:

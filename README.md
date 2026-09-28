@@ -14,7 +14,7 @@ Set me up for Belkins Home: follow https://github.com/Belkins-Inc/belkins-home-p
 ```
 
 The agent installs git, Node and the plugin, puts `bh` on the PATH, sets up your working directory,
-and tells you when to create your token. By hand, the same steps:
+and gives you a link to approve with your Google sign-in — nobody copies a token. By hand, the same steps:
 
 You need Node 24 or newer, Claude Code, and a Belkins Home account with a token (an admin adds you).
 
@@ -33,7 +33,7 @@ Work in a directory of your own, set up from the template here:
 ```sh
 mkdir -p ~/work && cp -R ~/.claude/plugins/marketplaces/belkins-home/workspace ~/work/belkins-home
 cd ~/work/belkins-home
-bh login --api https://home-next.belkins.io/api --token <your token>
+bh login
 bh projects
 claude
 ```
