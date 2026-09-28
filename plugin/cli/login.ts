@@ -99,15 +99,17 @@ export async function waitForLogin(config: BhConfig): Promise<BhConfig & { email
 
 /** Opens the link in the person's browser where there is one; a failure is only a missed shortcut. */
 function open(link: string) {
-  const command =
+  const [command, ...args] =
     process.platform === 'darwin'
-      ? 'open'
-      : process.platform === 'linux' && (process.env.DISPLAY || process.env.WAYLAND_DISPLAY)
-        ? 'xdg-open'
-        : null
+      ? ['open']
+      : process.platform === 'win32'
+        ? ['rundll32', 'url.dll,FileProtocolHandler']
+        : process.platform === 'linux' && (process.env.DISPLAY || process.env.WAYLAND_DISPLAY)
+          ? ['xdg-open']
+          : []
   if (!command) return
   try {
-    spawn(command, [link], { stdio: 'ignore', detached: true })
+    spawn(command, [...args, link], { stdio: 'ignore', detached: true })
       .on('error', () => {})
       .unref()
   } catch {

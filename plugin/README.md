@@ -11,15 +11,17 @@ Teammates install it from **Belkins-Inc/belkins-home-plugin**, which every green
 and a working-directory template — and none of the platform's source, so a teammate needs no access
 to this repository:
 
-```
-/plugin marketplace add Belkins-Inc/belkins-home-plugin
-/plugin install belkins-home@belkins-home
-ln -s ~/.claude/plugins/marketplaces/belkins-home/plugin/bin/bh /usr/local/bin/bh
+```sh
+curl -fsSL https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.sh | bash   # macOS, Linux
+irm https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.ps1 | iex          # Windows, no WSL
 ```
 
-The skills call `bh`, so the plugin carries it: `bin/bh` runs `plugin/cli/cli.ts` in the published
+The scripts are `distribution/install.sh` and `distribution/install.ps1`.
+
+The skills call `bh`, so the plugin carries it, and Claude Code puts the plugin's `bin/` on the PATH
+of its shell: `bin/bh` (and `bin/bh.cmd` on Windows, for cmd and PowerShell) runs `plugin/cli/cli.ts` in the published
 plugin, or `packages/bh` when the plugin is installed from this repository (Node 24 runs it as it is
-— nothing to install or build), and the link puts it on the PATH. What the published repository
+— nothing to install or build), and the install script puts it on the PATH of the person's own terminal too. What the published repository
 holds is `.github/scripts/build-plugin-repo.sh` and `distribution/`. Then `bh login`, which prints a link to approve in the browser; inside Claude Code the
 agent runs `bh use <project>` for each session itself, so parallel sessions work different projects.
 

@@ -6,37 +6,35 @@ green `main`; do not edit it here — a change made here is overwritten by the n
 
 ## Install
 
-Install Claude Code (https://claude.com/claude-code — the desktop app or the CLI), open it, and give
-it this one line:
+One command, on a bare machine — it installs whatever is missing (Node 24+, git, Claude Code), the
+plugin, `bh`, and your working directory `~/work/belkins-home`, then gives you a link to approve with
+your Google sign-in; nobody copies a token. Running it again is safe.
+
+macOS or Linux, in Terminal:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.sh | bash
+```
+
+Windows, in PowerShell — no WSL needed:
+
+```powershell
+irm https://raw.githubusercontent.com/Belkins-Inc/belkins-home-plugin/main/install.ps1 | iex
+```
+
+An admin must have added you first (Admin → People on https://home-next.belkins.io). Then open Claude
+Code in `~/work/belkins-home` and name the client in your first message.
+
+Or let Claude Code do it: give it this one line and it runs the same script, step by step with you:
 
 ```
 Set me up for Belkins Home: follow https://github.com/Belkins-Inc/belkins-home-plugin/blob/main/SETUP.md
 ```
 
-The agent installs git, Node and the plugin, puts `bh` on the PATH, sets up your working directory,
-and gives you a link to approve with your Google sign-in — nobody copies a token. By hand, the same steps:
-
-You need Node 24 or newer, Claude Code, and a Belkins Home account with a token (an admin adds you).
-
-```sh
-claude plugin marketplace add Belkins-Inc/belkins-home-plugin
-claude plugin install belkins-home@belkins-home
-mkdir -p ~/.local/bin && ln -sf ~/.claude/plugins/marketplaces/belkins-home/plugin/bin/bh ~/.local/bin/bh
-```
-
-`bh` is TypeScript that Node 24 runs as it is: no dependencies and nothing to build.
+`bh` is TypeScript that Node 24 runs as it is: no dependencies and nothing to build. Inside Claude
+Code the plugin puts it on the PATH by itself; the script also adds it for your own terminal.
 
 ## Your working directory
-
-Work in a directory of your own, set up from the template here:
-
-```sh
-mkdir -p ~/work && cp -R ~/.claude/plugins/marketplaces/belkins-home/workspace ~/work/belkins-home
-cd ~/work/belkins-home
-bh login
-bh projects
-claude
-```
 
 Its `CLAUDE.md` keeps Claude on client work — through `bh`, never editing platform code — and its
 `.claude/settings.json` lets `bh` run without a prompt each time. Say which client in your first
@@ -48,8 +46,8 @@ message; the session picks the project.
 claude plugin marketplace update belkins-home
 ```
 
-Do it when a skill names a command `bh --help` does not list. Re-copy `workspace/` only if its
-`CLAUDE.md` changed.
+Do it when a skill names a command `bh --help` does not list, or run the install command again. Re-copy
+`workspace/` only if its `CLAUDE.md` changed.
 
 ## Something is wrong
 
