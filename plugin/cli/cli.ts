@@ -14,7 +14,7 @@ import {
   saveConfig,
   saveSessionProject,
 } from './config.ts'
-import { readInput, readRows } from './input.ts'
+import { readInput, readRows, readText } from './input.ts'
 import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
 import { setup } from './setup.ts'
 
@@ -193,6 +193,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          app to it (a private channel included)
   slack channel <#channel|id|none>       change where this project's nudges go; "none" leaves it quiet
   slack disconnect                       (an admin only)
+  slack post (--body <text> | --body-file <path|->) [--to <#channel|email>] [--thread <link|ts>]
+                                         the bot says it, in Markdown: to a channel, to a person by
+                                         email, or to the project's channel; --thread answers under
+                                         a message (Slack's "Copy link")
 `
 
 /** A list flag: items split on "|" (titles can hold commas), or on "," when there is no "|". */
@@ -1383,6 +1387,20 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       if (sub === 'disconnect') return out(await call(config, 'POST', '/slack/disconnect', {}))
+      if (sub === 'post') {
+        const text = o['body-file'] ? await readText(o['body-file']) : need(o.body)
+        const message = {
+          text,
+          ...(o.to ? { to: o.to } : {}),
+          ...(o.thread ? { thread: o.thread } : {}),
+        }
+        // Named somewhere, or answering a thread, it needs no project; otherwise it is the project's channel.
+        return out(
+          o.project || (!o.to && !o.thread)
+            ? await call(config, 'POST', `/projects/${p()}/slack/post`, message)
+            : await call(config, 'POST', '/slack/post', message),
+        )
+      }
       return out(await call(config, 'GET', '/slack'))
   }
   throw new BhError(`Unknown command: ${pos.join(' ')}`, { hint: 'bh --help' }, 2)

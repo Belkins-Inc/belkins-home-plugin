@@ -1357,6 +1357,24 @@ CREATE TABLE public.sessions (
 
 
 --
+-- Name: slack_posts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.slack_posts (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid,
+    channel_id text NOT NULL,
+    channel text NOT NULL,
+    ts text NOT NULL,
+    thread_ts text,
+    text text NOT NULL,
+    posted_by uuid NOT NULL,
+    posted_via public.actor_via NOT NULL,
+    posted_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: slack_workspaces; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2252,6 +2270,14 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: slack_posts slack_posts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_posts
+    ADD CONSTRAINT slack_posts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: slack_workspaces slack_workspaces_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2632,6 +2658,13 @@ CREATE INDEX ix_searches__source ON public.searches USING btree (source_id, ran_
 --
 
 CREATE INDEX ix_senders__organisation ON public.senders USING btree (organisation_id) WHERE (organisation_id IS NOT NULL);
+
+
+--
+-- Name: ix_slack_posts__posted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_slack_posts__posted_at ON public.slack_posts USING btree (posted_at DESC);
 
 
 --
@@ -4036,6 +4069,22 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: slack_posts slack_posts_posted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_posts
+    ADD CONSTRAINT slack_posts_posted_by_fkey FOREIGN KEY (posted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: slack_posts slack_posts_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_posts
+    ADD CONSTRAINT slack_posts_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+
+--
 -- Name: slack_workspaces slack_workspaces_connected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4522,4 +4571,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260926105043'),
     ('20260928093726'),
     ('20260928110000'),
-    ('20260928120000');
+    ('20260928120000'),
+    ('20260928130000');

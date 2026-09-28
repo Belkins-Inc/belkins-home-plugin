@@ -18,6 +18,10 @@ export async function readInput(path: string): Promise<unknown> {
   }
 }
 
+/** A text file, or stdin when the path is "-": a report piped straight from another command. */
+export const readText = (path: string): Promise<string> =>
+  path === '-' ? stdin() : readFile(path, 'utf8')
+
 /** The rows a batch command sends: always a list, so a lone object is a list of one. */
 export async function readRows(path: string): Promise<unknown[]> {
   const value = await readInput(path)
