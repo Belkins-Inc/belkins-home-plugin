@@ -1075,6 +1075,8 @@ CREATE TABLE public.linkedin_accounts (
     connected_by uuid,
     provider_id text,
     status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    proxy_country text,
+    CONSTRAINT linkedin_accounts_proxy_country_check CHECK ((proxy_country ~ '^[A-Z]{2}$'::text)),
     CONSTRAINT linkedin_accounts_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 );
 
@@ -5140,4 +5142,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928152922'),
     ('20260928153058'),
     ('20260928163329'),
-    ('20260928163330');
+    ('20260928163330'),
+    ('20260928164326');
