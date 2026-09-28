@@ -59,6 +59,9 @@ Pass the refs you know, so spend lands on the right segment, company or contact:
 - A contact search: `--strategy` (and `--company` when searching inside one company).
 - Enrichment, email finding, verification of one record: `--company` or `--contact`.
 
+Before enriching or finding anyone, `bh dnc check <domain|address>…` (or `--file <csv>`): nobody
+pays a provider for a company or a person the do-not-contact list already blocks.
+
 ### The repeat guard
 
 Paid endpoints marked `guardRepeats` refuse the **same request** (method, path, query, body) that

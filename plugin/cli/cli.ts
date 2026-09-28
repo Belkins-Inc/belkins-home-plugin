@@ -4,8 +4,9 @@
 import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 
-import { refusedIn, sendRows } from './batch.ts'
+import { merge, refusedIn, sendRows } from './batch.ts'
 import { BhError, call } from './client.ts'
+import { readDncCsv } from './csv.ts'
 import {
   CONFIG_PATH,
   SESSION,
@@ -17,6 +18,9 @@ import {
 import { readInput, readRows, readText } from './input.ts'
 import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
 import { setup } from './setup.ts'
+
+/** Rows per dnc import or check request; the engine takes up to 10,000. */
+const DNC_CHUNK = 5000
 
 const USAGE = `bh <command> [options] — JSON out, errors verbatim.
 
@@ -96,6 +100,13 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   contacts [--q <text>]
   dnc add --kind email|domain --value <v> --reason <r> [--note <t>] [--every-project] | dnc remove <id>
                                          --every-project blocks it for every project, not only this one
+  dnc import <file.csv|-> [--reason <r>] [--note <t>] [--every-project]
+                                         a column email and/or domain, or value (kind from "@", or a kind column);
+                                         reason and note columns win over the flags; no header: one value a line.
+                                         answers {added, already, refused, invalid}; a refused row exits 1
+  dnc check <address|domain>… | dnc check --file <csv>
+                                         which of them the list blocks (a domain blocks its subdomains) —
+                                         before paying a provider to enrich or find anyone there
   enroll <strategy-id> --file <json|jsonl|-> [--dry-run]    [{"contactId","segmentId","personaId"}]
   stand <strategy-id> --contact <id> --status candidate|held|rejected [--persona <id>] [--reason <t>]
   stand <strategy-id> --file <json|jsonl|->            [{"contactId","status","personaId","reason"}]
@@ -874,6 +885,50 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       if (sub === 'remove') return out(await call(config, 'DELETE', `/dnc/${arg}`))
+      if (sub === 'import') {
+        const rows = (await readDncCsv(need(arg ?? o.file))).map((r) => ({
+          kind: r.kind,
+          value: r.value,
+          reason: r.reason ?? o.reason,
+          ...(r.note || o.note ? { note: r.note ?? o.note } : {}),
+          ...(o['every-project'] ? { everyProject: true } : {}),
+        }))
+        if (rows.some((r) => !r.reason))
+          throw new BhError(
+            'Why may these not be written to?',
+            { hint: 'pass --reason, or give the file a reason column' },
+            2,
+          )
+        const answer = await sendRows(config, `/projects/${p()}/dnc/import`, rows, {
+          rows: DNC_CHUNK,
+          bytes: 2 * 1024 * 1024,
+        })
+        out(answer)
+        const refused = refusedIn(answer)
+        if (refused) {
+          process.stderr.write(
+            `refused: ${refused} ${refused === 1 ? 'row' : 'rows'}, see "invalid"\n`,
+          )
+          process.exitCode = 1
+        }
+        return
+      }
+      if (sub === 'check') {
+        const values = o.file ? (await readDncCsv(o.file)).map((r) => r.value) : pos.slice(2)
+        if (!values.length)
+          throw new BhError(
+            'Which addresses or domains?',
+            { hint: 'bh dnc check ann@acme.com acme.com, or bh dnc check --file <csv>' },
+            2,
+          )
+        const parts: string[][] = []
+        for (let i = 0; i < values.length; i += DNC_CHUNK)
+          parts.push(values.slice(i, i + DNC_CHUNK))
+        const answers: unknown[] = []
+        for (const part of parts)
+          answers.push(await call(config, 'POST', `/projects/${p()}/dnc/check`, part))
+        return out(merge(answers))
+      }
       break
     case 'enroll':
       // One request, not chunks: a dry run and the persona cap answer for the batch as a whole.

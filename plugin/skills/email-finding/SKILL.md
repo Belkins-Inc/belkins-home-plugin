@@ -28,10 +28,11 @@ reputation, and strategy health opens a task at 3% hard bounces.
 bh brief                                  # open tasks (bounce replacements), rules
 bh address collect                        # settle Scrubby checks that came back (free)
 bh strategy show <strategy-id>            # catch_all_policy, personas
-bh sql "select value, kind from dnc where removed_at is null and (project_id is null or project_id = @project)"
+bh dnc check <domain|address>…            # or --file <csv>: which of them do-not-contact blocks
 ```
 
-Do not buy an address for a contact at a DNC domain, or for one already `rejected` in the strategy.
+Do not buy an address for a contact at a DNC domain, or for one already `rejected` in the strategy:
+run the batch's company domains through `bh dnc check` first and drop what it names.
 
 ## A. Addresses for new contacts
 
