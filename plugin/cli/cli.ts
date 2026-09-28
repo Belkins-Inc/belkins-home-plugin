@@ -153,6 +153,21 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          from another platform, by the refresh token it holds (same OAuth app):
                                          [{"provider":"google|microsoft","refreshToken","sender":"<name>"|"senderId"}]
   mailbox update <id> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed|--not-warmed] [--status active|paused|archived]
+  domains                                the project's bought domains: state, tenant, DNS, cost, expiry
+  domain quote <name> [<name>…]          availability and price at the registrar (free)
+  domain approve <name> [<name>…] --max-cents <n> [--redirect <client site url>]   buy them (a person only):
+                                         the engine buys, dresses DNS and puts each in a Workspace tenant
+  domain dkim <name> --record <TXT value> [--selector google]   publish the DKIM record minted in the
+                                         Admin console (the task the engine opened says when)
+  domain release <name>                  let it lapse at expiry; refused while a mailbox sends from it (a person only)
+  mailbox order <domain> --first-name <n> --last-name <n> --username <local part> | --file <json|jsonl|->
+                                         [{"firstName","lastName","username"}] — a Workspace seat each, made once the
+                                         domain is ready (a person only)
+  mailbox orders                         what was ordered and where each order has got to
+  tenants                                our Google Workspace tenants, with the domains and mailboxes in each (an admin)
+  tenant add --name <n> --admin-email <super admin> --key <service account JSON file> [--max-domains <n>]
+                                         the key is proved against the tenant before it is kept (an admin)
+  tenant update <id> [--status active|paused] [--max-domains <n>] [--key <file>]   (an admin)
   agent runs [--limit <n>]               the server agent's runs: what was waiting, outcome, cost, summary
   agent show <run-id>                    one run with its prompt and transcript
   agent run                              queue a run for the waiting work now (a person only)
@@ -303,6 +318,13 @@ async function main(argv: string[]): Promise<void> {
       done: { type: 'string' },
       ask: { type: 'string' },
       admin: { type: 'boolean' },
+      'admin-email': { type: 'string' },
+      'max-domains': { type: 'string' },
+      'max-cents': { type: 'string' },
+      redirect: { type: 'string' },
+      record: { type: 'string' },
+      selector: { type: 'string' },
+      username: { type: 'string' },
       'no-admin': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
       provider: { type: 'string' },
@@ -401,6 +423,23 @@ async function main(argv: string[]): Promise<void> {
       process.stderr.write(`refused: ${refused} ${refused === 1 ? 'row' : 'rows'}, see "refused"\n`)
       process.exitCode = 1
     }
+  }
+
+  /** The engine names a domain by id; people and agents name it by itself, in this project. */
+  const domainId = async (name: string | undefined): Promise<string> => {
+    if (!name) throw new BhError('Which domain?', { hint: 'Name it: bh domain … getacme.com' }, 2)
+    const rows = (await call(config, 'GET', `/projects/${p()}/domains`)) as {
+      id: string
+      domain: string
+    }[]
+    const found = rows.find((r) => r.domain.toLowerCase() === name.toLowerCase())
+    if (!found)
+      throw new BhError(
+        `${name} is not a domain of project ${current!.slug}`,
+        { hint: 'bh domains lists them' },
+        2,
+      )
+    return found.id
   }
 
   if (!cmd || o.help) return void process.stdout.write(USAGE)
@@ -1281,6 +1320,55 @@ async function main(argv: string[]): Promise<void> {
       break
     case 'mailboxes':
       return out(await call(config, 'GET', `/projects/${p()}/mailboxes`))
+    case 'domains':
+      return out(await call(config, 'GET', `/projects/${p()}/domains`))
+    case 'domain': {
+      const names = pos.slice(2)
+      if (sub === 'quote')
+        return out(await call(config, 'POST', `/projects/${p()}/domains/quote`, { domains: names }))
+      if (sub === 'approve')
+        return out(
+          await call(config, 'POST', `/projects/${p()}/domains`, {
+            domains: names,
+            maxCents: Number(o['max-cents']),
+            ...(o.redirect ? { redirectTo: o.redirect } : {}),
+          }),
+        )
+      if (sub === 'dkim')
+        return out(
+          await call(config, 'POST', `/domains/${await domainId(arg)}/dkim`, {
+            record: o.record,
+            ...(o.selector ? { selector: o.selector } : {}),
+          }),
+        )
+      if (sub === 'release')
+        return out(await call(config, 'POST', `/domains/${await domainId(arg)}/release`, {}))
+      break
+    }
+    case 'tenants':
+      return out(await call(config, 'GET', '/tenants'))
+    case 'tenant': {
+      const key = o.key ? JSON.parse(await readFile(o.key, 'utf8')) : undefined
+      const maxDomains = o['max-domains'] ? { maxDomains: Number(o['max-domains']) } : {}
+      if (sub === 'add')
+        return out(
+          await call(config, 'POST', '/tenants', {
+            name: o.name,
+            adminEmail: o['admin-email'],
+            key,
+            ...maxDomains,
+          }),
+        )
+      if (sub === 'update')
+        return out(
+          await call(config, 'PATCH', `/tenants/${arg}`, {
+            ...(o.status ? { status: o.status } : {}),
+            ...maxDomains,
+            ...(key ? { key } : {}),
+          }),
+        )
+      break
+    }
     case 'mailbox': {
       const limits = {
         ...(o['daily-limit'] ? { dailyLimit: Number(o['daily-limit']) } : {}),
@@ -1321,6 +1409,15 @@ async function main(argv: string[]): Promise<void> {
         }
         return
       }
+      if (sub === 'order') {
+        const mailboxes = o.file
+          ? await readRows(o.file)
+          : [{ firstName: o['first-name'], lastName: o['last-name'], username: o.username }]
+        return out(
+          await call(config, 'POST', `/domains/${await domainId(arg)}/mailboxes`, { mailboxes }),
+        )
+      }
+      if (sub === 'orders') return out(await call(config, 'GET', `/projects/${p()}/mailbox-orders`))
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/mailboxes/${arg}`, {
