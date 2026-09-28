@@ -26,9 +26,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          in a terminal it waits, elsewhere run bh login --wait after approving
   login --wait                           collect the token once the link is approved
   login --api <url> --token <token>     save a token made by hand
-  use [<project>]                       the project later commands act on; with no slug, which one and why.
-                                         Inside Claude Code it holds for that session only, so parallel
-                                         sessions each keep their own; --project or BH_PROJECT beats it
+  use [<project>]                       the project this Claude Code session acts on; with no slug, which one
+                                         and why. Each session keeps its own and none is ever defaulted;
+                                         outside a session, --project or BH_PROJECT; either beats bh use
   whoami | health
   projects [--org <slug>] | project create <slug> --name <name> [--timezone <tz>] [--org <slug>] [--owner <user-id>]
   project members | project member <user-id> [--role owner|member] | project member remove <user-id>
@@ -232,20 +232,17 @@ function need(file: string | undefined): string {
 }
 
 /**
- * Where the project comes from, first found wins: --project, BH_PROJECT, then `bh use` — this
- * Claude Code session's pick inside one, the saved default outside. A session never falls back to
- * the default: another session may have set it, and acting on someone else's client is the worst
- * thing a wrong guess can do.
+ * Where the project comes from, first found wins: --project, BH_PROJECT, then this Claude Code
+ * session's `bh use`. Nothing is ever defaulted: a default is whatever someone picked last, and
+ * acting on another client's project is the worst thing a wrong guess can do.
  */
 function currentProject(
   flag: string | undefined,
-  saved: string | undefined,
   session: string | undefined,
 ): { slug: string; from: string } | null {
   if (flag) return { slug: flag, from: '--project' }
   if (process.env.BH_PROJECT) return { slug: process.env.BH_PROJECT, from: 'BH_PROJECT' }
-  if (SESSION) return session ? { slug: session, from: 'bh use, this session' } : null
-  return saved ? { slug: saved, from: 'bh use' } : null
+  return session ? { slug: session, from: 'bh use, this session' } : null
 }
 
 function noProject(): BhError {
@@ -254,7 +251,7 @@ function noProject(): BhError {
     {
       hint: SESSION
         ? 'bh use <slug> once per session (each Claude Code session keeps its own), or --project <slug>; bh projects lists them'
-        : 'bh use <slug>, or --project <slug>; bh projects lists them',
+        : 'not in a Claude Code session, so bh use cannot hold: --project <slug> or BH_PROJECT; bh projects lists them',
     },
     2,
   )
@@ -376,7 +373,7 @@ async function main(argv: string[]): Promise<void> {
   })
   const config = await loadConfig()
   const [cmd, sub, arg] = pos
-  const current = currentProject(o.project, config.project, await loadSessionProject())
+  const current = currentProject(o.project, await loadSessionProject())
   const p = () => {
     if (!current) throw noProject()
     return encodeURIComponent(current.slug)
@@ -420,10 +417,10 @@ async function main(argv: string[]): Promise<void> {
         if (!current) throw noProject()
         return out({ project: current.slug, from: current.from })
       }
+      if (!SESSION) throw noProject()
       const found = await call(config, 'GET', `/projects/${encodeURIComponent(sub)}`)
-      if (SESSION) await saveSessionProject(sub)
-      else await saveConfig({ ...config, project: sub })
-      return out({ project: found, for: SESSION ? 'this session' : 'every later command' })
+      await saveSessionProject(sub)
+      return out({ project: found, for: 'this session' })
     }
     case 'whoami':
       return out(await call(config, 'GET', '/me'))

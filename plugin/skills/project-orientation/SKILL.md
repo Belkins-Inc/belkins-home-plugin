@@ -17,7 +17,10 @@ previous session did or did not do something — read it.
 2. `bh use <slug>` for the project the person named (`bh projects` lists them). It holds for this
    Claude Code session only — the person may run several sessions side by side, one per client, and
    each keeps its own; nothing another session picks reaches this one. If they did not say which
-   project, ask rather than guess: a session that has not picked is refused, never defaulted.
+   project, ask rather than guess — a client named in passing, a project from an earlier session or
+   the only one you know is not a pick; a session that has not picked is refused, never defaulted.
+   Once `bh use` answers, name the project back in one line — its name and slug ("Working on Pepper
+   (pepper).") — so a wrong pick is caught before anything is done on it.
    When they move to another project mid-session, `bh use` it again. `bh use` with no slug says
    which project is current; `--project <slug>` reads another for one command without switching.
 3. `bh brief` — read all of it before doing anything. Then read the parts that matter for today in

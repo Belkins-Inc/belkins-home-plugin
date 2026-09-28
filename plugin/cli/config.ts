@@ -2,7 +2,7 @@ import { mkdir, readFile, readdir, rm, stat, writeFile, chmod } from 'node:fs/pr
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-export type BhConfig = { api?: string; token?: string; project?: string }
+export type BhConfig = { api?: string; token?: string }
 
 export const CONFIG_PATH = process.env.BH_CONFIG ?? join(homedir(), '.config', 'bh', 'config.json')
 
@@ -15,8 +15,10 @@ export async function loadConfig(): Promise<BhConfig> {
 }
 
 export async function saveConfig(config: BhConfig) {
+  // A project saved by an older bh is dropped: no project is a default any more.
+  const kept: BhConfig = { api: config.api, token: config.token }
   await mkdir(dirname(CONFIG_PATH), { recursive: true })
-  await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 })
+  await writeFile(CONFIG_PATH, `${JSON.stringify(kept, null, 2)}\n`, { mode: 0o600 })
   await chmod(CONFIG_PATH, 0o600)
 }
 
