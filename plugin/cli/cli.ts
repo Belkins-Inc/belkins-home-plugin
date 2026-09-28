@@ -160,6 +160,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domain dkim <name> --record <TXT value> [--selector google]   publish the DKIM record minted in the
                                          Admin console (the task the engine opened says when)
   domain release <name>                  let it lapse at expiry; refused while a mailbox sends from it (a person only)
+  domain redirect <name> <url>|none      where its website goes: a 301 from the apex and every subdomain to the
+                                         client's own site, or none (a person only)
+  domain dns <name>                      its DNS records and redirects at the registrar
+  domain dns <name> add --type A|AAAA|CNAME|ALIAS|TXT|CAA --host <@|sub> --content <value> [--ttl <s>]
+  domain dns <name> delete <record id>   (a person only; MX, SPF, DMARC and DKIM are the engine's and refused)
   mailbox order <domain> --first-name <n> --last-name <n> --username <local part> | --file <json|jsonl|->
                                          [{"firstName","lastName","username"}] — a Workspace seat each, made once the
                                          domain is ready (a person only)
@@ -326,6 +331,10 @@ async function main(argv: string[]): Promise<void> {
       'max-cents': { type: 'string' },
       redirect: { type: 'string' },
       record: { type: 'string' },
+      type: { type: 'string' },
+      host: { type: 'string' },
+      content: { type: 'string' },
+      ttl: { type: 'string' },
       selector: { type: 'string' },
       username: { type: 'string' },
       'no-admin': { type: 'boolean' },
@@ -1367,6 +1376,40 @@ async function main(argv: string[]): Promise<void> {
         )
       if (sub === 'release')
         return out(await call(config, 'POST', `/domains/${await domainId(arg)}/release`, {}))
+      if (sub === 'redirect') {
+        const url = pos[3]
+        if (!url)
+          throw new BhError(
+            'Where to?',
+            { hint: 'bh domain redirect getacme.com https://acme.com, or none to remove it' },
+            2,
+          )
+        return out(
+          await call(config, 'PUT', `/domains/${await domainId(arg)}/redirect`, {
+            url: url === 'none' ? null : url,
+          }),
+        )
+      }
+      if (sub === 'dns') {
+        const id = await domainId(arg)
+        const action = pos[3]
+        if (!action) return out(await call(config, 'GET', `/domains/${id}/dns`))
+        if (action === 'add')
+          return out(
+            await call(config, 'POST', `/domains/${id}/dns`, {
+              type: o.type,
+              host: o.host ?? '@',
+              content: o.content,
+              ...(o.ttl ? { ttl: Number(o.ttl) } : {}),
+            }),
+          )
+        if (action === 'delete') {
+          if (!pos[4])
+            throw new BhError('Which record?', { hint: `bh domain dns ${arg} lists their ids` }, 2)
+          return out(await call(config, 'DELETE', `/domains/${id}/dns/${pos[4]}`))
+        }
+        throw new BhError(`bh domain dns has no ${action}`, { hint: 'add or delete' }, 2)
+      }
       break
     }
     case 'tenants':
