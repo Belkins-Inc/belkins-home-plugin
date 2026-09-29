@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // bh — the team's CLI for the engine's API (docs/decisions/tools.md). JSON out; errors verbatim.
 
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 
 import { merge, refusedIn, sendRows } from './batch.ts'
@@ -120,13 +120,18 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          every problem per messageId, exit 1 when there is one
   preview <message-id>
   senders | sender add --name <n> [--title <t>] [--signature <text>] | sender update <id> [--name] [--title] [--signature]
+                                         add, update and share take --signature-html-file <file.html> too: the email then
+                                         goes as text and HTML (the text keeps --signature); an empty file clears it
+  sender image <id> <file.png|jpg>       a picture for the HTML signature (100 KB at most); use the src it answers
+  sender images <id> | sender image-remove <id> <image-id>
+  sender signature <id> [--out <file.html>]   how they sign on this project; --out writes it to open in a browser
   sender move <id> --to <project>        with their mailboxes and LinkedIn, while nothing was written as them
   sender share <id> [--title <t>] [--signature <text>] [--daily-share <n>]
                                          puts an agency sender on this project, named for this client
   sender unshare <id>                    takes them off it again
 
   agency senders <org>                   the agency's own people, and who they write for
-  agency add <org> --name <n> [--title <t>] [--signature <text>]
+  agency add <org> --name <n> [--title <t>] [--signature <text>] [--signature-html-file <file.html>]
   agency remove <org> <id>               while they are on no project and hold no channel
   agency mailbox <org> --sender <id> --provider google|microsoft [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          a mailbox of theirs, shared by every project they are on
@@ -392,6 +397,8 @@ async function main(argv: string[]): Promise<void> {
       offset: { type: 'string' },
       sender: { type: 'string' },
       signature: { type: 'string' },
+      'signature-html-file': { type: 'string' },
+      out: { type: 'string' },
       'daily-share': { type: 'string' },
       'daily-limit': { type: 'string' },
       'invite-limit': { type: 'string' },
@@ -894,6 +901,7 @@ async function main(argv: string[]): Promise<void> {
             name: o.name,
             ...(o.title ? { title: o.title } : {}),
             ...(o.signature ? { signature: o.signature } : {}),
+            ...(await signatureHtml(o['signature-html-file'])),
           }),
         )
       if (sub === 'remove')
@@ -1302,6 +1310,7 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'PUT', `/projects/${p()}/senders/${arg}`, {
             ...(o.title ? { title: o.title } : {}),
             ...(o.signature ? { signature: o.signature } : {}),
+            ...(await signatureHtml(o['signature-html-file'])),
             ...(o['daily-share'] ? { dailyShare: Number(o['daily-share']) } : {}),
           }),
         )
@@ -1313,6 +1322,7 @@ async function main(argv: string[]): Promise<void> {
             name: o.name,
             ...(o.title ? { title: o.title } : {}),
             ...(o.signature ? { signature: o.signature } : {}),
+            ...(await signatureHtml(o['signature-html-file'])),
           }),
         )
       if (sub === 'update')
@@ -1321,8 +1331,30 @@ async function main(argv: string[]): Promise<void> {
             ...(o.name ? { name: o.name } : {}),
             ...(o.title ? { title: o.title } : {}),
             ...(o.signature ? { signature: o.signature } : {}),
+            ...(await signatureHtml(o['signature-html-file'])),
           }),
         )
+      if (sub === 'image')
+        return out(
+          await call(config, 'POST', `/senders/${arg}/images`, {
+            data: (await readFile(need(pos[3]))).toString('base64'),
+          }),
+        )
+      if (sub === 'images') return out(await call(config, 'GET', `/senders/${arg}/images`))
+      if (sub === 'image-remove')
+        return out(await call(config, 'DELETE', `/senders/${arg}/images/${need(pos[3])}`))
+      if (sub === 'signature') {
+        const signature = (await call(
+          config,
+          'GET',
+          `/projects/${p()}/senders/${arg}/signature`,
+        )) as { name: string; text: string | null; html: string | null; rendered: string | null }
+        if (o.out) {
+          await writeFile(o.out, signaturePage(signature))
+          return out({ ...signature, rendered: undefined, written: o.out })
+        }
+        return out({ ...signature, rendered: undefined })
+      }
       break
     case 'leads': {
       const query = new URLSearchParams(
@@ -1718,4 +1750,23 @@ try {
     )
     process.exitCode = 1
   }
+}
+
+/** `--signature-html-file`: the file's HTML, or null to clear it when the file is empty. */
+async function signatureHtml(file: string | undefined) {
+  if (!file) return {}
+  const html = (await readFile(file, 'utf8')).trim()
+  return { signatureHtml: html || null }
+}
+
+/** A page showing a signature as the lead will see it: the HTML, and the text beneath. */
+const signaturePage = (s: { name: string; text: string | null; rendered: string | null }) => {
+  const escape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return `<!doctype html><meta charset="utf-8"><title>${escape(s.name)}</title>
+<body style="font-family: Arial, sans-serif; font-size: 14px; max-width: 720px; margin: 32px auto">
+<p>Hi Mia,</p><p>The message goes here.</p><br>
+${s.rendered ?? '<p><i>No HTML signature: this sender signs in text only.</i></p>'}
+<hr style="margin: 32px 0"><pre style="white-space: pre-wrap">${escape(s.text ?? '(no text signature)')}</pre>
+</body>
+`
 }

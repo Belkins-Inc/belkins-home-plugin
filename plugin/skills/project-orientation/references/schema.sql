@@ -1359,6 +1359,7 @@ CREATE TABLE public.project_senders (
     added_by uuid NOT NULL,
     added_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    signature_html text,
     CONSTRAINT project_senders_daily_share_check CHECK (((daily_share IS NULL) OR ((daily_share >= 1) AND (daily_share <= 200))))
 );
 
@@ -1661,6 +1662,23 @@ CREATE TABLE public.segments (
 
 
 --
+-- Name: sender_images; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sender_images (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    sender_id uuid NOT NULL,
+    content_type text NOT NULL,
+    data bytea NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT sender_images_content_type_check CHECK ((content_type = ANY (ARRAY['image/png'::text, 'image/jpeg'::text, 'image/gif'::text]))),
+    CONSTRAINT sender_images_size_check CHECK ((octet_length(data) <= 102400))
+);
+
+
+--
 -- Name: senders; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1672,6 +1690,7 @@ CREATE TABLE public.senders (
     signature text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     organisation_id uuid,
+    signature_html text,
     CONSTRAINT senders_owner_check CHECK ((num_nonnulls(project_id, organisation_id) = 1))
 );
 
@@ -2682,6 +2701,14 @@ ALTER TABLE ONLY public.segments
 
 
 --
+-- Name: sender_images sender_images_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sender_images
+    ADD CONSTRAINT sender_images_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: senders senders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3190,6 +3217,13 @@ CREATE INDEX ix_provider_calls__project_at ON public.provider_calls USING btree 
 --
 
 CREATE INDEX ix_searches__source ON public.searches USING btree (source_id, ran_at) WHERE (source_id IS NOT NULL);
+
+
+--
+-- Name: ix_sender_images__sender; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_sender_images__sender ON public.sender_images USING btree (sender_id);
 
 
 --
@@ -4751,6 +4785,22 @@ ALTER TABLE ONLY public.segments
 
 
 --
+-- Name: sender_images sender_images_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sender_images
+    ADD CONSTRAINT sender_images_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: sender_images sender_images_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sender_images
+    ADD CONSTRAINT sender_images_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id) ON DELETE CASCADE;
+
+
+--
 -- Name: senders senders_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5328,4 +5378,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928235407'),
     ('20260929095310'),
     ('20260929101213'),
-    ('20260929102650');
+    ('20260929102650'),
+    ('20260929121817');
