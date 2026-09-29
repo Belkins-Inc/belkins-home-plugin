@@ -2019,6 +2019,8 @@ CREATE TABLE public.tasks (
     segment_id uuid,
     signal text,
     domain_id uuid,
+    closed_by uuid,
+    close_posted_for timestamp with time zone,
     CONSTRAINT tasks_check CHECK (((status = 'open'::text) = (closed_at IS NULL))),
     CONSTRAINT tasks_priority_check CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text]))),
     CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text])) AND (strategy_id IS NOT NULL)))),
@@ -5013,6 +5015,14 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: tasks tasks_closed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_closed_by_fkey FOREIGN KEY (closed_by) REFERENCES public.users(id);
+
+
+--
 -- Name: tasks tasks_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5308,4 +5318,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928213708'),
     ('20260928214915'),
     ('20260928235407'),
-    ('20260929095310');
+    ('20260929095310'),
+    ('20260929101213');
