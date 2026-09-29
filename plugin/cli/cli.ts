@@ -64,6 +64,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   lead show <enrollment-id>              one lead's plan step by step
   lead resume <enrollment-id>            put back a lead a reply stopped when the reply needed nothing (a person only)
   lead pause <enrollment-id> | lead unpause <enrollment-id>   hold a lead by hand, and let it go on (a person only)
+  lead stop <enrollment-id> --reason <t> end a lead for good; frees the contact for another strategy (a person only)
   strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
@@ -1341,6 +1342,8 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'pause') return out(await call(config, 'POST', `/enrollments/${arg}/pause`, {}))
       if (sub === 'unpause')
         return out(await call(config, 'POST', `/enrollments/${arg}/unpause`, {}))
+      if (sub === 'stop')
+        return out(await call(config, 'POST', `/enrollments/${arg}/stop`, { reason: o.reason }))
       break
     case 'calendars':
       return out(await call(config, 'GET', `/projects/${p()}/calendars`))
