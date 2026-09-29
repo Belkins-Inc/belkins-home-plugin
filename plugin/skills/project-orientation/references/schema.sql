@@ -1,7 +1,7 @@
 \restrict dbmate
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.4
+-- Dumped by pg_dump version 18.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1140,6 +1140,13 @@ CREATE TABLE public.mailboxes (
     status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
     tenant_id uuid,
     read_claimed_until timestamp with time zone,
+    read_wanted_at timestamp with time zone,
+    push_expires_at timestamp with time zone,
+    push_target text,
+    push_error text,
+    push_attempted_at timestamp with time zone,
+    push_subscription_id text,
+    push_client_state_hash text,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 200))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
@@ -3309,6 +3316,13 @@ CREATE UNIQUE INDEX ux_mailboxes__id_sender ON public.mailboxes USING btree (id,
 
 
 --
+-- Name: ux_mailboxes__push_subscription_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_mailboxes__push_subscription_id ON public.mailboxes USING btree (push_subscription_id) WHERE (push_subscription_id IS NOT NULL);
+
+
+--
 -- Name: ux_meetings__calendar_slot; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5292,4 +5306,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928170214'),
     ('20260928170353'),
     ('20260928213708'),
-    ('20260928214915');
+    ('20260928214915'),
+    ('20260928235407');
