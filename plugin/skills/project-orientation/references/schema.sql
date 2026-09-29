@@ -681,6 +681,7 @@ CREATE TABLE public.domains (
     bought_via public.actor_via,
     auto_renew boolean DEFAULT true NOT NULL,
     tenant_id uuid,
+    dkim_started_at timestamp with time zone,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
     CONSTRAINT domains_registrar_check CHECK (((registrar IS NULL) OR (registrar = ANY (ARRAY['porkbun'::text])))),
     CONSTRAINT domains_status_check CHECK ((status = ANY (ARRAY['external'::text, 'approved'::text, 'buying'::text, 'registered'::text, 'attaching'::text, 'ready'::text, 'failed'::text, 'released'::text]))),
@@ -2173,6 +2174,13 @@ CREATE TABLE public.workspace_tenants (
     created_by uuid NOT NULL,
     created_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    console_session bytea,
+    console_state text DEFAULT 'none'::text NOT NULL,
+    console_signed_in_at timestamp with time zone,
+    console_seen_at timestamp with time zone,
+    console_error text,
+    console_alerted_at timestamp with time zone,
+    CONSTRAINT workspace_tenants_console_state_check CHECK ((console_state = ANY (ARRAY['none'::text, 'live'::text, 'expired'::text]))),
     CONSTRAINT workspace_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 600))),
     CONSTRAINT workspace_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
@@ -5319,4 +5327,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260928214915'),
     ('20260928235407'),
     ('20260929095310'),
-    ('20260929101213');
+    ('20260929101213'),
+    ('20260929102650');

@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 
 import { merge, refusedIn, sendRows } from './batch.ts'
+import { consoleLogin } from './console-login.ts'
 import { BhError, call } from './client.ts'
 import { readDncCsv } from './csv.ts'
 import {
@@ -174,6 +175,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   tenant add --name <n> --admin-email <super admin> --key <service account JSON file> [--max-domains <n>]
                                          the key is proved against the tenant before it is kept (an admin)
   tenant update <id> [--status active|paused] [--max-domains <n>] [--admin-email <e>] [--key <file>]   (an admin)
+  tenant console-login <id>              sign in to the Google Admin console through the console service's IP,
+                                         so it can do DKIM (an admin; #home-alerts says when it is needed again)
   agent runs [--limit <n>]               the server agent's runs: what was waiting, outcome, cost, summary
   agent show <run-id>                    one run with its prompt and transcript
   agent run                              queue a run for the waiting work now (a person only)
@@ -1493,6 +1496,10 @@ async function main(argv: string[]): Promise<void> {
             ...maxDomains,
           }),
         )
+      if (sub === 'console-login') {
+        if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
+        return out(await consoleLogin(config, arg))
+      }
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/tenants/${arg}`, {
