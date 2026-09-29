@@ -74,6 +74,7 @@ function startTunnel(upstreamUrl: string): Promise<{ url: string; close: () => v
 
 // The little of Playwright used here: bh does not depend on it, so its types are not at hand.
 type Page = {
+  innerText(selector: string): Promise<string>
   goto(url: string, options?: { waitUntil?: string; timeout?: number }): Promise<unknown>
   url(): string
   waitForTimeout(ms: number): Promise<void>
@@ -133,13 +134,29 @@ export async function consoleLogin(config: BhConfig, tenantId: string) {
   const page = await context.newPage()
   // Through the proxy the console takes long to finish loading; the address is what is watched.
   await page.goto(SIGN_IN, { waitUntil: 'commit', timeout: 120_000 }).catch(() => {})
-  log(`Sign in as ${login.adminEmail} in the window that opened (tenant ${login.tenant}).`)
+  log(
+    `Sign in in the window that opened (tenant ${login.tenant}) as an admin who may change Gmail settings — the console robot, or ${login.adminEmail}.`,
+  )
   const deadline = Date.now() + 15 * 60_000
   try {
     while (Date.now() < deadline) {
       const url = page.url()
       if (url.startsWith('https://admin.google.com/') && !/ServiceLogin|signin/.test(url)) {
         await page.waitForTimeout(5000)
+        // The session is only worth keeping if it opens the page the console service works on.
+        if (!url.startsWith(PAGE))
+          await page.goto(PAGE, { waitUntil: 'commit', timeout: 120_000 }).catch(() => {})
+        await page.waitForTimeout(8000)
+        const text = await page.innerText('body').catch(() => '')
+        if (!/DKIM authentication/i.test(text))
+          throw new BhError(
+            'Signed in, but this account cannot open Authenticate email',
+            {
+              hint: 'Give its admin role Services → Gmail → Settings (or sign in as a super admin), then run this again',
+              page: text.replace(/\s+/g, ' ').slice(0, 300),
+            },
+            2,
+          )
         const session = await context.storageState()
         return await call(config, 'PUT', `/tenants/${tenantId}/console-session`, { session })
       }
