@@ -173,7 +173,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   tenants                                our Google Workspace tenants, with the domains and mailboxes in each (an admin)
   tenant add --name <n> --admin-email <super admin> --key <service account JSON file> [--max-domains <n>]
                                          the key is proved against the tenant before it is kept (an admin)
-  tenant update <id> [--status active|paused] [--max-domains <n>] [--key <file>]   (an admin)
+  tenant update <id> [--status active|paused] [--max-domains <n>] [--admin-email <e>] [--key <file>]   (an admin)
   agent runs [--limit <n>]               the server agent's runs: what was waiting, outcome, cost, summary
   agent show <run-id>                    one run with its prompt and transcript
   agent run                              queue a run for the waiting work now (a person only)
@@ -1498,6 +1498,7 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'PATCH', `/tenants/${arg}`, {
             ...(o.status ? { status: o.status } : {}),
             ...maxDomains,
+            ...(o['admin-email'] ? { adminEmail: o['admin-email'] } : {}),
             ...(key ? { key } : {}),
           }),
         )
