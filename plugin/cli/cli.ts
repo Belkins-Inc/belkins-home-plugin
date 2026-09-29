@@ -194,6 +194,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          itself when Google drops its session; asks for the password (and with
                                          --totp the authenticator secret) hidden, or reads them from stdin, one a
                                          line. --remove forgets it (an admin)
+  tenant console-retry <id>              sign in with the stored login on the next pass, not hours after a failed try
   agent runs [--limit <n>]               the server agent's runs: what was waiting, outcome, cost, summary
   agent show <run-id>                    one run with its prompt and transcript
   agent run                              queue a run for the waiting work now (a person only)
@@ -1611,6 +1612,10 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'console-login') {
         if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
         return out(await consoleLogin(config, arg))
+      }
+      if (sub === 'console-retry') {
+        if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
+        return out(await call(config, 'POST', `/tenants/${arg}/console-retry`, {}))
       }
       if (sub === 'console-credentials') {
         if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
