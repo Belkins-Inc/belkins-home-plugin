@@ -199,6 +199,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          attaches it to the sender named like its owner unless --sender
   linkedin update <id> [--invite-limit <n>] [--message-limit <n>] [--delay-min <s>] [--delay-max <s>] [--status active|paused|archived]
   inbox                                  replies waiting for triage, with the engine's classification
+  inbox test-send --from <our address> --to <our address> [--subject <t>] [--body <t>] [--reply]
+                                         an admin's test of the round trip: sends through the provider; the
+                                         answer reaches the inbox only through the reader. --reply answers
+                                         the newest message --to sent --from
+  inbox placement --mailbox <our address> --message-id <id>   where it landed: INBOX, SPAM, a tab (an admin)
   thread <id>                            the whole conversation, with our replies
   triage <message-id> [--class <c>] [--note <t>] [--follow-up <yyyy-mm-dd>] [--return <yyyy-mm-dd>]
   triage undo <message-id>              take it back: an unsubscribe within 60 s, or back into the queue
@@ -390,6 +395,10 @@ async function main(argv: string[]): Promise<void> {
       operation: { type: 'string' },
       from: { type: 'string' },
       to: { type: 'string' },
+      subject: { type: 'string' },
+      reply: { type: 'boolean' },
+      mailbox: { type: 'string' },
+      'message-id': { type: 'string' },
       'dry-run': { type: 'boolean' },
       q: { type: 'string' },
       waiting: { type: 'string' },
@@ -1189,6 +1198,24 @@ async function main(argv: string[]): Promise<void> {
         }),
       )
     case 'inbox':
+      if (sub === 'test-send')
+        return out(
+          await call(config, 'POST', '/inbox/test-send', {
+            from: o.from,
+            to: o.to,
+            ...(o.subject ? { subject: o.subject } : {}),
+            ...(o.body ? { body: o.body } : {}),
+            ...(o.reply ? { reply: true } : {}),
+          }),
+        )
+      if (sub === 'placement')
+        return out(
+          await call(
+            config,
+            'GET',
+            `/inbox/placement?${new URLSearchParams({ mailbox: o.mailbox ?? '', messageId: o['message-id'] ?? '' })}`,
+          ),
+        )
       return out(await call(config, 'GET', `/projects/${p()}/inbox`))
     case 'thread':
       return out(await call(config, 'GET', `/threads/${sub}`))
