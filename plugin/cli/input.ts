@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import readline from 'node:readline'
 
 import { BhError } from './client.ts'
 
@@ -50,4 +51,34 @@ async function stdin(): Promise<string> {
   const chunks: Buffer[] = []
   for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
   return Buffer.concat(chunks).toString('utf8')
+}
+
+/**
+ * Secrets, one per question: asked with the typing hidden at a terminal, or read from stdin one a
+ * line when it is piped (`op read … | bh …`). Never taken as flags, which the shell's history keeps.
+ */
+export async function readSecrets(questions: string[]): Promise<string[]> {
+  if (!process.stdin.isTTY) return (await stdin()).split(/\r?\n/).slice(0, questions.length)
+  const answers = []
+  for (const question of questions) answers.push(await hidden(question))
+  return answers
+}
+
+function hidden(question: string): Promise<string> {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stderr,
+      terminal: true,
+    })
+    const write = rl as unknown as { _writeToOutput: (s: string) => void }
+    write._writeToOutput = (s: string) => {
+      if (s.includes(question)) process.stderr.write(s)
+    }
+    rl.question(question, (answer) => {
+      rl.close()
+      process.stderr.write('\n')
+      resolve(answer.trim())
+    })
+  })
 }

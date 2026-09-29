@@ -1103,6 +1103,7 @@ CREATE TABLE public.mailbox_orders (
     ordered_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     settled_at timestamp with time zone,
+    sender_id uuid,
     CONSTRAINT mailbox_orders_mailbox_check CHECK (((mailbox_id IS NOT NULL) = (status = 'connected'::text))),
     CONSTRAINT mailbox_orders_settled_check CHECK (((settled_at IS NULL) = ((status <> 'connected'::text) AND (status <> 'failed'::text)))),
     CONSTRAINT mailbox_orders_status_check CHECK ((status = ANY (ARRAY['ordered'::text, 'creating'::text, 'created'::text, 'connecting'::text, 'connected'::text, 'failed'::text]))),
@@ -2199,6 +2200,8 @@ CREATE TABLE public.workspace_tenants (
     console_seen_at timestamp with time zone,
     console_error text,
     console_alerted_at timestamp with time zone,
+    console_login bytea,
+    console_login_failed_at timestamp with time zone,
     CONSTRAINT workspace_tenants_console_state_check CHECK ((console_state = ANY (ARRAY['none'::text, 'live'::text, 'expired'::text]))),
     CONSTRAINT workspace_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 600))),
     CONSTRAINT workspace_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
@@ -4081,6 +4084,14 @@ ALTER TABLE ONLY public.mailbox_orders
 
 
 --
+-- Name: mailbox_orders mailbox_orders_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mailbox_orders
+    ADD CONSTRAINT mailbox_orders_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id) ON DELETE SET NULL;
+
+
+--
 -- Name: mailboxes mailboxes_connected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5380,4 +5391,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260929101213'),
     ('20260929102650'),
     ('20260929121817'),
-    ('20260929142338');
+    ('20260929142338'),
+    ('20260929142432'),
+    ('20260929143742');

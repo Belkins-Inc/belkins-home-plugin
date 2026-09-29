@@ -16,7 +16,7 @@ import {
   saveConfig,
   saveSessionProject,
 } from './config.ts'
-import { readInput, readRows, readText } from './input.ts'
+import { readInput, readRows, readSecrets, readText } from './input.ts'
 import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
 import { setup } from './setup.ts'
 
@@ -126,6 +126,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   sender images <id> | sender image-remove <id> <image-id>
   sender signature <id> [--out <file.html>]   how they sign on this project; --out writes it to open in a browser
   sender move <id> --to <project>        with their mailboxes and LinkedIn, while nothing was written as them
+  sender remove <id>                     one nothing refers to (no mailbox, LinkedIn, message or strategy)
   sender share <id> [--title <t>] [--signature <text>] [--daily-share <n>]
                                          puts an agency sender on this project, named for this client
   sender unshare <id>                    takes them off it again
@@ -161,6 +162,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          from another platform, by the refresh token it holds (same OAuth app):
                                          [{"provider":"google|microsoft","refreshToken","sender":"<name>"|"senderId"}]
   mailbox update <id> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed|--not-warmed] [--status active|paused|archived]
+                 [--sender <id>]            another sender of the project writes from it
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
   domain quote <name> [<name>…]          availability and price at the registrar (free)
   domain approve <name> [<name>…] --max-cents <n> [--redirect <client site url>]   buy them (a person only):
@@ -173,7 +175,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domain dns <name>                      its DNS records and redirects at the registrar
   domain dns <name> add --type A|AAAA|CNAME|ALIAS|TXT|CAA --host <@|sub> --content <value> [--ttl <s>]
   domain dns <name> delete <record id>   (a person only; MX, SPF, DMARC and DKIM are the engine's and refused)
-  mailbox order <domain> --first-name <n> --last-name <n> --username <local part> | --file <json|jsonl|->
+  mailbox order <domain> [--sender <id>] --first-name <n> --last-name <n> --username <local part> | --file <json|jsonl|->
                                          [{"firstName","lastName","username"}] — a Workspace seat each, made once the
                                          domain is ready (a person only)
   mailbox orders                         what was ordered and where each order has got to
@@ -183,6 +185,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   tenant update <id> [--status active|paused] [--max-domains <n>] [--admin-email <e>] [--key <file>]   (an admin)
   tenant console-login <id>              sign in to the Google Admin console through the console service's IP,
                                          so it can do DKIM (an admin; #home-alerts says when it is needed again)
+  tenant console-credentials <id> --email <admin> [--totp]   the login the console service signs in with by
+                                         itself when Google drops its session; asks for the password (and with
+                                         --totp the authenticator secret) hidden, or reads them from stdin, one a
+                                         line. --remove forgets it (an admin)
   agent runs [--limit <n>]               the server agent's runs: what was waiting, outcome, cost, summary
   agent show <run-id>                    one run with its prompt and transcript
   agent run                              queue a run for the waiting work now (a person only)
@@ -321,6 +327,8 @@ async function main(argv: string[]): Promise<void> {
       token: { type: 'string' },
       wait: { type: 'boolean' },
       'no-browser': { type: 'boolean' },
+      totp: { type: 'boolean' },
+      remove: { type: 'boolean' },
       project: { type: 'string' },
       name: { type: 'string' },
       timezone: { type: 'string' },
@@ -1332,6 +1340,7 @@ async function main(argv: string[]): Promise<void> {
     case 'sender':
       if (sub === 'move')
         return out(await call(config, 'POST', `/senders/${arg}/move`, { project: o.to }))
+      if (sub === 'remove') return out(await call(config, 'DELETE', `/senders/${arg}`))
       if (sub === 'share')
         return out(
           await call(config, 'PUT', `/projects/${p()}/senders/${arg}`, {
@@ -1562,6 +1571,25 @@ async function main(argv: string[]): Promise<void> {
         if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
         return out(await consoleLogin(config, arg))
       }
+      if (sub === 'console-credentials') {
+        if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
+        if (o.remove)
+          return out(await call(config, 'DELETE', `/tenants/${arg}/console-credentials`))
+        if (!o.email)
+          throw new BhError('Sign in as whom?', { hint: '--email <an admin of the tenant>' }, 2)
+        const [password, totpSecret] = await readSecrets([
+          `Password for ${o.email}: `,
+          ...(o.totp ? ['Authenticator secret (the key under "Can\'t scan it?"): '] : []),
+        ])
+        if (!password) throw new BhError('No password given', {}, 2)
+        return out(
+          await call(config, 'PUT', `/tenants/${arg}/console-credentials`, {
+            email: o.email,
+            password,
+            ...(totpSecret ? { totpSecret } : {}),
+          }),
+        )
+      }
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/tenants/${arg}`, {
@@ -1618,7 +1646,10 @@ async function main(argv: string[]): Promise<void> {
           ? await readRows(o.file)
           : [{ firstName: o['first-name'], lastName: o['last-name'], username: o.username }]
         return out(
-          await call(config, 'POST', `/domains/${await domainId(arg)}/mailboxes`, { mailboxes }),
+          await call(config, 'POST', `/domains/${await domainId(arg)}/mailboxes`, {
+            mailboxes,
+            ...(o.sender ? { senderId: o.sender } : {}),
+          }),
         )
       }
       if (sub === 'orders') return out(await call(config, 'GET', `/projects/${p()}/mailbox-orders`))
@@ -1627,6 +1658,7 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'PATCH', `/mailboxes/${arg}`, {
             ...limits,
             ...(o.status ? { status: o.status } : {}),
+            ...(o.sender ? { senderId: o.sender } : {}),
           }),
         )
       break
