@@ -18,7 +18,7 @@ const PAGE = 'https://admin.google.com/ac/apps/gmail/authenticateemail'
 
 // The little of Playwright used here: bh does not depend on it, so its types are not at hand.
 type Page = {
-  goto(url: string): Promise<unknown>
+  goto(url: string, options?: { waitUntil?: string; timeout?: number }): Promise<unknown>
   url(): string
   waitForTimeout(ms: number): Promise<void>
 }
@@ -74,7 +74,8 @@ export async function consoleLogin(config: BhConfig, tenantId: string) {
   }
   const context = await browser.newContext({ viewport: null })
   const page = await context.newPage()
-  await page.goto(PAGE)
+  // Through the proxy the console takes long to finish loading; the address is what is watched.
+  await page.goto(PAGE, { waitUntil: 'commit', timeout: 120_000 }).catch(() => {})
   log(`Sign in as ${login.adminEmail} in the window that opened (tenant ${login.tenant}).`)
   const deadline = Date.now() + 15 * 60_000
   try {
