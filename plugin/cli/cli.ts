@@ -137,6 +137,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   agency mailbox <org> --sender <id> --provider google|microsoft [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          a mailbox of theirs, shared by every project they are on
   agency linkedin <org> <unipile-account-id> --sender <id> [--invite-limit <n>] [--message-limit <n>]
+  agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
+  agency approve <org> <name>… --max-cents <n> [--redirect <url>]   buy them for the agency (its admin only)
+  agency order <org> <domain> --sender <agency sender id> --first-name <n> --last-name <n> --username <u> | --file <f>
+                                         a Workspace seat on it for one of its senders (its admin only)
+  agency orders <org>                    what was ordered on the agency's domains and where each is
   calendars                              the project's calendars: state, event type, last sync
   calendar connect --sender <id> --key <Cal.com API key> [--event-type <id>]
                                          the sender's Cal.com; its Google, Outlook and hours are set up there
@@ -935,6 +940,42 @@ async function main(argv: string[]): Promise<void> {
             ...(o['not-warmed'] ? { warmed: false } : {}),
           }),
         )
+      // The agency's own domains and the mailboxes on them, for its own senders.
+      if (sub === 'domains') return out(await call(config, 'GET', `/orgs/${arg}/domains`))
+      if (sub === 'quote')
+        return out(
+          await call(config, 'POST', `/orgs/${arg}/domains/quote`, { domains: pos.slice(3) }),
+        )
+      if (sub === 'approve')
+        return out(
+          await call(config, 'POST', `/orgs/${arg}/domains`, {
+            domains: pos.slice(3),
+            maxCents: Number(o['max-cents']),
+            ...(o.redirect ? { redirectTo: o.redirect } : {}),
+          }),
+        )
+      if (sub === 'order') {
+        const name = (pos[3] ?? '').toLowerCase()
+        const domains = (await call(config, 'GET', `/orgs/${arg}/domains`)) as {
+          id: string
+          domain: string
+        }[]
+        const domain = domains.find((d) => d.domain === name)
+        if (!domain)
+          throw new BhError(`${name || 'That'} is not one of ${arg}'s domains`, {
+            hint: `bh agency domains ${arg}`,
+          })
+        const mailboxes = o.file
+          ? await readRows(o.file)
+          : [{ firstName: o['first-name'], lastName: o['last-name'], username: o.username }]
+        return out(
+          await call(config, 'POST', `/domains/${domain.id}/mailboxes`, {
+            mailboxes,
+            ...(o.sender ? { senderId: o.sender } : {}),
+          }),
+        )
+      }
+      if (sub === 'orders') return out(await call(config, 'GET', `/orgs/${arg}/mailbox-orders`))
       if (sub === 'linkedin')
         return out(
           await call(config, 'POST', `/orgs/${arg}/linkedin-accounts`, {

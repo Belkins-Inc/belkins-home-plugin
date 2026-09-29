@@ -1,7 +1,7 @@
 \restrict dbmate
 
--- Dumped from database version 18.4
--- Dumped by pg_dump version 18.4
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -682,7 +682,10 @@ CREATE TABLE public.domains (
     auto_renew boolean DEFAULT true NOT NULL,
     tenant_id uuid,
     dkim_started_at timestamp with time zone,
+    organisation_id uuid,
+    alerted text,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
+    CONSTRAINT domains_one_owner CHECK ((num_nonnulls(project_id, organisation_id) <= 1)),
     CONSTRAINT domains_registrar_check CHECK (((registrar IS NULL) OR (registrar = ANY (ARRAY['porkbun'::text])))),
     CONSTRAINT domains_status_check CHECK ((status = ANY (ARRAY['external'::text, 'approved'::text, 'buying'::text, 'registered'::text, 'attaching'::text, 'ready'::text, 'failed'::text, 'released'::text]))),
     CONSTRAINT domains_supplier_check CHECK (((supplier IS NULL) OR (supplier = ANY (ARRAY['zapmail'::text, 'workspace'::text]))))
@@ -1088,7 +1091,7 @@ CREATE TABLE public.linkedin_accounts (
 
 CREATE TABLE public.mailbox_orders (
     id uuid DEFAULT uuidv7() NOT NULL,
-    project_id uuid NOT NULL,
+    project_id uuid,
     domain_id uuid NOT NULL,
     supplier text NOT NULL,
     first_name text NOT NULL,
@@ -1105,6 +1108,7 @@ CREATE TABLE public.mailbox_orders (
     settled_at timestamp with time zone,
     sender_id uuid,
     CONSTRAINT mailbox_orders_mailbox_check CHECK (((mailbox_id IS NOT NULL) = (status = 'connected'::text))),
+    CONSTRAINT mailbox_orders_owner CHECK (((project_id IS NOT NULL) OR (sender_id IS NOT NULL))),
     CONSTRAINT mailbox_orders_settled_check CHECK (((settled_at IS NULL) = ((status <> 'connected'::text) AND (status <> 'failed'::text)))),
     CONSTRAINT mailbox_orders_status_check CHECK ((status = ANY (ARRAY['ordered'::text, 'creating'::text, 'created'::text, 'connecting'::text, 'connected'::text, 'failed'::text]))),
     CONSTRAINT mailbox_orders_supplier_check CHECK ((supplier = ANY (ARRAY['zapmail'::text, 'workspace'::text])))
@@ -3055,6 +3059,13 @@ CREATE INDEX ix_domains__expiring ON public.domains USING btree (expires_at) WHE
 
 
 --
+-- Name: ix_domains__organisation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_domains__organisation ON public.domains USING btree (organisation_id) WHERE (organisation_id IS NOT NULL);
+
+
+--
 -- Name: ix_domains__project_status; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3825,6 +3836,14 @@ ALTER TABLE ONLY public.dnc
 
 ALTER TABLE ONLY public.domains
     ADD CONSTRAINT domains_bought_by_fkey FOREIGN KEY (bought_by) REFERENCES public.users(id);
+
+
+--
+-- Name: domains domains_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domains
+    ADD CONSTRAINT domains_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE RESTRICT;
 
 
 --
@@ -5393,4 +5412,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260929121817'),
     ('20260929142338'),
     ('20260929142432'),
-    ('20260929143742');
+    ('20260929143742'),
+    ('20260929153314');
