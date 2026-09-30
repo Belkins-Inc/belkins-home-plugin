@@ -102,6 +102,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   goals | goal set <YYYY-MM> --target <meetings> [--counts qualified|held] | goal done <YYYY-MM> --done <n>   (a person only)
   contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts"}]
   contacts [--q <text>]
+  esp                                    how many companies and contacts are on each email provider (MX:
+                                         google, microsoft, proofpoint, mimecast…; pending = not looked up yet)
   dnc add --kind email|domain --value <v> --reason <r> [--note <t>] [--every-project] | dnc remove <id>
                                          --every-project blocks it for every project, not only this one
   dnc import <file.csv|-> [--reason <r>] [--note <t>] [--every-project]
@@ -1036,6 +1038,8 @@ async function main(argv: string[]): Promise<void> {
           `/projects/${p()}/contacts?${new URLSearchParams(o.q ? { q: o.q } : {})}`,
         ),
       )
+    case 'esp':
+      return out(await call(config, 'GET', `/projects/${p()}/esp`))
     case 'dnc':
       if (sub === 'add')
         return out(

@@ -1,7 +1,7 @@
 \restrict dbmate
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.4
+-- Dumped by pg_dump version 18.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -164,6 +164,37 @@ begin
   end loop;
   return created;
 end $_$;
+
+
+--
+-- Name: esp_of_company(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.esp_of_company() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  new.esp := (select esp from mail_domains where domain = new.domain);
+  return new;
+end
+$$;
+
+
+--
+-- Name: esp_of_contact(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.esp_of_contact() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  new.esp := case
+    when new.email is null then null
+    else (select esp from mail_domains where domain = split_part(new.email::text, '@', 2))
+  end;
+  return new;
+end
+$$;
 
 
 --
@@ -584,7 +615,8 @@ CREATE TABLE public.companies (
     facts jsonb DEFAULT '{}'::jsonb NOT NULL,
     source text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    esp text
 );
 
 
@@ -615,6 +647,7 @@ CREATE TABLE public.contacts (
     departed_at timestamp with time zone,
     departed_by uuid,
     departed_via public.actor_via,
+    esp text,
     CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL))),
     CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text])))
 );
@@ -1082,6 +1115,19 @@ CREATE TABLE public.linkedin_accounts (
     proxy_country text,
     CONSTRAINT linkedin_accounts_proxy_country_check CHECK ((proxy_country ~ '^[A-Z]{2}$'::text)),
     CONSTRAINT linkedin_accounts_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
+);
+
+
+--
+-- Name: mail_domains; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.mail_domains (
+    domain public.citext NOT NULL,
+    esp text NOT NULL,
+    mx text[] DEFAULT '{}'::text[] NOT NULL,
+    checked_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT mail_domains_esp_check CHECK ((esp ~ '^[a-z0-9_]+$'::text))
 );
 
 
@@ -2482,6 +2528,14 @@ ALTER TABLE ONLY public.linkedin_accounts
 
 
 --
+-- Name: mail_domains mail_domains_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mail_domains
+    ADD CONSTRAINT mail_domains_pkey PRIMARY KEY (domain);
+
+
+--
 -- Name: mailbox_orders mailbox_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3130,6 +3184,20 @@ CREATE INDEX ix_agent_runs__project_created ON public.agent_runs USING btree (pr
 
 
 --
+-- Name: ix_companies__esp_unknown; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_companies__esp_unknown ON public.companies USING btree (domain) WHERE (esp IS NULL);
+
+
+--
+-- Name: ix_contacts__esp_unknown; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_contacts__esp_unknown ON public.contacts USING btree (email) WHERE ((esp IS NULL) AND (email IS NOT NULL));
+
+
+--
 -- Name: ix_domains__expiring; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3190,6 +3258,13 @@ CREATE INDEX ix_enrollments__to_plan ON public.enrollments USING btree (planned_
 --
 
 CREATE INDEX ix_hypotheses__project ON public.hypotheses USING btree (project_id, status);
+
+
+--
+-- Name: ix_mail_domains__checked; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_mail_domains__checked ON public.mail_domains USING btree (checked_at);
 
 
 --
@@ -3638,10 +3713,38 @@ CREATE OR REPLACE VIEW public.source_usage AS
 
 
 --
+-- Name: companies companies_esp_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER companies_esp_insert BEFORE INSERT ON public.companies FOR EACH ROW EXECUTE FUNCTION public.esp_of_company();
+
+
+--
+-- Name: companies companies_esp_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER companies_esp_update BEFORE UPDATE OF domain ON public.companies FOR EACH ROW WHEN ((old.domain IS DISTINCT FROM new.domain)) EXECUTE FUNCTION public.esp_of_company();
+
+
+--
 -- Name: companies companies_replan; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER companies_replan AFTER UPDATE OF timezone ON public.companies FOR EACH ROW WHEN ((old.timezone IS DISTINCT FROM new.timezone)) EXECUTE FUNCTION public.replan_on_company();
+
+
+--
+-- Name: contacts contacts_esp_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER contacts_esp_insert BEFORE INSERT ON public.contacts FOR EACH ROW EXECUTE FUNCTION public.esp_of_contact();
+
+
+--
+-- Name: contacts contacts_esp_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER contacts_esp_update BEFORE UPDATE OF email ON public.contacts FOR EACH ROW WHEN ((old.email IS DISTINCT FROM new.email)) EXECUTE FUNCTION public.esp_of_contact();
 
 
 --
@@ -5540,4 +5643,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260929153314'),
     ('20260930090900'),
     ('20260930100938'),
-    ('20260930101205');
+    ('20260930101205'),
+    ('20260930105512');
