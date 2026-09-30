@@ -188,6 +188,15 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domain dns <name>                      its DNS records and redirects at the registrar
   domain dns <name> add --type A|AAAA|CNAME|ALIAS|TXT|CAA --host <@|sub> --content <value> [--ttl <s>]
   domain dns <name> delete <record id>   (a person only; MX, SPF, DMARC and DKIM are the engine's and refused)
+  system-mail domains                    the agency's system mail domains at Resend: status and records
+  system-mail domain add <name>          connect a domain to Resend (a person only); the engine writes its
+                                         records when our registrar holds it, otherwise answers what to add.
+                                         Never a domain a mailbox sends from: system mail is not cold outreach
+  system-mail domain verify <name>       ask Resend to check the DNS again (hourly by itself)
+  system-mail send --from <addr|"Name <addr>"> --to <a,b> --subject <s> --body-file <path|->
+             [--html-file <path>] [--reply-to <addr>] [--project <slug>]
+                                         mail to people who expect it — a report, a notice, an invitation —
+                                         from a verified system mail domain; at most 50 recipients (a person only)
   mailbox order <domain> [--sender <id>] --first-name <n> --last-name <n> --username <local part> | --file <json|jsonl|->
                                          [{"firstName","lastName","username"}] — a Workspace seat each, made once the
                                          domain is ready (a person only)
@@ -443,6 +452,8 @@ async function main(argv: string[]): Promise<void> {
       'follow-up': { type: 'string' },
       return: { type: 'string' },
       'body-file': { type: 'string' },
+      'html-file': { type: 'string' },
+      'reply-to': { type: 'string' },
       'send-at': { type: 'string' },
       'delay-min': { type: 'string' },
       'delay-max': { type: 'string' },
@@ -1823,6 +1834,41 @@ async function main(argv: string[]): Promise<void> {
       break
     case 'users':
       return out(await call(config, 'GET', '/users'))
+    case 'system-mail': {
+      if (sub === 'domains') return out(await call(config, 'GET', '/system-mail/domains'))
+      if (sub === 'domain') {
+        const name = pos[3]
+        if (!name)
+          throw new BhError('Which domain?', { hint: 'bh system-mail domain add <name>' }, 2)
+        if (arg === 'add')
+          return out(await call(config, 'POST', '/system-mail/domains', { domain: name }))
+        if (arg === 'verify')
+          return out(
+            await call(
+              config,
+              'POST',
+              `/system-mail/domains/${encodeURIComponent(name)}/verify`,
+              {},
+            ),
+          )
+      }
+      if (sub === 'send') {
+        if (!o['body-file'])
+          throw new BhError('Where is the body?', { hint: '--body-file <path>, or - for stdin' }, 2)
+        return out(
+          await call(config, 'POST', '/system-mail/send', {
+            from: o.from,
+            to: o.to ? list(o.to) : [],
+            subject: o.subject,
+            text: await readText(o['body-file']),
+            ...(o['html-file'] ? { html: await readText(o['html-file']) } : {}),
+            ...(o['reply-to'] ? { replyTo: o['reply-to'] } : {}),
+            ...(o.project ? { project: o.project } : {}),
+          }),
+        )
+      }
+      break
+    }
     case 'slack':
       if (sub === 'connect')
         return out(

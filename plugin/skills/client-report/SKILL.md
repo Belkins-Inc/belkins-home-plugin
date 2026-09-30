@@ -51,6 +51,23 @@ what worked and why, what changes next, what we need from them.
    (an outcome mapped from the client's words, a class you re-read) and every question in
    "What we need from you". Sending is theirs.
 
+### Sending it by email from the engine
+
+When the person wants the report emailed from the agency rather than from their own inbox, and
+says so in this session, send it as system mail:
+
+- `bh system-mail domains` — a verified domain to send from. None: `bh system-mail domain add
+  <name>` connects one (a person's act). It must be a domain no mailbox sends from — system mail
+  never shares a domain with cold outreach, and the engine refuses one that does. On a domain our
+  registrar holds the engine writes the DNS itself; otherwise it answers the records to add where
+  the domain's DNS lives. `bh system-mail domain verify <name>` checks again (it also runs hourly).
+- `bh system-mail send --from "<Name> <reports@that-domain>" --to <client addresses> --subject
+  "<subject>" --body-file <text> [--html-file <html>] [--reply-to <the person's address>]
+  --project <slug>` — only the addresses the person gave, at most 50, and only after they
+  approved the final text.
+- System mail is for people who expect it: the client, our own team, an invitation. Never a lead or
+  a prospect — that is a strategy's work, from its mailboxes.
+
 ## Record, so the next report starts from this one
 
 - **The report**: there is no `bh` command that writes `client_reports` yet. Record it as

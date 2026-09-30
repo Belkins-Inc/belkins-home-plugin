@@ -2014,6 +2014,50 @@ CREATE TABLE public.strategy_steps (
 
 
 --
+-- Name: system_mail_domains; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.system_mail_domains (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    domain public.citext NOT NULL,
+    resend_id text NOT NULL,
+    status text NOT NULL,
+    records jsonb DEFAULT '[]'::jsonb NOT NULL,
+    dns_written_at timestamp with time zone,
+    verified_at timestamp with time zone,
+    checked_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL
+);
+
+
+--
+-- Name: system_mail_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.system_mail_messages (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid,
+    domain_id uuid NOT NULL,
+    "from" text NOT NULL,
+    "to" text[] NOT NULL,
+    subject text NOT NULL,
+    resend_id text,
+    status text DEFAULT 'sending'::text NOT NULL,
+    error text,
+    sent_by uuid NOT NULL,
+    sent_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    settled_at timestamp with time zone,
+    CONSTRAINT system_mail_messages_check CHECK (((status = 'sending'::text) = (settled_at IS NULL))),
+    CONSTRAINT system_mail_messages_check1 CHECK (((status = 'sent'::text) = (resend_id IS NOT NULL))),
+    CONSTRAINT system_mail_messages_status_check CHECK ((status = ANY (ARRAY['sending'::text, 'sent'::text, 'failed'::text]))),
+    CONSTRAINT system_mail_messages_to_check CHECK (((cardinality("to") >= 1) AND (cardinality("to") <= 50)))
+);
+
+
+--
 -- Name: tasks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2870,6 +2914,38 @@ ALTER TABLE ONLY public.strategy_steps
 
 
 --
+-- Name: system_mail_domains system_mail_domains_domain_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_mail_domains
+    ADD CONSTRAINT system_mail_domains_domain_key UNIQUE (domain);
+
+
+--
+-- Name: system_mail_domains system_mail_domains_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_mail_domains
+    ADD CONSTRAINT system_mail_domains_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: system_mail_domains system_mail_domains_resend_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_mail_domains
+    ADD CONSTRAINT system_mail_domains_resend_id_key UNIQUE (resend_id);
+
+
+--
+-- Name: system_mail_messages system_mail_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_mail_messages
+    ADD CONSTRAINT system_mail_messages_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: tasks tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3261,6 +3337,20 @@ CREATE INDEX ix_slack_posts__posted_at ON public.slack_posts USING btree (posted
 --
 
 CREATE INDEX ix_spend__project_at ON public.spend USING btree (project_id, at);
+
+
+--
+-- Name: ix_system_mail_messages__created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_system_mail_messages__created_at ON public.system_mail_messages USING btree (created_at DESC);
+
+
+--
+-- Name: ix_system_mail_messages__domain; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_system_mail_messages__domain ON public.system_mail_messages USING btree (domain_id);
 
 
 --
@@ -5089,6 +5179,38 @@ ALTER TABLE ONLY public.strategy_steps
 
 
 --
+-- Name: system_mail_domains system_mail_domains_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_mail_domains
+    ADD CONSTRAINT system_mail_domains_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: system_mail_messages system_mail_messages_domain_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_mail_messages
+    ADD CONSTRAINT system_mail_messages_domain_id_fkey FOREIGN KEY (domain_id) REFERENCES public.system_mail_domains(id);
+
+
+--
+-- Name: system_mail_messages system_mail_messages_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_mail_messages
+    ADD CONSTRAINT system_mail_messages_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+
+--
+-- Name: system_mail_messages system_mail_messages_sent_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_mail_messages
+    ADD CONSTRAINT system_mail_messages_sent_by_fkey FOREIGN KEY (sent_by) REFERENCES public.users(id);
+
+
+--
 -- Name: tasks tasks_assignee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5417,4 +5539,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260929143742'),
     ('20260929153314'),
     ('20260930090900'),
+    ('20260930100938'),
     ('20260930101205');
