@@ -1,7 +1,7 @@
 \restrict dbmate
 
--- Dumped from database version 18.4
--- Dumped by pg_dump version 18.4
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1505,8 +1505,10 @@ CREATE TABLE public.reply_templates (
     archived_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     cc text[] DEFAULT '{}'::text[] NOT NULL,
+    subject text,
     CONSTRAINT reply_templates_archived_check CHECK (((status = 'archived'::text) = (archived_at IS NOT NULL))),
-    CONSTRAINT reply_templates_status_check CHECK ((status = ANY (ARRAY['active'::text, 'archived'::text])))
+    CONSTRAINT reply_templates_status_check CHECK ((status = ANY (ARRAY['active'::text, 'archived'::text]))),
+    CONSTRAINT reply_templates_subject_check CHECK (((classification = ANY (ARRAY['out_of_office'::text, 'referral'::text])) = (subject IS NOT NULL)))
 );
 
 
@@ -5413,4 +5415,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260929142338'),
     ('20260929142432'),
     ('20260929143742'),
-    ('20260929153314');
+    ('20260929153314'),
+    ('20260930090900');

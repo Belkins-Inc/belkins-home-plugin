@@ -228,6 +228,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   reply rewrite <id> --ask <what to change>   the server agent rewrites it (a person only) | reply versions <id>
   reply-templates <strategy-id>          the fixed answers the engine sends on its own, by kind of reply
   reply-template approve <strategy-id> --class interested|meeting|question --body <text> | --body-file <path> [--cc a@x.com,b@y.com]
+  reply-template approve <strategy-id> --class out_of_office|referral --subject <s> --body-file <path>
+                                         a first email the engine sends on its own to the colleague an away note
+                                         or a referral names; slots {first_name} {referrer_first_name} {company}
                                          slots {first_name} {company}; --cc copies people in the open; replaces that kind's answer (a person only)
   reply-template archive <id>            take an automatic answer out of use (a person only)
   providers                              what bh call reaches, whether it is configured, prices, credits left
@@ -1299,7 +1302,9 @@ async function main(argv: string[]): Promise<void> {
         if (!o.class)
           throw new BhError(
             'Which kind of reply does it answer?',
-            { hint: '--class interested, meeting or question' },
+            {
+              hint: '--class interested, meeting or question (an answer), or out_of_office or referral (a first email to the colleague the reply names, with --subject)',
+            },
             2,
           )
         const text = o['body-file'] ? await readFile(o['body-file'], 'utf8') : o.body
@@ -1308,6 +1313,7 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'POST', `/strategies/${arg}/reply-templates`, {
             classification: o.class,
+            ...(o.subject ? { subject: o.subject } : {}),
             body: text,
             ...(o.cc
               ? {
