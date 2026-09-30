@@ -249,7 +249,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   reply-template approve <strategy-id> --class interested|meeting|question --body <text> | --body-file <path> [--cc a@x.com,b@y.com]
   reply-template approve <strategy-id> --class out_of_office|referral --subject <s> --body-file <path>
                                          a first email the engine sends on its own to the colleague an away note
-                                         or a referral names; slots {first_name} {referrer_first_name} {company}
+                                         or a referral names, once Bouncer calls their address valid; no --cc;
+                                         slots {first_name} {referrer_first_name} {company}
                                          slots {first_name} {company}; --cc copies people in the open; replaces that kind's answer (a person only)
   reply-template archive <id>            take an automatic answer out of use (a person only)
   providers                              what bh call reaches, whether it is configured, prices, credits left

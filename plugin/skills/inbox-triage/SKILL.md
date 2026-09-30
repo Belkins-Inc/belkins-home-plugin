@@ -86,6 +86,11 @@ there are many:
 [--last-name] [--title]` adds the colleague at the same company, enrolled in the same
      strategy, with `referred_by`; their first message names who referred us. Named without an
      address: find it the usual way (`email-finding` skill), then refer.
+   - When the campaign has an approved `out_of_office` / `referral` first email
+     (`bh reply-templates <strategy-id>`), the engine writes to the colleague a reply names by
+     itself, once Bouncer calls the address valid; `named_colleagues` says where each stands
+     (`waiting`, `written`, or `dropped` with the reason). Refer by hand only one it dropped for a
+     reason a person may overrule.
    - Both refuse a contact on dnc or already live in a strategy; the error says which.
    - `acknowledgement` or `other` that stopped the lead (`leadStatus` `stopped`) although it needed
      nothing ("thanks, got it", a ticket receipt): `bh lead resume <enrollment-id>` (the

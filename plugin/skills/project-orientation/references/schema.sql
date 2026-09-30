@@ -1229,6 +1229,29 @@ CREATE TABLE public.model_calls (
 
 
 --
+-- Name: named_colleagues; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.named_colleagues (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    thread_message_id uuid NOT NULL,
+    follows_enrollment_id uuid NOT NULL,
+    contact_id uuid NOT NULL,
+    classification text NOT NULL,
+    status text DEFAULT 'waiting'::text NOT NULL,
+    reason text,
+    enrollment_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    settled_at timestamp with time zone,
+    CONSTRAINT named_colleagues_check CHECK (((status = 'waiting'::text) = (settled_at IS NULL))),
+    CONSTRAINT named_colleagues_check1 CHECK (((status = 'dropped'::text) = (reason IS NOT NULL))),
+    CONSTRAINT named_colleagues_check2 CHECK (((status = 'written'::text) = (enrollment_id IS NOT NULL))),
+    CONSTRAINT named_colleagues_classification_check CHECK ((classification = ANY (ARRAY['out_of_office'::text, 'referral'::text]))),
+    CONSTRAINT named_colleagues_status_check CHECK ((status = ANY (ARRAY['waiting'::text, 'written'::text, 'dropped'::text])))
+);
+
+
+--
 -- Name: organisation_members; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2600,6 +2623,22 @@ ALTER TABLE ONLY public.model_calls
 
 
 --
+-- Name: named_colleagues named_colleagues_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.named_colleagues
+    ADD CONSTRAINT named_colleagues_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: named_colleagues named_colleagues_thread_message_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.named_colleagues
+    ADD CONSTRAINT named_colleagues_thread_message_id_key UNIQUE (thread_message_id);
+
+
+--
 -- Name: organisation_members organisation_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3321,6 +3360,20 @@ CREATE INDEX ix_messages__needs_copy ON public.messages USING btree (enrollment_
 --
 
 CREATE INDEX ix_model_calls__project_at ON public.model_calls USING btree (project_id, at);
+
+
+--
+-- Name: ix_named_colleagues__contact; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_named_colleagues__contact ON public.named_colleagues USING btree (contact_id);
+
+
+--
+-- Name: ix_named_colleagues__waiting; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_named_colleagues__waiting ON public.named_colleagues USING btree (created_at) WHERE (status = 'waiting'::text);
 
 
 --
@@ -4530,6 +4583,38 @@ ALTER TABLE ONLY public.model_calls
 
 
 --
+-- Name: named_colleagues named_colleagues_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.named_colleagues
+    ADD CONSTRAINT named_colleagues_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: named_colleagues named_colleagues_enrollment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.named_colleagues
+    ADD CONSTRAINT named_colleagues_enrollment_id_fkey FOREIGN KEY (enrollment_id) REFERENCES public.enrollments(id);
+
+
+--
+-- Name: named_colleagues named_colleagues_follows_enrollment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.named_colleagues
+    ADD CONSTRAINT named_colleagues_follows_enrollment_id_fkey FOREIGN KEY (follows_enrollment_id) REFERENCES public.enrollments(id) ON DELETE CASCADE;
+
+
+--
+-- Name: named_colleagues named_colleagues_thread_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.named_colleagues
+    ADD CONSTRAINT named_colleagues_thread_message_id_fkey FOREIGN KEY (thread_message_id) REFERENCES public.thread_messages(id) ON DELETE CASCADE;
+
+
+--
 -- Name: organisation_members organisation_members_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5644,4 +5729,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260930090900'),
     ('20260930100938'),
     ('20260930101205'),
-    ('20260930105512');
+    ('20260930105512'),
+    ('20260930114508');
