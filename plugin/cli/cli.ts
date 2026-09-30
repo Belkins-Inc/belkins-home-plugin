@@ -11,6 +11,7 @@ import { readDncCsv } from './csv.ts'
 import {
   CONFIG_PATH,
   SESSION,
+  type BhConfig,
   loadConfig,
   loadSessionProject,
   saveConfig,
@@ -136,6 +137,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   agency remove <org> <id>               while they are on no project and hold no channel
   agency mailbox <org> --sender <id> --provider google|microsoft [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          a mailbox of theirs, shared by every project they are on
+  agency smtp <org> --sender <id> --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
+                                         a password mailbox of theirs (rows as for mailbox smtp)
   agency linkedin <org> <unipile-account-id> --sender <id> [--invite-limit <n>] [--message-limit <n>]
   agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
   agency approve <org> <name>… --max-cents <n> [--redirect <url>]   buy them for the agency (its admin only)
@@ -166,6 +169,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   mailbox import --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          from another platform, by the refresh token it holds (same OAuth app):
                                          [{"provider":"google|microsoft","refreshToken","sender":"<name>"|"senderId"}]
+  mailbox smtp --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
+                                         a mailbox on any SMTP/IMAP host, signed in with its password; both logins
+                                         are tried first. [{"address","password","host":"zoho|zoho-eu|migadu|purelymail|fastmail"
+                                         | "smtp":{"host","port"},"imap":{"host","port"}, "sender":"<name>"|"senderId",
+                                         "saveSent":false (the host files sent mail itself)}] — adding it again reconnects it
   mailbox update <id> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed|--not-warmed] [--status active|paused|archived]
                  [--sender <id>]            another sender of the project writes from it
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
@@ -944,6 +952,11 @@ async function main(argv: string[]): Promise<void> {
             ...(o['not-warmed'] ? { warmed: false } : {}),
           }),
         )
+      if (sub === 'smtp')
+        return addSmtpMailboxes(config, `/orgs/${arg}/mailboxes/smtp`, need(o.file), {
+          senderId: o.sender,
+          ...mailboxLimits(o),
+        })
       // The agency's own domains and the mailboxes on them, for its own senders.
       if (sub === 'domains') return out(await call(config, 'GET', `/orgs/${arg}/domains`))
       if (sub === 'quote')
@@ -1654,12 +1667,7 @@ async function main(argv: string[]): Promise<void> {
       break
     }
     case 'mailbox': {
-      const limits = {
-        ...(o['daily-limit'] ? { dailyLimit: Number(o['daily-limit']) } : {}),
-        ...(o['delay-min'] ? { delayMinSeconds: Number(o['delay-min']) } : {}),
-        ...(o['delay-max'] ? { delayMaxSeconds: Number(o['delay-max']) } : {}),
-        ...(o.warmed ? { warmed: true } : o['not-warmed'] ? { warmed: false } : {}),
-      }
+      const limits = mailboxLimits(o)
       if (sub === 'connect')
         return out(
           await call(config, 'POST', `/projects/${p()}/mailboxes/connect`, {
@@ -1693,6 +1701,8 @@ async function main(argv: string[]): Promise<void> {
         }
         return
       }
+      if (sub === 'smtp')
+        return addSmtpMailboxes(config, `/projects/${p()}/mailboxes/smtp`, need(o.file), limits)
       if (sub === 'order') {
         const mailboxes = o.file
           ? await readRows(o.file)
@@ -1880,4 +1890,42 @@ ${s.rendered ?? '<p><i>No HTML signature: this sender signs in text only.</i></p
 <hr style="margin: 32px 0"><pre style="white-space: pre-wrap">${escape(s.text ?? '(no text signature)')}</pre>
 </body>
 `
+}
+
+/** `--daily-limit`, `--delay-min`, `--delay-max`, `--warmed` / `--not-warmed` as a mailbox's limits. */
+function mailboxLimits(o: Record<string, unknown>) {
+  return {
+    ...(o['daily-limit'] ? { dailyLimit: Number(o['daily-limit']) } : {}),
+    ...(o['delay-min'] ? { delayMinSeconds: Number(o['delay-min']) } : {}),
+    ...(o['delay-max'] ? { delayMaxSeconds: Number(o['delay-max']) } : {}),
+    ...(o.warmed ? { warmed: true } : o['not-warmed'] ? { warmed: false } : {}),
+  }
+}
+
+/**
+ * Password mailboxes, one at a time: each is logged in to before it is stored, and one refused
+ * must not stop the rest. A refusal names the address only — never the password it came with.
+ */
+async function addSmtpMailboxes(
+  config: BhConfig,
+  path: string,
+  file: string,
+  extra: Record<string, unknown>,
+) {
+  const rows = (await readRows(file)) as Record<string, unknown>[]
+  const added: unknown[] = []
+  const refused: unknown[] = []
+  for (const [row, one] of rows.entries()) {
+    try {
+      added.push(await call(config, 'POST', path, { ...one, ...extra }))
+    } catch (error) {
+      if (!(error instanceof BhError)) throw error
+      refused.push({ row, address: one.address, error: error.message, detail: error.payload })
+    }
+  }
+  out({ added, refused })
+  if (refused.length) {
+    process.stderr.write(`refused: ${refused.length} of ${rows.length}, see "refused"\n`)
+    process.exitCode = 1
+  }
 }

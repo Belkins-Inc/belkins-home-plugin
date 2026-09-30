@@ -1155,7 +1155,7 @@ CREATE TABLE public.mailboxes (
     push_client_state_hash text,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 200))),
-    CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
+    CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'smtp'::text]))),
     CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
@@ -5416,4 +5416,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260929142432'),
     ('20260929143742'),
     ('20260929153314'),
-    ('20260930090900');
+    ('20260930090900'),
+    ('20260930101205');
