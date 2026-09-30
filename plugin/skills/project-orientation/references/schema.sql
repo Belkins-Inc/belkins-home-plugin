@@ -567,6 +567,26 @@ CREATE VIEW public.calendar_free_slots AS
 
 
 --
+-- Name: channel_invites; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_invites (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    token_hash bytea NOT NULL,
+    channel text NOT NULL,
+    project_id uuid NOT NULL,
+    sender_id uuid NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    used_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    CONSTRAINT channel_invites_channel_check CHECK ((channel = ANY (ARRAY['calendar'::text, 'linkedin'::text])))
+);
+
+
+--
 -- Name: cli_logins; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2505,6 +2525,14 @@ ALTER TABLE ONLY public.calendars
 
 
 --
+-- Name: channel_invites channel_invites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_invites
+    ADD CONSTRAINT channel_invites_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: cli_logins cli_logins_device_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3361,6 +3389,13 @@ CREATE INDEX ix_agent_runs__project_created ON public.agent_runs USING btree (pr
 
 
 --
+-- Name: ix_channel_invites__sender; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_channel_invites__sender ON public.channel_invites USING btree (sender_id, channel);
+
+
+--
 -- Name: ix_companies__esp_unknown; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3722,6 +3757,13 @@ CREATE UNIQUE INDEX ux_agent_runs__one_rewrite ON public.agent_runs USING btree 
 --
 
 CREATE UNIQUE INDEX ux_calendars__live ON public.calendars USING btree (project_id, provider, external_id) WHERE (archived_at IS NULL);
+
+
+--
+-- Name: ux_channel_invites__token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_channel_invites__token ON public.channel_invites USING btree (token_hash);
 
 
 --
@@ -4187,6 +4229,30 @@ ALTER TABLE ONLY public.calendars
 
 ALTER TABLE ONLY public.calendars
     ADD CONSTRAINT calendars_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id);
+
+
+--
+-- Name: channel_invites channel_invites_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_invites
+    ADD CONSTRAINT channel_invites_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: channel_invites channel_invites_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_invites
+    ADD CONSTRAINT channel_invites_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: channel_invites channel_invites_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_invites
+    ADD CONSTRAINT channel_invites_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id) ON DELETE CASCADE;
 
 
 --
@@ -6021,4 +6087,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260930122239'),
     ('20260930142050'),
     ('20260930153534'),
-    ('20260930160852');
+    ('20260930160852'),
+    ('20260930183845');

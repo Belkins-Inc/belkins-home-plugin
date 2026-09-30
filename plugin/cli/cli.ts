@@ -152,6 +152,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   calendars                              the project's calendars: state, event type, last sync
   calendar connect --sender <id> --key <Cal.com API key> [--event-type <id>]
                                          the sender's Cal.com; its Google, Outlook and hours are set up there
+  calendar invite --sender <id>          a link for the sender's owner to connect their Cal.com without
+                                         access to the tool (7 days, once; a new link replaces the last)
   calendar update <id> [--event-type <id>] [--priority <n>] [--timezone <iana>] [--owner <name>] [--sender <id>]
   calendar archive <id>                  out of booking for good; connecting again writes a new row
   slots [--days <n>] [--calendar <id>] [--limit <n>]   free slots, soonest first (not yet offered to anyone)
@@ -239,6 +241,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   linkedin available                     accounts linked in Unipile that no project has attached
   linkedin connect <unipile-account-id> [--sender <id>] [--invite-limit <n>] [--message-limit <n>]
                                          attaches it to the sender named like its owner unless --sender
+  linkedin invite --sender <id>          a link for the sender's owner to sign in to their LinkedIn without
+                                         access to the tool; a disconnected account is signed in again
   linkedin update <id> [--invite-limit <n>] [--message-limit <n>] [--delay-min <s>] [--delay-max <s>] [--status active|paused|archived]
   inbox                                  replies waiting for triage, with the engine's classification
   inbox test-send --from <our address> --to <our address> [--subject <t>] [--body <t>] [--reply]
@@ -1522,6 +1526,13 @@ async function main(argv: string[]): Promise<void> {
             ...(o['event-type'] ? { eventType: o['event-type'] } : {}),
           }),
         )
+      if (sub === 'invite')
+        return out(
+          await call(config, 'POST', `/projects/${p()}/invites`, {
+            channel: 'calendar',
+            senderId: o.sender,
+          }),
+        )
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/calendars/${pos[2]}`, {
@@ -1861,6 +1872,13 @@ async function main(argv: string[]): Promise<void> {
             unipileAccountId: arg,
             ...(o.sender ? { senderId: o.sender } : {}),
             ...limits,
+          }),
+        )
+      if (sub === 'invite')
+        return out(
+          await call(config, 'POST', `/projects/${p()}/invites`, {
+            channel: 'linkedin',
+            senderId: o.sender,
           }),
         )
       if (sub === 'update')
