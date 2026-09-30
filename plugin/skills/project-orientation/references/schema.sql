@@ -42,6 +42,20 @@ CREATE TYPE public.actor_via AS ENUM (
 
 
 --
+-- Name: count_copy_test_sent(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.count_copy_test_sent() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  perform count_daily_send((new.sent_at at time zone 'UTC')::date, 'mailbox', new.mailbox_id::text);
+  return null;
+end
+$$;
+
+
+--
 -- Name: count_daily_send(date, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -664,6 +678,23 @@ CREATE TABLE public.contacts (
     esp text,
     CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL))),
     CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text])))
+);
+
+
+--
+-- Name: copy_tests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.copy_tests (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    message_id uuid NOT NULL,
+    mailbox_id uuid NOT NULL,
+    to_address public.citext NOT NULL,
+    subject text NOT NULL,
+    rfc_message_id text NOT NULL,
+    sent_by uuid NOT NULL,
+    sent_via public.actor_via NOT NULL,
+    sent_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2538,6 +2569,14 @@ ALTER TABLE ONLY public.contacts
 
 
 --
+-- Name: copy_tests copy_tests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.copy_tests
+    ADD CONSTRAINT copy_tests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: daily_sends daily_sends_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3336,6 +3375,20 @@ CREATE INDEX ix_contacts__esp_unknown ON public.contacts USING btree (email) WHE
 
 
 --
+-- Name: ix_copy_tests__mailbox; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_copy_tests__mailbox ON public.copy_tests USING btree (mailbox_id, sent_at DESC);
+
+
+--
+-- Name: ix_copy_tests__message; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_copy_tests__message ON public.copy_tests USING btree (message_id, sent_at DESC);
+
+
+--
 -- Name: ix_domains__expiring; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3686,6 +3739,13 @@ CREATE UNIQUE INDEX ux_contacts__linkedin ON public.contacts USING btree (projec
 
 
 --
+-- Name: ux_copy_tests__rfc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_copy_tests__rfc ON public.copy_tests USING btree (rfc_message_id);
+
+
+--
 -- Name: ux_dnc__live; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3949,6 +4009,13 @@ CREATE TRIGGER contacts_replan AFTER UPDATE OF timezone ON public.contacts FOR E
 
 
 --
+-- Name: copy_tests copy_tests_count_sent; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER copy_tests_count_sent AFTER INSERT ON public.copy_tests FOR EACH ROW EXECUTE FUNCTION public.count_copy_test_sent();
+
+
+--
 -- Name: enrollments enrollments_replan; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4208,6 +4275,30 @@ ALTER TABLE ONLY public.contacts
 
 ALTER TABLE ONLY public.contacts
     ADD CONSTRAINT contacts_referred_by_contact_id_fkey FOREIGN KEY (referred_by_contact_id) REFERENCES public.contacts(id);
+
+
+--
+-- Name: copy_tests copy_tests_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.copy_tests
+    ADD CONSTRAINT copy_tests_mailbox_id_fkey FOREIGN KEY (mailbox_id) REFERENCES public.mailboxes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: copy_tests copy_tests_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.copy_tests
+    ADD CONSTRAINT copy_tests_message_id_fkey FOREIGN KEY (message_id) REFERENCES public.messages(id) ON DELETE CASCADE;
+
+
+--
+-- Name: copy_tests copy_tests_sent_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.copy_tests
+    ADD CONSTRAINT copy_tests_sent_by_fkey FOREIGN KEY (sent_by) REFERENCES public.users(id);
 
 
 --
@@ -5929,4 +6020,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260930114508'),
     ('20260930122239'),
     ('20260930142050'),
-    ('20260930153534');
+    ('20260930153534'),
+    ('20260930160852');

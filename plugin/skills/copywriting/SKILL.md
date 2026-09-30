@@ -59,6 +59,9 @@ newly enrolled people are a person's session (the engine opens a task instead).
    is written; the error lists every problem per `messageId`. Fix and send the batch again.
 8. `bh preview <message-id>` for the first lead of each persona and each template: it shows the
    message as sent (from, to, subject with "Re:", body with signature). Read it as the recipient.
+   To see how it lands in a real inbox, a person sends it to their own address: **Send test** on the
+   strategy's Copy tab, or `bh copy test <message-id> --to <their address>` (never to a lead; a
+   scheduled agent cannot send one).
 9. Repeat until the queue is empty; `bh strategy show <id>` → `beforeLaunch` "Copy for every step".
 
 A message is rewritable while it is `needs_copy` or `ready`; once `sending`/`sent` it is refused.

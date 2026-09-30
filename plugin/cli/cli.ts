@@ -121,6 +121,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   copy queue <strategy-id> [--limit <n>] | copy write --file <json|jsonl|->   [{"messageId","subject","body","angle"}]
   copy check --file <json|jsonl|->      the same file, checked against the house rules and written nowhere;
                                          every problem per messageId, exit 1 when there is one
+  copy test <message-id> --to <email>   send one written email step, as the lead would get it (their mailbox and
+                                         sender), to your own address before launch; a person only, 10 a mailbox a day
   preview <message-id>
   senders | sender add --name <n> [--title <t>] [--signature <text>] | sender update <id> [--name] [--title] [--signature]
                                          add, update and share take --signature-html-file <file.html> too: the email then
@@ -1142,6 +1144,15 @@ async function main(argv: string[]): Promise<void> {
       // One request, not chunks: the engine writes all of the copy or none of it.
       if (sub === 'write')
         return out(await call(config, 'POST', '/copy', { messages: await readRows(need(o.file)) }))
+      if (sub === 'test') {
+        if (!arg || !o.to)
+          throw new BhError(
+            'Which step, to which address?',
+            { hint: 'bh copy test <message-id> --to you@company.com' },
+            2,
+          )
+        return out(await call(config, 'POST', `/messages/${arg}/test`, { to: o.to }))
+      }
       if (sub === 'check') {
         const checked = (await call(config, 'POST', '/copy/check', {
           messages: await readRows(need(o.file)),
