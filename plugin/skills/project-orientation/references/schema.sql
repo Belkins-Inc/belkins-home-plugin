@@ -98,6 +98,20 @@ $$;
 
 
 --
+-- Name: count_placement_sent(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.count_placement_sent() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  perform count_daily_send((new.sent_at at time zone 'UTC')::date, 'mailbox', new.mailbox_id::text);
+  return null;
+end
+$$;
+
+
+--
 -- Name: count_warmup_sent(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1366,6 +1380,66 @@ CREATE VIEW public.persona_usage AS
            FROM public.strategy_contacts sc
           WHERE ((sc.persona_id = p.id) AND (sc.status = 'held'::text))) AS reserve
    FROM public.personas p;
+
+
+--
+-- Name: placement_notes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.placement_notes (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    test_id uuid NOT NULL,
+    mailbox_id uuid NOT NULL,
+    seed_id uuid NOT NULL,
+    environment text NOT NULL,
+    subject text NOT NULL,
+    rfc_message_id text NOT NULL,
+    status text NOT NULL,
+    error text,
+    sent_at timestamp with time zone DEFAULT now() NOT NULL,
+    verdict text,
+    folders text[],
+    scores jsonb DEFAULT '{}'::jsonb NOT NULL,
+    verdict_at timestamp with time zone,
+    CONSTRAINT placement_notes_status_check CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text]))),
+    CONSTRAINT placement_notes_verdict_check CHECK ((verdict = ANY (ARRAY['inbox'::text, 'tab'::text, 'spam'::text, 'quarantined'::text, 'rejected'::text, 'missing'::text])))
+);
+
+
+--
+-- Name: placement_seeds; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.placement_seeds (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    environment text NOT NULL,
+    provider text NOT NULL,
+    address public.citext NOT NULL,
+    credential bytea,
+    credential_expires_at timestamp with time zone,
+    status text DEFAULT 'active'::text NOT NULL,
+    status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    disconnected_reason text,
+    connected_by uuid NOT NULL,
+    connected_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT placement_seeds_environment_check CHECK ((environment = ANY (ARRAY['google'::text, 'm365'::text, 'm365_defender'::text, 'm365_proofpoint'::text]))),
+    CONSTRAINT placement_seeds_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
+    CONSTRAINT placement_seeds_status_check CHECK ((status = ANY (ARRAY['active'::text, 'suspect'::text, 'disconnected'::text, 'archived'::text])))
+);
+
+
+--
+-- Name: placement_tests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.placement_tests (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    mailbox_id uuid NOT NULL,
+    requested_by uuid,
+    requested_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
 
 --
@@ -2680,6 +2754,30 @@ ALTER TABLE ONLY public.personas
 
 
 --
+-- Name: placement_notes placement_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_notes
+    ADD CONSTRAINT placement_notes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: placement_seeds placement_seeds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_seeds
+    ADD CONSTRAINT placement_seeds_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: placement_tests placement_tests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_tests
+    ADD CONSTRAINT placement_tests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: project_exclusions project_exclusions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3385,6 +3483,34 @@ CREATE INDEX ix_organisation_members__user ON public.organisation_members USING 
 
 
 --
+-- Name: ix_placement_notes__pending; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_placement_notes__pending ON public.placement_notes USING btree (sent_at) WHERE ((status = 'sent'::text) AND (verdict IS NULL));
+
+
+--
+-- Name: ix_placement_notes__seed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_placement_notes__seed ON public.placement_notes USING btree (seed_id, sent_at DESC);
+
+
+--
+-- Name: ix_placement_notes__test; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_placement_notes__test ON public.placement_notes USING btree (test_id);
+
+
+--
+-- Name: ix_placement_tests__mailbox; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_placement_tests__mailbox ON public.placement_tests USING btree (mailbox_id, created_at DESC);
+
+
+--
 -- Name: ix_project_members__user; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3616,6 +3742,20 @@ CREATE UNIQUE INDEX ux_messages__plan_step ON public.messages USING btree (enrol
 
 
 --
+-- Name: ux_placement_notes__rfc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_placement_notes__rfc ON public.placement_notes USING btree (rfc_message_id);
+
+
+--
+-- Name: ux_placement_seeds__address; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_placement_seeds__address ON public.placement_seeds USING btree (address);
+
+
+--
 -- Name: ux_project_members__one_owner; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3841,6 +3981,13 @@ CREATE TRIGGER messages_replan_insert AFTER INSERT ON public.messages REFERENCIN
 --
 
 CREATE TRIGGER messages_replan_update AFTER UPDATE ON public.messages REFERENCING OLD TABLE AS before_rows NEW TABLE AS after_rows FOR EACH STATEMENT EXECUTE FUNCTION public.replan_on_messages_updated();
+
+
+--
+-- Name: placement_notes placement_notes_count_sent; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER placement_notes_count_sent AFTER INSERT ON public.placement_notes FOR EACH ROW WHEN ((new.status = 'sent'::text)) EXECUTE FUNCTION public.count_placement_sent();
 
 
 --
@@ -4645,6 +4792,54 @@ ALTER TABLE ONLY public.organisation_members
 
 ALTER TABLE ONLY public.personas
     ADD CONSTRAINT personas_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: placement_notes placement_notes_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_notes
+    ADD CONSTRAINT placement_notes_mailbox_id_fkey FOREIGN KEY (mailbox_id) REFERENCES public.mailboxes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: placement_notes placement_notes_seed_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_notes
+    ADD CONSTRAINT placement_notes_seed_id_fkey FOREIGN KEY (seed_id) REFERENCES public.placement_seeds(id);
+
+
+--
+-- Name: placement_notes placement_notes_test_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_notes
+    ADD CONSTRAINT placement_notes_test_id_fkey FOREIGN KEY (test_id) REFERENCES public.placement_tests(id) ON DELETE CASCADE;
+
+
+--
+-- Name: placement_seeds placement_seeds_connected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_seeds
+    ADD CONSTRAINT placement_seeds_connected_by_fkey FOREIGN KEY (connected_by) REFERENCES public.users(id);
+
+
+--
+-- Name: placement_tests placement_tests_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_tests
+    ADD CONSTRAINT placement_tests_mailbox_id_fkey FOREIGN KEY (mailbox_id) REFERENCES public.mailboxes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: placement_tests placement_tests_requested_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_tests
+    ADD CONSTRAINT placement_tests_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.users(id);
 
 
 --
@@ -5732,4 +5927,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260930101205'),
     ('20260930105512'),
     ('20260930114508'),
-    ('20260930122239');
+    ('20260930122239'),
+    ('20260930142050');

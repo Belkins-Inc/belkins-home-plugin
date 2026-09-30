@@ -224,6 +224,15 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          on warms every mailbox not yet warmed; --seeds picks the seed
                                          types it writes to (default: gmail, gsuite, outlook); off tells the provider too
   agent stats [--hours <n>]              across projects: runs, cost, queued / running, wait from reply to run
+  placement [--days <n>]                 inbox placement on our own seeds, per environment, over the last days (an admin)
+  placement seeds                        the seed mailboxes: environment, status, last note
+  placement seed connect --env google|m365|m365_defender|m365_proofpoint
+                                         the URL to sign in to as the seed; it is only ever read (an admin)
+  placement seed activate|suspect|archive <id>   put a seed back in the tests, set it aside, or retire it
+  placement test <our address>           a note from that mailbox to one seed in each environment; counts
+                                         toward its daily limit (an admin)
+  placement show <test-id>               a test's notes: verdict, folders, filter scores
+  placement mailbox <our address> [--limit <n>]   a mailbox's recent notes and their verdicts
   linkedin                               this project's LinkedIn accounts, with today's invites and messages
   linkedin available                     accounts linked in Unipile that no project has attached
   linkedin connect <unipile-account-id> [--sender <id>] [--invite-limit <n>] [--message-limit <n>]
@@ -384,6 +393,7 @@ async function main(argv: string[]): Promise<void> {
       admin: { type: 'boolean' },
       'admin-email': { type: 'string' },
       'max-domains': { type: 'string' },
+      env: { type: 'string' },
       'max-cents': { type: 'string' },
       redirect: { type: 'string' },
       record: { type: 'string' },
@@ -1764,6 +1774,56 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'on' || sub === 'off')
         return out(await call(config, 'PUT', `/projects/${p()}/agent`, { enabled: sub === 'on' }))
       break
+    case 'placement': {
+      if (!sub || sub === 'status')
+        return out(
+          await call(config, 'GET', `/placement${o.days ? `?days=${Number(o.days)}` : ''}`),
+        )
+      if (sub === 'seeds') return out(await call(config, 'GET', '/placement/seeds'))
+      if (sub === 'seed') {
+        if (arg === 'connect') {
+          if (!o.env)
+            throw new BhError(
+              'Which environment?',
+              { hint: '--env google, m365, m365_defender or m365_proofpoint' },
+              2,
+            )
+          return out(await call(config, 'POST', '/placement/seeds/connect', { environment: o.env }))
+        }
+        const status = { activate: 'active', suspect: 'suspect', archive: 'archived' }[arg ?? '']
+        if (!status)
+          throw new BhError(
+            `bh placement seed has no ${arg ?? 'action'}`,
+            { hint: 'connect, activate, suspect or archive' },
+            2,
+          )
+        if (!pos[3]) throw new BhError('Which seed?', { hint: 'bh placement seeds lists them' }, 2)
+        return out(await call(config, 'PATCH', `/placement/seeds/${pos[3]}`, { status }))
+      }
+      if (sub === 'test') {
+        if (!arg) throw new BhError('From which mailbox?', { hint: 'bh mailboxes lists them' }, 2)
+        return out(await call(config, 'POST', '/placement/tests', { mailbox: arg }))
+      }
+      if (sub === 'show') {
+        if (!arg) throw new BhError('Which test?', { hint: 'bh placement test prints its id' }, 2)
+        return out(await call(config, 'GET', `/placement/tests/${arg}`))
+      }
+      if (sub === 'mailbox') {
+        if (!arg) throw new BhError('Which mailbox?', { hint: 'bh mailboxes lists them' }, 2)
+        return out(
+          await call(
+            config,
+            'GET',
+            `/placement/mailboxes/${encodeURIComponent(arg)}${o.limit ? `?limit=${Number(o.limit)}` : ''}`,
+          ),
+        )
+      }
+      throw new BhError(
+        `bh placement has no ${sub}`,
+        { hint: 'status, seeds, seed, test, show or mailbox' },
+        2,
+      )
+    }
     case 'warmup':
       if (!sub || sub === 'status') return out(await call(config, 'GET', `/projects/${p()}/warmup`))
       if (sub === 'on') {
