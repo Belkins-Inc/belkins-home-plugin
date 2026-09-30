@@ -2238,7 +2238,7 @@ CREATE TABLE public.tasks (
     close_posted_for timestamp with time zone,
     CONSTRAINT tasks_check CHECK (((status = 'open'::text) = (closed_at IS NULL))),
     CONSTRAINT tasks_priority_check CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text]))),
-    CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text])) AND (strategy_id IS NOT NULL)))),
+    CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text, 'stalled'::text])) AND (strategy_id IS NOT NULL)))),
     CONSTRAINT tasks_status_check CHECK ((status = ANY (ARRAY['open'::text, 'done'::text, 'cancelled'::text])))
 );
 
@@ -5928,4 +5928,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260930105512'),
     ('20260930114508'),
     ('20260930122239'),
-    ('20260930142050');
+    ('20260930142050'),
+    ('20260930153534');
