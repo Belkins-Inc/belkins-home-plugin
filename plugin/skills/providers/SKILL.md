@@ -103,7 +103,7 @@ Check it before a large order and mention it in `bh session end`.
 | A person's email address | BetterContact (async, up to 100 per batch), $0.05 per address found | [bettercontact](references/bettercontact.md) |
 | A second try, or a phone number (when a person asks) | FullEnrich (async), $0.055 per credit | [fullenrich](references/fullenrich.md) |
 | Is this address deliverable, is the domain catch-all | Bouncer, $0.0056/address | [bouncer](references/bouncer.md) |
-| Settle a catch-all / unknown address, confirm a guess | Scrubby deep check (24–72 h) | [scrubby](references/scrubby.md) |
+| Settle a catch-all / unknown address, confirm a guess | **off for now** — such an address goes by LinkedIn | [scrubby](references/scrubby.md) |
 | A web page as text, a site's page list | Firecrawl scrape / map, $0.0009 each | [firecrawl](references/firecrawl.md) |
 | Companies with bad (or good) Trustpilot reviews | Bright Data Trustpilot dataset, $2.50 / 1,000 rows | [brightdata](references/brightdata.md) |
 
@@ -116,7 +116,8 @@ Rules that cut across providers:
 - **An address from a search or profile provider is not an address.** Apollo and Generect addresses
   are ignored; addresses come from BetterContact/FullEnrich and are verified with Bouncer.
 - **Nothing sends to an unverified address.** See the `email-finding` skill.
-- **A scheduled agent may call only Bouncer and Scrubby** (for address checks after a bounce); every
+- **A scheduled agent may call only Bouncer and Scrubby** (Scrubby is off for now: its paid calls are
+  refused with `provider_off`, collecting old checks still works) for address checks after a bounce; every
   other provider refuses its token with 403. Sourcing is a person's session.
 - A 402 / 429 / 5xx is the provider saying "not now" (balance, rate, outage) — wait and retry; it
   is not a verdict on the data. A 401/403 from the provider is the engine's key — tell a person.

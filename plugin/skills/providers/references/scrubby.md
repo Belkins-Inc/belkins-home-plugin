@@ -1,5 +1,9 @@
 # Scrubby
 
+**Off for now.** The engine refuses a submission with `409 provider_off`; `bh address collect`
+still fetches answers to checks submitted before. Bouncer decides, and an address it does not call
+`valid` goes by LinkedIn (see the `email-finding` skill).
+
 Deep verification for addresses a real-time checker cannot settle: catch-all domains, `unknown`
 (greylisted) addresses, and guesses after a hard bounce. Scrubby sends to the address and waits for
 real bounce data, so answers take **24 to 72 hours**. Base `https://api.scrubby.io`; key as

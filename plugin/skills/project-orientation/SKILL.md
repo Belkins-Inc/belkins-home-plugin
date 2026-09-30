@@ -156,7 +156,7 @@ sentences with ids and numbers:
   triage, notes), with counts.
 - **Left** — what the next session should pick up, in order, and what it is waiting on (question or
   task ids).
-- **Watch** — what might go wrong or needs a check on a certain day (a Scrubby answer due, a
+- **Watch** — what might go wrong or needs a check on a certain day (an address check due, a
   deadline, a strategy near its health threshold, a source near exhaustion), and every tooling
   defect you recorded, with the workaround you used.
 
