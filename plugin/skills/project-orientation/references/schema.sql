@@ -1243,6 +1243,7 @@ CREATE TABLE public.named_colleagues (
     enrollment_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     settled_at timestamp with time zone,
+    address public.citext NOT NULL,
     CONSTRAINT named_colleagues_check CHECK (((status = 'waiting'::text) = (settled_at IS NULL))),
     CONSTRAINT named_colleagues_check1 CHECK (((status = 'dropped'::text) = (reason IS NOT NULL))),
     CONSTRAINT named_colleagues_check2 CHECK (((status = 'written'::text) = (enrollment_id IS NOT NULL))),
@@ -5730,4 +5731,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260930100938'),
     ('20260930101205'),
     ('20260930105512'),
-    ('20260930114508');
+    ('20260930114508'),
+    ('20260930122239');
