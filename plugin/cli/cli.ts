@@ -274,6 +274,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   reply approve <id> [--body <final text>] (a person only) | reply discard <id>
   reply revise <id> --body <text> | --body-file <path> [--note <for the approver>]   a new version of a draft
   reply rewrite <id> --ask <what to change>   the server agent rewrites it (a person only) | reply versions <id>
+  reply agent <thread-id> [--ask <what to say>]  the server agent writes the first draft (a person only)
   reply-templates <strategy-id>          the fixed answers the engine sends on its own, by kind of reply
   reply-template approve <strategy-id> --class interested|meeting|question --body <text> | --body-file <path> [--cc a@x.com,b@y.com]
   reply-template approve <strategy-id> --class out_of_office|referral --subject <s> --body-file <path>
@@ -1468,6 +1469,8 @@ async function main(argv: string[]): Promise<void> {
       }
       if (sub === 'rewrite')
         return out(await call(config, 'POST', `/replies/${arg}/rewrite`, { ask: need(o.ask) }))
+      if (sub === 'agent')
+        return out(await call(config, 'POST', `/threads/${arg}/draft`, o.ask ? { ask: o.ask } : {}))
       if (sub === 'versions') return out(await call(config, 'GET', `/replies/${arg}/versions`))
       break
     case 'preview':

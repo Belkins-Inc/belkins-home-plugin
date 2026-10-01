@@ -416,7 +416,8 @@ CREATE TABLE public.agent_runs (
     oldest_waiting_at timestamp with time zone,
     kind text DEFAULT 'work'::text NOT NULL,
     reply_id uuid,
-    CONSTRAINT agent_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'rewrite'::text]))),
+    thread_id uuid,
+    CONSTRAINT agent_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'rewrite'::text, 'draft'::text]))),
     CONSTRAINT agent_runs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text])))
 );
 
@@ -3771,6 +3772,13 @@ CREATE INDEX tool_balances_tool_at_idx ON public.tool_balances USING btree (tool
 
 
 --
+-- Name: ux_agent_runs__one_draft; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_agent_runs__one_draft ON public.agent_runs USING btree (thread_id) WHERE ((status = ANY (ARRAY['queued'::text, 'running'::text])) AND (kind = 'draft'::text));
+
+
+--
 -- Name: ux_agent_runs__one_live; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4227,6 +4235,14 @@ ALTER TABLE ONLY public.agent_runs
 
 ALTER TABLE ONLY public.agent_runs
     ADD CONSTRAINT agent_runs_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.users(id);
+
+
+--
+-- Name: agent_runs agent_runs_thread_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_runs
+    ADD CONSTRAINT agent_runs_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads(id);
 
 
 --
@@ -6160,4 +6176,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260930160852'),
     ('20260930183845'),
     ('20261001112436'),
-    ('20261001121537');
+    ('20261001121537'),
+    ('20261001134153');
