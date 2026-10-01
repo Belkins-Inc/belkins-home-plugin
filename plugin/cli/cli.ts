@@ -151,6 +151,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   agency order <org> <domain> --sender <agency sender id> --first-name <n> --last-name <n> --username <u> | --file <f>
                                          a Workspace seat on it for one of its senders (its admin only)
   agency orders <org>                    what was ordered on the agency's domains and where each is
+  agency retry <org> <domain>            the agency's bought domain that failed goes back on its way into a tenant;
+                                         order its mailboxes again with agency order (its admin only)
   calendars                              the project's calendars: state, event type, last sync
   calendar connect --sender <id> --key <Cal.com API key> [--event-type <id>]
                                          the sender's Cal.com; its Google, Outlook and hours are set up there
@@ -1018,6 +1020,21 @@ async function main(argv: string[]): Promise<void> {
             ...(o.platform ? { platform: o.platform } : {}),
           }),
         )
+      if (sub === 'retry') {
+        const name = (pos[3] ?? '').toLowerCase()
+        const domains = (await call(config, 'GET', `/orgs/${arg}/domains`)) as {
+          id: string
+          domain: string
+        }[]
+        const found = domains.find((d) => d.domain.toLowerCase() === name)
+        if (!found)
+          throw new BhError(
+            `${name || 'That'} is not one of ${arg}'s domains`,
+            { hint: `bh agency domains ${arg}` },
+            2,
+          )
+        return out(await call(config, 'POST', `/domains/${found.id}/retry`, {}))
+      }
       if (sub === 'order') {
         const name = (pos[3] ?? '').toLowerCase()
         const domains = (await call(config, 'GET', `/orgs/${arg}/domains`)) as {
