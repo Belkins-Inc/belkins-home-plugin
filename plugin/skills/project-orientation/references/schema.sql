@@ -697,7 +697,12 @@ CREATE TABLE public.contacts (
     departed_by uuid,
     departed_via public.actor_via,
     esp text,
+    deal_stage text,
+    deal_stage_at timestamp with time zone,
+    deal_stage_by uuid,
+    deal_stage_via public.actor_via,
     CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL))),
+    CONSTRAINT contacts_deal_stage_check CHECK ((deal_stage = ANY (ARRAY['opportunity'::text, 'proposal'::text, 'won'::text, 'lost'::text]))),
     CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text])))
 );
 
@@ -4382,6 +4387,14 @@ ALTER TABLE ONLY public.contacts
 
 
 --
+-- Name: contacts contacts_deal_stage_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contacts
+    ADD CONSTRAINT contacts_deal_stage_by_fkey FOREIGN KEY (deal_stage_by) REFERENCES public.users(id);
+
+
+--
 -- Name: contacts contacts_departed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6177,4 +6190,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260930183845'),
     ('20261001112436'),
     ('20261001121537'),
-    ('20261001134153');
+    ('20261001134153'),
+    ('20261001154948');

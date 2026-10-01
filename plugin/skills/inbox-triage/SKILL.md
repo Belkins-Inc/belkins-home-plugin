@@ -112,6 +112,9 @@ there are many:
   mailbox — often not theirs, so it shows in that mailbox's Sent, not in their own) **to `to`** at
   `sendsAt` (a minute's undo first), and `link` opens the conversation. Home → Sent lists it for a
   day; `bh replies --status sent` shows that it went.
+- `bh thread stage <thread-id> opportunity|proposal|won|lost|none` records where the deal with the
+  lead stands after they answered (a meeting's outcome says only what that meeting came to). Set
+  it when a thread or a person says so — a proposal went out, they signed, they chose someone else.
 - `bh reply discard <id>` withdraws a draft, an approved reply not yet sent, or a failed one.
 - A failed reply (`bh replies --status failed`, `lastError`) is usually a disconnected mailbox; fix
   the mailbox, then draft again.
