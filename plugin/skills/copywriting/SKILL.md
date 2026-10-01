@@ -94,15 +94,18 @@ you hold. Full rules, lists and examples: [references/house-rules.md](references
 - **No signal, say so.** A lead whose queue item has `problem` set (no signal) gets copy from the
   brief and the persona angle only, and the person hears how many such leads the batch has.
 - **The first email connects the dots, in three beats, then the question**: their footprint (a fact
-  from the signal or facts), what that scale means for the problem the client solves (hedged:
-  "usually", "often"), how the client helps (one sentence from the persona angle), then the
-  question. Going straight from the observation to the question was refused in onboarding.
+  from the signal or facts), the pain that scale means for this reader (hedged: "usually",
+  "often"), what the reader gets free for a yes (a concrete deliverable from the client, matched to
+  the reader's pain), then the question that asks for it. Going straight from the observation to the question was refused in onboarding.
 - **Simple beats clever.** The reader gets the email in one read and answers without thinking:
   plain words, one idea, nothing to work out.
 - **Every email ends on one short question**: under ten words, with one obvious answer (a yes, a
-  date or a name). Never either/or, never two questions. **The first email asks yes or no**, and the
-  question names the pain of beat two, so reading it is enough to answer. Model: "Does anyone check
-  fuel invoices across your sites?". Refused: "Is fuel run centrally, or does each site handle its own?". The
+  date or a name). Never either/or, never two questions. **The first email offers value for a yes**:
+  something concrete and free the reader gets by answering (a check of last month's invoices, a
+  backup vendor list for their sites), and the question asks for it. Model: "Want us to check last
+  month's invoices?". A question that only asks about them gives nothing for the reply and is
+  refused in the first email: "Who checks the fuel invoices across your sites today?", "Does anyone
+  compare fuel prices across your terminals?". Refused: "Is fuel run centrally, or does each site handle its own?". The
   last email makes one offer and asks "Want me to set it up?"; it may close with one sentence after
   the question ("If fuel is not a priority right now, I will stop here.").
 - **Email greets by first name on its own line** ("Hi Ada,"), the real name written in. No first
