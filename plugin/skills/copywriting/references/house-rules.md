@@ -48,13 +48,17 @@ you ask. With no signal, beat one is missing; open on beat two, from the brief, 
 
 Every email ends on **one short question**:
 - under ten words;
-- with **one obvious answer**: a name, a date or a yes;
+- with **one obvious answer**: a yes, a date or a name;
+- in the **first email, yes or no**, and the question names the pain the second beat described:
+  the reader who felt it answers without having to think, either way;
 - never either/or ("or" in the question), never two questions;
 - the last sentence of the email. The last email of a plan may close with one sentence after it
   ("If fuel is not a priority right now, I will stop here.").
 
-Good: "Who checks the fuel invoices across your sites today?" (a name), "When did quarry fuel last
+Good: "Does anyone check fuel invoices across your sites?" (yes or no, the first email), "When did quarry fuel last
 go out to bid?" (a date), "Worth testing on three sites?" (a yes).
+Refused in the first email: "Who checks the fuel invoices across your sites today?" (a name makes
+the reader think who, and it does not name the pain).
 Refused: "Is fuel run centrally, or does each site handle its own?" (eleven words, two answers),
 "Would an audit or a call be more useful?" (a choice).
 

@@ -106,8 +106,8 @@ steps first. Accepted values:
   skipped and the next one is scheduled.
 - `newThread` (email, default false): start a new thread with its own subject instead of "Re:".
 - `guidance`: what this step says and how directly it asks — the copywriter's instruction. It may
-  fix the exact question per persona ("Question, word for word: Who checks the fuel invoices across
-  your sites today?"); the writer then uses it word for word. Edits the person makes to the
+  fix the exact question per persona ("Question, word for word: Does anyone check fuel invoices across
+  your sites?"; the first email's question is yes or no and names the pain); the writer then uses it word for word. Edits the person makes to the
   copywriting sample go back into `guidance`, so the bulk copy inherits them.
   No em or en dash anywhere in it (refused): the writer copies its wording into the copy.
 - `hypothesis`: what this step is expected to prove (read back when judging results).

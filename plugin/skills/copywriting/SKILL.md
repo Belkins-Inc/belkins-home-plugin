@@ -97,9 +97,12 @@ you hold. Full rules, lists and examples: [references/house-rules.md](references
   from the signal or facts), what that scale means for the problem the client solves (hedged:
   "usually", "often"), how the client helps (one sentence from the persona angle), then the
   question. Going straight from the observation to the question was refused in onboarding.
-- **Every email ends on one short question**: under ten words, with one obvious answer (a name, a
-  date or a yes). Never either/or, never two questions. Model: "Who checks the fuel invoices across
-  your sites today?". Refused: "Is fuel run centrally, or does each site handle its own?". The
+- **Simple beats clever.** The reader gets the email in one read and answers without thinking:
+  plain words, one idea, nothing to work out.
+- **Every email ends on one short question**: under ten words, with one obvious answer (a yes, a
+  date or a name). Never either/or, never two questions. **The first email asks yes or no**, and the
+  question names the pain of beat two, so reading it is enough to answer. Model: "Does anyone check
+  fuel invoices across your sites?". Refused: "Is fuel run centrally, or does each site handle its own?". The
   last email makes one offer and asks "Want me to set it up?"; it may close with one sentence after
   the question ("If fuel is not a priority right now, I will stop here.").
 - **Email greets by first name on its own line** ("Hi Ada,"), the real name written in. No first
