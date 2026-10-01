@@ -250,6 +250,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement test <our address>           a note from that mailbox to one seed in each environment; counts
                                          toward its daily limit (an admin)
   placement show <test-id>               a test's notes: verdict, folders, filter scores
+  placement look <seed address> --message-id <id>   where one message sits in a seed, e.g. a step sent
+                                         there with bh copy test: verdict, folders, filter scores
   placement mailbox <our address> [--limit <n>]   a mailbox's recent notes and their verdicts
   linkedin                               this project's LinkedIn accounts, with today's invites and messages
   linkedin available                     accounts linked in Unipile that no project has attached
@@ -1933,6 +1935,17 @@ async function main(argv: string[]): Promise<void> {
         if (!arg) throw new BhError('Which test?', { hint: 'bh placement test prints its id' }, 2)
         return out(await call(config, 'GET', `/placement/tests/${arg}`))
       }
+      if (sub === 'look') {
+        if (!arg) throw new BhError('Which seed?', { hint: 'bh placement seeds lists them' }, 2)
+        if (!o['message-id'])
+          throw new BhError(
+            'Which message?',
+            { hint: '--message-id <Message-ID>; bh copy test prints it' },
+            2,
+          )
+        const q = new URLSearchParams({ seed: arg, messageId: String(o['message-id']) })
+        return out(await call(config, 'GET', `/placement/look?${q}`))
+      }
       if (sub === 'mailbox') {
         if (!arg) throw new BhError('Which mailbox?', { hint: 'bh mailboxes lists them' }, 2)
         return out(
@@ -1945,7 +1958,7 @@ async function main(argv: string[]): Promise<void> {
       }
       throw new BhError(
         `bh placement has no ${sub}`,
-        { hint: 'status, seeds, seed, test, show or mailbox' },
+        { hint: 'status, seeds, seed, test, show, look or mailbox' },
         2,
       )
     }
