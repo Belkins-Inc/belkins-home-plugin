@@ -64,6 +64,11 @@ stands.
   optional; the re-engagement itself is `bh reengage`, not this reply.
 - **referral**: thank them in one line, and if they named nobody specific ask once for the right
   person's name. The colleague is written to through `bh refer`, not by cc in this thread.
+- **wrong_person** that points somewhere ("contact our trucking division", "procurement handles
+  this", "ask Jane in logistics"): a person who took the time to redirect us gets an answer. Thank
+  them in one line and ask once for the name and address of the right person there — never pitch
+  again, never ask twice. Named with an address, it is a `referral` instead (above). A bare "wrong
+  person" that points nowhere gets no answer.
 
 ## When nothing should be sent
 
@@ -74,8 +79,8 @@ Do not draft when the last inbound message is:
 - written by someone on our side or at the client, not the lead;
 - a closing line that asks nothing and leaves nothing open ("Thanks", "Got it", "See you Tuesday");
 - a notice that the person left or the address is no longer read;
-- `unsubscribe`, `not_interested`, `out_of_office`, `acknowledgement`, `other`, `wrong_person`
-  (unless a one-line "thanks, who would be right?" is plainly worth it — ask the person).
+- `unsubscribe`, `not_interested`, `out_of_office`, `acknowledgement`, `other`, or a
+  `wrong_person` that points nowhere (one that points somewhere is answered, above).
 
 Mark it handled with `bh triage` and say why in `--note`.
 
