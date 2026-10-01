@@ -72,8 +72,12 @@ there are many:
    the web app or with `bh reply rewrite <replyId> --ask "<what to change>"`; a server-agent run
    then does it.
    A reply whose class still asks for an answer (`other`, mostly) but that needs none — a mailbox
-   that moved and forwards, a thank-you — leaves Needs reply with `bh thread close <threadId>`; it
-   comes back when the lead writes again (`bh thread reopen` takes it back).
+   that moved and forwards, a thank-you — leaves Needs reply with
+   `bh thread close <threadId> --note "<why>"`; it comes back when the lead writes again
+   (`bh thread reopen` takes it back). The note is what a reader sees on the thread a month later:
+   say what happened instead of an answer — "pointed us to the fleet team; referred their VP
+   of Operations and Fleet Director, both enrolled", "mailbox moved, forwards to the new address". Closing it
+   again replaces the note.
    Write the body to a file first; `--body` for one-liners. Set `--send-at` when the answer should
    land in the lead's working hours (their time zone, not ours) or when they asked for a moment
    ("write me Monday"); leave it off otherwise and it goes as soon as it is approved. Set
