@@ -953,6 +953,9 @@ CREATE TABLE public.threads (
     assigned_to uuid,
     last_message_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    closed_by uuid,
+    closed_at timestamp with time zone,
+    closed_via public.actor_via,
     CONSTRAINT threads_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin'::text]))),
     CONSTRAINT threads_check CHECK (((channel = 'email'::text) = (mailbox_id IS NOT NULL))),
     CONSTRAINT threads_status_check CHECK ((status = ANY (ARRAY['open'::text, 'waiting'::text, 'closed'::text])))
@@ -5995,6 +5998,14 @@ ALTER TABLE ONLY public.threads
 
 
 --
+-- Name: threads threads_closed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.threads
+    ADD CONSTRAINT threads_closed_by_fkey FOREIGN KEY (closed_by) REFERENCES public.users(id);
+
+
+--
 -- Name: threads threads_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6191,4 +6202,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261001112436'),
     ('20261001121537'),
     ('20261001134153'),
+    ('20261001152809'),
     ('20261001154948');

@@ -71,6 +71,9 @@ there are many:
    which keeps the old version — never a second draft beside it. A person can ask for a rewrite in
    the web app or with `bh reply rewrite <replyId> --ask "<what to change>"`; a server-agent run
    then does it.
+   A reply whose class still asks for an answer (`other`, mostly) but that needs none — a mailbox
+   that moved and forwards, a thank-you — leaves Needs reply with `bh thread close <threadId>`; it
+   comes back when the lead writes again (`bh thread reopen` takes it back).
    Write the body to a file first; `--body` for one-liners. Set `--send-at` when the answer should
    land in the lead's working hours (their time zone, not ours) or when they asked for a moment
    ("write me Monday"); leave it off otherwise and it goes as soon as it is approved. Set

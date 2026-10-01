@@ -265,6 +265,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          the newest message --to sent --from
   inbox placement --mailbox <our address> --message-id <id>   where it landed: INBOX, SPAM, a tab (an admin)
   thread <id>                            the whole conversation, with our replies
+  thread close <id> | thread reopen <id>  no answer needed: it leaves Needs reply until the lead
+                                         writes again; reopen takes that back
   thread stage <id> opportunity|proposal|won|lost|none   where the deal with its lead stands after they answered
   triage <message-id> [--class <c>] [--note <t>] [--follow-up <yyyy-mm-dd>] [--return <yyyy-mm-dd>]
   triage undo <message-id>              take it back: an unsubscribe within 60 s, or back into the queue
@@ -1362,6 +1364,8 @@ async function main(argv: string[]): Promise<void> {
         )
       return out(await call(config, 'GET', `/projects/${p()}/inbox`))
     case 'thread':
+      if (sub === 'close' || sub === 'reopen')
+        return out(await call(config, 'POST', `/threads/${arg}/${sub}`, {}))
       if (sub === 'stage') {
         const stage = pos[3]
         if (!arg || !stage)
