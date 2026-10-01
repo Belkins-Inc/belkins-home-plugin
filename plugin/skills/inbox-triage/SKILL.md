@@ -108,6 +108,10 @@ there are many:
 - `bh reply approve <id> [--body "<final text>"]` sends it (at `send_at`, or now). Only a person's
   token can approve; read the thread and the note first, and edit the body in the same call if it
   needs a change.
+- After approving, tell the person what the answer carries: it goes **from `from`** (the thread's
+  mailbox — often not theirs, so it shows in that mailbox's Sent, not in their own) **to `to`** at
+  `sendsAt` (a minute's undo first), and `link` opens the conversation. Home → Sent lists it for a
+  day; `bh replies --status sent` shows that it went.
 - `bh reply discard <id>` withdraws a draft, an approved reply not yet sent, or a failed one.
 - A failed reply (`bh replies --status failed`, `lastError`) is usually a disconnected mailbox; fix
   the mailbox, then draft again.
