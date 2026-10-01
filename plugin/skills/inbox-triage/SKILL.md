@@ -167,6 +167,9 @@ offer; re-engagements and referrals made or handed to whom; what to watch>"`.
 - An unsubscribe from a different address than the one we wrote to: the engine blocks the address
   that wrote; add the contact's own address too (`bh dnc add --kind email`), and the domain
   (`--kind domain`) when they speak for the company ("remove all of us").
+- Answering a colleague of the lead as if the lead wrote: someone else at the lead's company who
+  answers a forward lands in the lead's thread, and the answer goes to whoever wrote last (`to`), so
+  greet them. Someone they point to gets `bh refer`; the engine does not write to them on its own.
 - Drafting an answer to a "thanks, got it" or to a no; arguing with a decline.
 - Inventing a price, a customer, a date or a feature in a draft; offering times `bh slots` does not
   list; offering them without `bh slots offer` (someone else may be offered the same hour);
