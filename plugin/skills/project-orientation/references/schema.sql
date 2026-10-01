@@ -782,11 +782,13 @@ CREATE TABLE public.domains (
     dkim_started_at timestamp with time zone,
     organisation_id uuid,
     alerted text,
+    microsoft_tenant_id uuid,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
     CONSTRAINT domains_one_owner CHECK ((num_nonnulls(project_id, organisation_id) <= 1)),
+    CONSTRAINT domains_one_tenant CHECK (((tenant_id IS NULL) OR (microsoft_tenant_id IS NULL))),
     CONSTRAINT domains_registrar_check CHECK (((registrar IS NULL) OR (registrar = ANY (ARRAY['porkbun'::text])))),
     CONSTRAINT domains_status_check CHECK ((status = ANY (ARRAY['external'::text, 'approved'::text, 'buying'::text, 'registered'::text, 'attaching'::text, 'ready'::text, 'failed'::text, 'released'::text]))),
-    CONSTRAINT domains_supplier_check CHECK (((supplier IS NULL) OR (supplier = ANY (ARRAY['zapmail'::text, 'workspace'::text]))))
+    CONSTRAINT domains_supplier_check CHECK (((supplier IS NULL) OR (supplier = ANY (ARRAY['zapmail'::text, 'workspace'::text, 'microsoft'::text]))))
 );
 
 
@@ -1222,7 +1224,7 @@ CREATE TABLE public.mailbox_orders (
     CONSTRAINT mailbox_orders_owner CHECK (((project_id IS NOT NULL) OR (sender_id IS NOT NULL))),
     CONSTRAINT mailbox_orders_settled_check CHECK (((settled_at IS NULL) = ((status <> 'connected'::text) AND (status <> 'failed'::text)))),
     CONSTRAINT mailbox_orders_status_check CHECK ((status = ANY (ARRAY['ordered'::text, 'creating'::text, 'created'::text, 'connecting'::text, 'connected'::text, 'failed'::text]))),
-    CONSTRAINT mailbox_orders_supplier_check CHECK ((supplier = ANY (ARRAY['zapmail'::text, 'workspace'::text])))
+    CONSTRAINT mailbox_orders_supplier_check CHECK ((supplier = ANY (ARRAY['zapmail'::text, 'workspace'::text, 'microsoft'::text])))
 );
 
 
@@ -1264,12 +1266,34 @@ CREATE TABLE public.mailboxes (
     push_attempted_at timestamp with time zone,
     push_subscription_id text,
     push_client_state_hash text,
+    microsoft_tenant_id uuid,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 200))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'smtp'::text]))),
     CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
+
+
+--
+-- Name: microsoft_tenants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.microsoft_tenants (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    name text NOT NULL,
+    directory_id uuid NOT NULL,
+    client_id uuid NOT NULL,
+    initial_domain public.citext NOT NULL,
+    credential bytea NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    max_domains integer DEFAULT 100 NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT microsoft_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 900))),
+    CONSTRAINT microsoft_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
+);
 
 
 --
@@ -2757,6 +2781,14 @@ ALTER TABLE ONLY public.messages
 
 
 --
+-- Name: microsoft_tenants microsoft_tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.microsoft_tenants
+    ADD CONSTRAINT microsoft_tenants_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: model_calls model_calls_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3844,6 +3876,20 @@ CREATE UNIQUE INDEX ux_messages__plan_step ON public.messages USING btree (enrol
 
 
 --
+-- Name: ux_microsoft_tenants__directory; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_microsoft_tenants__directory ON public.microsoft_tenants USING btree (directory_id);
+
+
+--
+-- Name: ux_microsoft_tenants__name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_microsoft_tenants__name ON public.microsoft_tenants USING btree (name);
+
+
+--
 -- Name: ux_placement_notes__rfc; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4392,6 +4438,14 @@ ALTER TABLE ONLY public.domains
 
 
 --
+-- Name: domains domains_microsoft_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domains
+    ADD CONSTRAINT domains_microsoft_tenant_id_fkey FOREIGN KEY (microsoft_tenant_id) REFERENCES public.microsoft_tenants(id);
+
+
+--
 -- Name: domains domains_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4680,6 +4734,14 @@ ALTER TABLE ONLY public.mailboxes
 
 
 --
+-- Name: mailboxes mailboxes_microsoft_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mailboxes
+    ADD CONSTRAINT mailboxes_microsoft_tenant_id_fkey FOREIGN KEY (microsoft_tenant_id) REFERENCES public.microsoft_tenants(id);
+
+
+--
 -- Name: mailboxes mailboxes_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4869,6 +4931,14 @@ ALTER TABLE ONLY public.messages
 
 ALTER TABLE ONLY public.messages
     ADD CONSTRAINT messages_written_by_fkey FOREIGN KEY (written_by) REFERENCES public.users(id);
+
+
+--
+-- Name: microsoft_tenants microsoft_tenants_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.microsoft_tenants
+    ADD CONSTRAINT microsoft_tenants_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
 
 
 --
@@ -6088,4 +6158,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260930142050'),
     ('20260930153534'),
     ('20260930160852'),
-    ('20260930183845');
+    ('20260930183845'),
+    ('20261001112436');

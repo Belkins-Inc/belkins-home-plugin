@@ -145,7 +145,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          a password mailbox of theirs (rows as for mailbox smtp)
   agency linkedin <org> <unipile-account-id> --sender <id> [--invite-limit <n>] [--message-limit <n>]
   agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
-  agency approve <org> <name>… --max-cents <n> [--redirect <url>]   buy them for the agency (its admin only)
+  agency approve <org> <name>… --max-cents <n> [--redirect <url>] [--platform google|microsoft]
+                                         buy them for the agency (its admin only); --platform picks where the
+                                         mailboxes on them live (default google)
   agency order <org> <domain> --sender <agency sender id> --first-name <n> --last-name <n> --username <u> | --file <f>
                                          a Workspace seat on it for one of its senders (its admin only)
   agency orders <org>                    what was ordered on the agency's domains and where each is
@@ -184,7 +186,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                  [--sender <id>]            another sender of the project writes from it
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
   domain quote <name> [<name>…]          availability and price at the registrar (free)
-  domain approve <name> [<name>…] --max-cents <n> [--redirect <client site url>]   buy them (a person only):
+  domain approve <name> [<name>…] --max-cents <n> [--redirect <client site url>] [--platform google|microsoft]
+                                         buy them (a person only):
                                          the engine buys, dresses DNS and puts each in a Workspace tenant
   domain dkim <name> --record <TXT value> [--selector google]   publish the DKIM record minted in the
                                          Admin console (the task the engine opened says when)
@@ -207,10 +210,17 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          [{"firstName","lastName","username"}] — a Workspace seat each, made once the
                                          domain is ready (a person only)
   mailbox orders                         what was ordered and where each order has got to
-  tenants                                our Google Workspace tenants, with the domains and mailboxes in each (an admin)
+  tenants                                our Google Workspace and Microsoft 365 tenants, with the domains and mailboxes
+                                         in each (an admin)
   tenant add --name <n> --admin-email <super admin> --key <service account JSON file> [--max-domains <n>]
                                          the key is proved against the tenant before it is kept (an admin)
   tenant update <id> [--status active|paused] [--max-domains <n>] [--admin-email <e>] [--key <file>]   (an admin)
+  tenant add --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id> --key <private key PEM>
+             --cert <certificate PEM> [--max-domains <n>]
+                                         a Microsoft 365 tenant: the app's certificate is proved against Graph and
+                                         Exchange before it is kept (an admin)
+  tenant seats <id> --provider microsoft   its licences: bought and used; new mailboxes wait for a free one
+  tenant update <id> --provider microsoft [--status active|paused] [--max-domains <n>]
   tenant console-login <id>              sign in to the Google Admin console through the console service's IP,
                                          so it can do DKIM (an admin; #home-alerts says when it is needed again)
   tenant console-credentials <id> --email <admin> [--totp]   the login the console service signs in with by
@@ -400,6 +410,10 @@ async function main(argv: string[]): Promise<void> {
       'admin-email': { type: 'string' },
       'max-domains': { type: 'string' },
       env: { type: 'string' },
+      platform: { type: 'string' },
+      'tenant-id': { type: 'string' },
+      'client-id': { type: 'string' },
+      cert: { type: 'string' },
       'max-cents': { type: 'string' },
       redirect: { type: 'string' },
       record: { type: 'string' },
@@ -999,6 +1013,7 @@ async function main(argv: string[]): Promise<void> {
             domains: pos.slice(3),
             maxCents: Number(o['max-cents']),
             ...(o.redirect ? { redirectTo: o.redirect } : {}),
+            ...(o.platform ? { platform: o.platform } : {}),
           }),
         )
       if (sub === 'order') {
@@ -1615,6 +1630,7 @@ async function main(argv: string[]): Promise<void> {
             domains: names,
             maxCents: Number(o['max-cents']),
             ...(o.redirect ? { redirectTo: o.redirect } : {}),
+            ...(o.platform ? { platform: o.platform } : {}),
           }),
         )
       if (sub === 'dkim')
@@ -1663,10 +1679,41 @@ async function main(argv: string[]): Promise<void> {
       break
     }
     case 'tenants':
-      return out(await call(config, 'GET', '/tenants'))
+      return out({
+        google: await call(config, 'GET', '/tenants'),
+        microsoft: await call(config, 'GET', '/microsoft-tenants'),
+      })
     case 'tenant': {
-      const key = o.key ? JSON.parse(await readFile(o.key, 'utf8')) : undefined
       const maxDomains = o['max-domains'] ? { maxDomains: Number(o['max-domains']) } : {}
+      if (o.provider === 'microsoft') {
+        if (sub === 'add')
+          return out(
+            await call(config, 'POST', '/microsoft-tenants', {
+              name: o.name,
+              directoryId: o['tenant-id'],
+              clientId: o['client-id'],
+              key: await readFile(need(o.key), 'utf8'),
+              cert: await readFile(need(o.cert), 'utf8'),
+              ...maxDomains,
+            }),
+          )
+        if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
+        if (sub === 'seats')
+          return out(await call(config, 'GET', `/microsoft-tenants/${arg}/seats`))
+        if (sub === 'update')
+          return out(
+            await call(config, 'PATCH', `/microsoft-tenants/${arg}`, {
+              ...(o.status ? { status: o.status } : {}),
+              ...maxDomains,
+            }),
+          )
+        throw new BhError(
+          `bh tenant ${sub} --provider microsoft is not a command`,
+          { hint: 'add, seats or update' },
+          2,
+        )
+      }
+      const key = o.key ? JSON.parse(await readFile(o.key, 'utf8')) : undefined
       if (sub === 'add')
         return out(
           await call(config, 'POST', '/tenants', {
