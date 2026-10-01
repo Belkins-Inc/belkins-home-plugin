@@ -192,6 +192,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domain dkim <name> --record <TXT value> [--selector google]   publish the DKIM record minted in the
                                          Admin console (the task the engine opened says when)
   domain release <name>                  let it lapse at expiry; refused while a mailbox sends from it (a person only)
+  domain retry <name>                    a bought domain that failed on its way into a tenant goes back on it once
+                                         the cause is fixed; nothing is bought again (a person only)
   domain redirect <name> <url>|none      where its website goes: a 301 from the apex and every subdomain to the
                                          client's own site, or none (a person only)
   domain dns <name>                      its DNS records and redirects at the registrar
@@ -1642,6 +1644,8 @@ async function main(argv: string[]): Promise<void> {
         )
       if (sub === 'release')
         return out(await call(config, 'POST', `/domains/${await domainId(arg)}/release`, {}))
+      if (sub === 'retry')
+        return out(await call(config, 'POST', `/domains/${await domainId(arg)}/retry`, {}))
       if (sub === 'redirect') {
         const url = pos[3]
         if (!url)
