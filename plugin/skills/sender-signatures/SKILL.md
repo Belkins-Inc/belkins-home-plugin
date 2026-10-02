@@ -26,6 +26,10 @@ From the screenshot, file or description: name, title, company, the link(s) with
 ("Book a meeting with me." → the calendar URL), phone numbers, email, a tagline, a photo. Ask for
 what is missing rather than inventing it — a wrong phone number goes to every lead.
 
+A postal address and an opt-out line are not required: put them in only when the client asks.
+Do not ask for them, and do not hold a signature or a strategy back for them — which laws apply
+(CAN-SPAM, GDPR, PECR) is the client's call, not ours.
+
 Keep it short: one or two links (a calendar, a site), no link shorteners, no tracking parameters,
 no social icon rows. Every link and picture is weighed by spam filters on a cold first touch.
 

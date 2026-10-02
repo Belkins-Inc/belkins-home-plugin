@@ -1481,12 +1481,15 @@ CREATE TABLE public.placement_notes (
     rfc_message_id text NOT NULL,
     status text NOT NULL,
     error text,
-    sent_at timestamp with time zone DEFAULT now() NOT NULL,
+    sent_at timestamp with time zone,
     verdict text,
     folders text[],
     scores jsonb DEFAULT '{}'::jsonb NOT NULL,
     verdict_at timestamp with time zone,
-    CONSTRAINT placement_notes_status_check CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text]))),
+    body text,
+    queued_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT placement_notes_sent_check CHECK ((((status = 'queued'::text) = (sent_at IS NULL)) OR (status = 'cancelled'::text))),
+    CONSTRAINT placement_notes_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'sent'::text, 'failed'::text, 'cancelled'::text]))),
     CONSTRAINT placement_notes_verdict_check CHECK ((verdict = ANY (ARRAY['inbox'::text, 'tab'::text, 'spam'::text, 'quarantined'::text, 'rejected'::text, 'missing'::text])))
 );
 
@@ -1523,7 +1526,11 @@ CREATE TABLE public.placement_tests (
     mailbox_id uuid NOT NULL,
     requested_by uuid,
     requested_via public.actor_via NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    kind text DEFAULT 'manual'::text NOT NULL,
+    confirms uuid,
+    environment text,
+    CONSTRAINT placement_tests_kind_check CHECK ((kind = ANY (ARRAY['manual'::text, 'scheduled'::text, 'confirm'::text])))
 );
 
 
@@ -3620,6 +3627,13 @@ CREATE INDEX ix_placement_notes__pending ON public.placement_notes USING btree (
 
 
 --
+-- Name: ix_placement_notes__queued; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_placement_notes__queued ON public.placement_notes USING btree (queued_at) WHERE (status = 'queued'::text);
+
+
+--
 -- Name: ix_placement_notes__seed; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3631,6 +3645,13 @@ CREATE INDEX ix_placement_notes__seed ON public.placement_notes USING btree (see
 --
 
 CREATE INDEX ix_placement_notes__test ON public.placement_notes USING btree (test_id);
+
+
+--
+-- Name: ix_placement_tests__kind; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_placement_tests__kind ON public.placement_tests USING btree (kind, created_at DESC);
 
 
 --
@@ -3921,6 +3942,13 @@ CREATE UNIQUE INDEX ux_placement_seeds__address ON public.placement_seeds USING 
 
 
 --
+-- Name: ux_placement_tests__confirms; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_placement_tests__confirms ON public.placement_tests USING btree (confirms, environment) WHERE (confirms IS NOT NULL);
+
+
+--
 -- Name: ux_project_members__one_owner; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4160,6 +4188,13 @@ CREATE TRIGGER messages_replan_update AFTER UPDATE ON public.messages REFERENCIN
 --
 
 CREATE TRIGGER placement_notes_count_sent AFTER INSERT ON public.placement_notes FOR EACH ROW WHEN ((new.status = 'sent'::text)) EXECUTE FUNCTION public.count_placement_sent();
+
+
+--
+-- Name: placement_notes placement_notes_count_sent_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER placement_notes_count_sent_update AFTER UPDATE OF status ON public.placement_notes FOR EACH ROW WHEN (((new.status = 'sent'::text) AND (old.status IS DISTINCT FROM 'sent'::text))) EXECUTE FUNCTION public.count_placement_sent();
 
 
 --
@@ -5084,6 +5119,14 @@ ALTER TABLE ONLY public.placement_notes
 
 ALTER TABLE ONLY public.placement_seeds
     ADD CONSTRAINT placement_seeds_connected_by_fkey FOREIGN KEY (connected_by) REFERENCES public.users(id);
+
+
+--
+-- Name: placement_tests placement_tests_confirms_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_tests
+    ADD CONSTRAINT placement_tests_confirms_fkey FOREIGN KEY (confirms) REFERENCES public.placement_tests(id) ON DELETE CASCADE;
 
 
 --
@@ -6205,4 +6248,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261001134153'),
     ('20261001152809'),
     ('20261001154948'),
-    ('20261001174925');
+    ('20261001174925'),
+    ('20261002110911');

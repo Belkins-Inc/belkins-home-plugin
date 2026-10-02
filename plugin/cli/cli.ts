@@ -247,12 +247,15 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement seed connect --env google|m365|m365_defender|m365_proofpoint
                                          the URL to sign in to as the seed; it is only ever read (an admin)
   placement seed activate|suspect|archive <id>   put a seed back in the tests, set it aside, or retire it
-  placement test <our address>           a note from that mailbox to one seed in each environment; counts
+  placement test <our address> [--per-environment <n>]   notes from that mailbox to n seeds in each environment
+                                         (default 2), queued and sent at the mailbox's own pace; they count
                                          toward its daily limit (an admin)
   placement show <test-id>               a test's notes: verdict, folders, filter scores
   placement look <seed address> --message-id <id>   where one message sits in a seed, e.g. a step sent
                                          there with bh copy test: verdict, folders, filter scores
-  placement mailbox <our address> [--limit <n>]   a mailbox's recent notes and their verdicts
+  placement mailbox <our address> [--days <n>] [--limit <n>]   its rate per environment over the days (30) and
+                                         the notes behind it: kind, seed, subject, body, verdict, scores
+  placement domain <domain> [--days <n>] [--limit <n>]   the same for every mailbox on a domain
   linkedin                               this project's LinkedIn accounts, with today's invites and messages
   linkedin available                     accounts linked in Unipile that no project has attached
   linkedin connect <unipile-account-id> [--sender <id>] [--invite-limit <n>] [--message-limit <n>]
@@ -424,6 +427,7 @@ async function main(argv: string[]): Promise<void> {
       'max-domains': { type: 'string' },
       env: { type: 'string' },
       platform: { type: 'string' },
+      'per-environment': { type: 'string' },
       'tenant-id': { type: 'string' },
       'client-id': { type: 'string' },
       cert: { type: 'string' },
@@ -1929,7 +1933,12 @@ async function main(argv: string[]): Promise<void> {
       }
       if (sub === 'test') {
         if (!arg) throw new BhError('From which mailbox?', { hint: 'bh mailboxes lists them' }, 2)
-        return out(await call(config, 'POST', '/placement/tests', { mailbox: arg }))
+        return out(
+          await call(config, 'POST', '/placement/tests', {
+            mailbox: arg,
+            ...(o['per-environment'] ? { perEnvironment: Number(o['per-environment']) } : {}),
+          }),
+        )
       }
       if (sub === 'show') {
         if (!arg) throw new BhError('Which test?', { hint: 'bh placement test prints its id' }, 2)
@@ -1946,13 +1955,22 @@ async function main(argv: string[]): Promise<void> {
         const q = new URLSearchParams({ seed: arg, messageId: String(o['message-id']) })
         return out(await call(config, 'GET', `/placement/look?${q}`))
       }
-      if (sub === 'mailbox') {
-        if (!arg) throw new BhError('Which mailbox?', { hint: 'bh mailboxes lists them' }, 2)
+      if (sub === 'mailbox' || sub === 'domain') {
+        if (!arg)
+          throw new BhError(
+            sub === 'mailbox' ? 'Which mailbox?' : 'Which domain?',
+            { hint: sub === 'mailbox' ? 'bh mailboxes lists them' : 'bh domains lists them' },
+            2,
+          )
+        const q = new URLSearchParams({
+          ...(o.days ? { days: String(Number(o.days)) } : {}),
+          ...(o.limit ? { limit: String(Number(o.limit)) } : {}),
+        })
         return out(
           await call(
             config,
             'GET',
-            `/placement/mailboxes/${encodeURIComponent(arg)}${o.limit ? `?limit=${Number(o.limit)}` : ''}`,
+            `/placement/${sub === 'mailbox' ? 'mailboxes' : 'domains'}/${encodeURIComponent(arg)}${q.size ? `?${q}` : ''}`,
           ),
         )
       }
