@@ -256,6 +256,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement mailbox <our address> [--days <n>] [--limit <n>]   its rate per environment over the days (30) and
                                          the notes behind it: kind, seed, subject, body, verdict, scores
   placement domain <domain> [--days <n>] [--limit <n>]   the same for every mailbox on a domain
+  egress list                            the egresses mail leaves through: name, address, status, the projects
+                                         and mailboxes on each (an admin; docs/decisions/sending-identity.md)
+  egress add <host name> --ip <ipv4> --proxy <http://user:pass@host:port> [--spare]
+                                         a host whose reverse DNS is <host name>, reached through its CONNECT proxy
+  egress active|spare|retire <id>        put an egress in use, set it aside as a spare, or retire it
+  egress assign <host name|none> --project <slug> | --mailbox <address>
+                                         a client's mail, or one mailbox's, leaves through that egress (none: the
+                                         engine's own address; for a mailbox, back to its project's)
   linkedin                               this project's LinkedIn accounts, with today's invites and messages
   linkedin available                     accounts linked in Unipile that no project has attached
   linkedin connect <unipile-account-id> [--sender <id>] [--invite-limit <n>] [--message-limit <n>]
@@ -428,6 +436,9 @@ async function main(argv: string[]): Promise<void> {
       env: { type: 'string' },
       platform: { type: 'string' },
       'per-environment': { type: 'string' },
+      ip: { type: 'string' },
+      proxy: { type: 'string' },
+      spare: { type: 'boolean' },
       'tenant-id': { type: 'string' },
       'client-id': { type: 'string' },
       cert: { type: 'string' },
@@ -1977,6 +1988,51 @@ async function main(argv: string[]): Promise<void> {
       throw new BhError(
         `bh placement has no ${sub}`,
         { hint: 'status, seeds, seed, test, show, look or mailbox' },
+        2,
+      )
+    }
+    case 'egress': {
+      if (!sub || sub === 'list') return out(await call(config, 'GET', '/egresses'))
+      if (sub === 'add') {
+        if (!arg || !o.ip || !o.proxy)
+          throw new BhError(
+            'Which host, address and proxy?',
+            {
+              hint: 'bh egress add mta1.<domain> --ip <ipv4> --proxy http://user:pass@<ipv4>:<port>',
+            },
+            2,
+          )
+        return out(
+          await call(config, 'POST', '/egresses', {
+            hostName: arg,
+            ipv4: String(o.ip),
+            proxy: String(o.proxy),
+            status: o.spare ? 'spare' : 'active',
+          }),
+        )
+      }
+      const status = { active: 'active', spare: 'spare', retire: 'retired' }[sub]
+      if (status) {
+        if (!arg) throw new BhError('Which egress?', { hint: 'bh egress list prints the ids' }, 2)
+        return out(await call(config, 'PATCH', `/egresses/${arg}`, { status }))
+      }
+      if (sub === 'assign') {
+        if (!arg || Boolean(o.project) === Boolean(o.mailbox))
+          throw new BhError(
+            'Which egress, and for which project or mailbox?',
+            { hint: 'bh egress assign <host name|none> --project <slug> | --mailbox <address>' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', '/egresses/assign', {
+            egress: arg === 'none' ? null : arg,
+            ...(o.project ? { project: String(o.project) } : { mailbox: String(o.mailbox) }),
+          }),
+        )
+      }
+      throw new BhError(
+        `bh egress has no ${sub}`,
+        { hint: 'list, add, active, spare, retire or assign' },
         2,
       )
     }

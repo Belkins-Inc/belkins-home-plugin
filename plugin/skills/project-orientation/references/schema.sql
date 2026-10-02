@@ -1277,6 +1277,7 @@ CREATE TABLE public.mailboxes (
     push_subscription_id text,
     push_client_state_hash text,
     microsoft_tenant_id uuid,
+    egress_id uuid,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 200))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'smtp'::text]))),
@@ -1634,6 +1635,7 @@ CREATE TABLE public.projects (
     setup_skipped_by uuid,
     setup_skipped_via public.actor_via,
     warmup_enabled_via public.actor_via,
+    egress_id uuid,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
@@ -1935,6 +1937,24 @@ CREATE TABLE public.senders (
     organisation_id uuid,
     signature_html text,
     CONSTRAINT senders_owner_check CHECK ((num_nonnulls(project_id, organisation_id) = 1))
+);
+
+
+--
+-- Name: sending_egresses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sending_egresses (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    host_name public.citext NOT NULL,
+    ipv4 inet NOT NULL,
+    proxy bytea NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT sending_egresses_status_check CHECK ((status = ANY (ARRAY['active'::text, 'spare'::text, 'retired'::text])))
 );
 
 
@@ -3075,6 +3095,30 @@ ALTER TABLE ONLY public.sender_images
 
 ALTER TABLE ONLY public.senders
     ADD CONSTRAINT senders_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sending_egresses sending_egresses_host_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_egresses
+    ADD CONSTRAINT sending_egresses_host_name_key UNIQUE (host_name);
+
+
+--
+-- Name: sending_egresses sending_egresses_ipv4_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_egresses
+    ADD CONSTRAINT sending_egresses_ipv4_key UNIQUE (ipv4);
+
+
+--
+-- Name: sending_egresses sending_egresses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_egresses
+    ADD CONSTRAINT sending_egresses_pkey PRIMARY KEY (id);
 
 
 --
@@ -4802,6 +4846,14 @@ ALTER TABLE ONLY public.mailboxes
 
 
 --
+-- Name: mailboxes mailboxes_egress_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mailboxes
+    ADD CONSTRAINT mailboxes_egress_id_fkey FOREIGN KEY (egress_id) REFERENCES public.sending_egresses(id);
+
+
+--
 -- Name: mailboxes mailboxes_microsoft_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5274,6 +5326,14 @@ ALTER TABLE ONLY public.projects
 
 
 --
+-- Name: projects projects_egress_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.projects
+    ADD CONSTRAINT projects_egress_id_fkey FOREIGN KEY (egress_id) REFERENCES public.sending_egresses(id);
+
+
+--
 -- Name: projects projects_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5623,6 +5683,14 @@ ALTER TABLE ONLY public.senders
 
 ALTER TABLE ONLY public.senders
     ADD CONSTRAINT senders_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sending_egresses sending_egresses_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_egresses
+    ADD CONSTRAINT sending_egresses_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
 
 
 --
@@ -6249,4 +6317,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261001152809'),
     ('20261001154948'),
     ('20261001174925'),
-    ('20261002110911');
+    ('20261002110911'),
+    ('20261002190227');
