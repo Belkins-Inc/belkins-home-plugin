@@ -85,7 +85,7 @@ Step guidance may fix the question word for word per persona; then use it word f
 - **Spelling** (checked): American for a recipient in the United States (the contact's country, or
   the company's): center, fueled, program, organize, color. Elsewhere follow the brief.
 - **Ending**: the body ends on its last sentence. No valediction, no name, title or company: the
-  engine appends the sender's signature. No unsubscribe footer or link, no postal address.
+  engine appends the sender's signature. No unsubscribe footer or link.
 - **Typography** (checked): straight quotes (`"`, `'`), three dots rather than an ellipsis character, no
   non-breaking spaces. A mail client typed by a person produces these; a model does not.
 - **Dashes** (refused on write): no em dash, no en dash, no hyphen standing between two clauses or
