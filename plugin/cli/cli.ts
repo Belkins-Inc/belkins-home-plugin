@@ -136,6 +136,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          puts an agency sender on this project, named for this client
   sender unshare <id>                    takes them off it again
 
+  mail-health <org> [--days <n>]         each sending domain over the last days (14): state and why, mailboxes and
+                                         egresses, sent, bounces, Gmail's refusals, replies (Google's recipients
+                                         apart), seed verdicts — worst first
   agency senders <org>                   the agency's own people, and who they write for
   agency add <org> --name <n> [--title <t>] [--signature <text>] [--signature-html-file <file.html>]
   agency remove <org> <id>               while they are on no project and hold no channel
@@ -2035,6 +2038,11 @@ async function main(argv: string[]): Promise<void> {
         { hint: 'list, add, active, spare, retire or assign' },
         2,
       )
+    }
+    case 'mail-health': {
+      if (!sub) throw new BhError('Which organisation?', { hint: 'bh mail-health belkins' }, 2)
+      const q = o.days ? `?days=${Number(o.days)}` : ''
+      return out(await call(config, 'GET', `/orgs/${encodeURIComponent(sub)}/mail-health${q}`))
     }
     case 'warmup':
       if (!sub || sub === 'status') return out(await call(config, 'GET', `/projects/${p()}/warmup`))
