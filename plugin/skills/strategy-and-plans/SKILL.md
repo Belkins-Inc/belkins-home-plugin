@@ -165,7 +165,8 @@ ones — and 67 LinkedIn account days if every lead gets an invite.
 
 Record the arithmetic in a `decision` note with `--strategy`, and set `targetActive` from it. Where
 the senders fall short of the goal, that goes in front of a person before enrolling (section 1):
-more mailboxes connected (a task — a person connects them), a smaller batch, or a later goal.
+more mailboxes (bought and ordered through the `sending-domains` skill, a person approving the
+spend), a smaller batch, or a later goal.
 
 ### 6. Enroll
 

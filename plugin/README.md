@@ -41,6 +41,7 @@ Being added to the platform, getting a token, which environment to point at and 
 | `email-finding` | finding and verifying addresses; replacing one after a bounce |
 | `strategy-and-plans` | strategies, plan templates, enrolling, launch readiness |
 | `copywriting` | every step's copy, follow-ups, referrals and re-engagement |
+| `sending-domains` | buying lookalike domains and ordering mailboxes on them |
 | `sender-signatures` | a sender's text and HTML signature, with links and a photo |
 | `inbox-triage` | classes, drafts, approvals, re-engagement and referrals from replies |
 | `client-report` | the periodic report for the client |
