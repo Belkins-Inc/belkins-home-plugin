@@ -2015,6 +2015,7 @@ async function main(argv: string[]): Promise<void> {
         const q = new URLSearchParams({
           seed: arg,
           ...(o.days ? { days: String(Number(o.days)) } : {}),
+          ...(o.all ? { all: 'true' } : {}),
         })
         return out(await call(config, 'GET', `/placement/digests?${q}`))
       }
