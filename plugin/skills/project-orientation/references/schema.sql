@@ -568,6 +568,42 @@ CREATE VIEW public.calendar_free_slots AS
 
 
 --
+-- Name: call_list_contacts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.call_list_contacts (
+    list_id uuid NOT NULL,
+    contact_id uuid NOT NULL,
+    "position" bigint NOT NULL,
+    phone text NOT NULL,
+    reason text,
+    outcome text,
+    outcome_note text,
+    outcome_at timestamp with time zone,
+    outcome_by uuid,
+    outcome_via public.actor_via,
+    CONSTRAINT call_list_contacts_outcome_check CHECK ((outcome = ANY (ARRAY['no_answer'::text, 'voicemail'::text, 'wrong_number'::text, 'not_interested'::text, 'call_back'::text, 'meeting'::text, 'other'::text]))),
+    CONSTRAINT call_list_contacts_outcome_recorded CHECK ((((outcome IS NULL) = (outcome_at IS NULL)) AND ((outcome IS NULL) = (outcome_via IS NULL)))),
+    CONSTRAINT call_list_contacts_position_check CHECK (("position" >= 1))
+);
+
+
+--
+-- Name: call_lists; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.call_lists (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    name text NOT NULL,
+    note text,
+    created_by uuid,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: channel_invites; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2586,6 +2622,22 @@ ALTER TABLE ONLY public.calendars
 
 
 --
+-- Name: call_list_contacts call_list_contacts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_list_contacts
+    ADD CONSTRAINT call_list_contacts_pkey PRIMARY KEY (list_id, contact_id);
+
+
+--
+-- Name: call_lists call_lists_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_lists
+    ADD CONSTRAINT call_lists_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: channel_invites channel_invites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3479,6 +3531,20 @@ CREATE INDEX ix_agent_runs__claim ON public.agent_runs USING btree (priority, cr
 --
 
 CREATE INDEX ix_agent_runs__project_created ON public.agent_runs USING btree (project_id, created_at DESC);
+
+
+--
+-- Name: ix_call_list_contacts__contact; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_call_list_contacts__contact ON public.call_list_contacts USING btree (contact_id);
+
+
+--
+-- Name: ix_call_lists__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_call_lists__project ON public.call_lists USING btree (project_id, created_at DESC);
 
 
 --
@@ -4379,6 +4445,46 @@ ALTER TABLE ONLY public.calendars
 
 ALTER TABLE ONLY public.calendars
     ADD CONSTRAINT calendars_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id);
+
+
+--
+-- Name: call_list_contacts call_list_contacts_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_list_contacts
+    ADD CONSTRAINT call_list_contacts_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: call_list_contacts call_list_contacts_list_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_list_contacts
+    ADD CONSTRAINT call_list_contacts_list_id_fkey FOREIGN KEY (list_id) REFERENCES public.call_lists(id) ON DELETE CASCADE;
+
+
+--
+-- Name: call_list_contacts call_list_contacts_outcome_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_list_contacts
+    ADD CONSTRAINT call_list_contacts_outcome_by_fkey FOREIGN KEY (outcome_by) REFERENCES public.users(id);
+
+
+--
+-- Name: call_lists call_lists_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_lists
+    ADD CONSTRAINT call_lists_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: call_lists call_lists_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_lists
+    ADD CONSTRAINT call_lists_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 
 
 --
@@ -6319,4 +6425,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261001174925'),
     ('20261002110911'),
     ('20261002190227'),
-    ('20261005195817');
+    ('20261005195817'),
+    ('20261006155802');

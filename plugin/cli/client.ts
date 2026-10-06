@@ -37,3 +37,20 @@ export async function call(
   if (!response.ok) throw new BhError(`${method} ${path} → ${response.status}`, payload)
   return payload
 }
+
+/** A request whose answer is a file, not JSON (a call list's CSV); errors still come back as JSON. */
+export async function callText(config: BhConfig, path: string): Promise<string> {
+  const api = process.env.BH_API || config.api
+  if (!api) throw new BhError('No API set', { hint: 'bh login' }, 2)
+  const token = process.env.BH_TOKEN || config.token
+  const response = await fetch(`${api.replace(/\/+$/, '')}${path}`, {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  })
+  const text = await response.text()
+  if (!response.ok)
+    throw new BhError(
+      `GET ${path} → ${response.status}`,
+      text ? (JSON.parse(text) as unknown) : null,
+    )
+  return text
+}

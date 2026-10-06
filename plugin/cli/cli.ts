@@ -6,7 +6,7 @@ import { parseArgs } from 'node:util'
 
 import { merge, refusedIn, sendRows } from './batch.ts'
 import { consoleLogin } from './console-login.ts'
-import { BhError, call } from './client.ts'
+import { BhError, call, callText } from './client.ts'
 import { readDncCsv } from './csv.ts'
 import {
   CONFIG_PATH,
@@ -99,6 +99,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
        [--status proposed|testing|confirmed|rejected|parked] [--verdict <what the results showed>]
                                          testing: a person only, with --metric and --threshold;
                                          confirmed and rejected carry --verdict
+  calls                                 the project's call lists: who was handed to callers, and how far they got
+  calls create --name <n> --file <json|jsonl|-> [--note <t>] [--allow-repeat]   (a person only)
+                                         [{"contactId","phone","reason"}] in call order; all or nothing: a contact
+                                         on dnc, outside the project or already on a list is refused (--allow-repeat lets the last through)
+  calls show <list-id> [--out <file.csv>]   its people in call order; --out writes the caller's CSV
+  calls outcome <list-id> --contact <contact-id> --outcome no_answer|voicemail|wrong_number|not_interested|call_back|meeting|other|none [--note <t>]
   goals | goal set <YYYY-MM> --target <meetings> [--counts qualified|held] | goal done <YYYY-MM> --done <n>   (a person only)
   contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts"}]
   contacts [--q <text>]
@@ -533,6 +539,7 @@ async function main(argv: string[]): Promise<void> {
       mention: { type: 'string' },
       at: { type: 'string' },
       outcome: { type: 'string' },
+      'allow-repeat': { type: 'boolean' },
       feedback: { type: 'string' },
       notes: { type: 'string' },
       upcoming: { type: 'boolean' },
@@ -976,6 +983,38 @@ async function main(argv: string[]): Promise<void> {
             ...(o['add-evidence'] ? { addEvidence: o['add-evidence'] } : {}),
             ...links,
             ...judged,
+          }),
+        )
+      }
+      break
+    }
+    case 'calls': {
+      if (!sub) return out(await call(config, 'GET', `/projects/${p()}/call-lists`))
+      if (sub === 'create')
+        return out(
+          await call(config, 'POST', `/projects/${p()}/call-lists`, {
+            name: o.name,
+            ...(o.note ? { note: o.note } : {}),
+            allowRepeat: o['allow-repeat'] ?? false,
+            contacts: await readRows(need(o.file)),
+          }),
+        )
+      if (!arg) throw new BhError('Which call list?', { hint: 'bh calls' }, 2)
+      if (sub === 'show') {
+        if (o.out) {
+          await writeFile(o.out, await callText(config, `/call-lists/${arg}/csv`))
+          return out({ written: o.out })
+        }
+        return out(await call(config, 'GET', `/call-lists/${arg}`))
+      }
+      if (sub === 'outcome') {
+        if (!o.contact) throw new BhError('Which contact?', { hint: 'bh calls show <list-id>' }, 2)
+        if (!o.outcome)
+          throw new BhError('What came of the call?', { hint: '--outcome no_answer|…|none' }, 2)
+        return out(
+          await call(config, 'PATCH', `/call-lists/${arg}/contacts/${o.contact}`, {
+            outcome: o.outcome === 'none' ? null : o.outcome,
+            ...(o.note ? { note: o.note } : {}),
           }),
         )
       }
