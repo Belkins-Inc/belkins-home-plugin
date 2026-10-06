@@ -262,7 +262,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement show <test-id>               a test's notes: verdict, folders, filter scores
   placement look <seed address> --message-id <id>   where one message sits in a seed, e.g. a step sent
                                          there with bh copy test: verdict, folders, filter scores
-  placement digests <seed address> [--days <n>]   the quarantine digests a seed received (2 days), as text
+  placement digests <seed address> [--days <n>] [--all]   the quarantine digests a seed received (2 days),
+                                         as text; --all lists every envelope instead, each marked digest or not
   placement mailbox <our address> [--days <n>] [--limit <n>]   its rate per environment over the days (30) and
                                          the notes behind it: kind, seed, subject, body, verdict, scores
   placement domain <domain> [--days <n>] [--limit <n>]   the same for every mailbox on a domain
