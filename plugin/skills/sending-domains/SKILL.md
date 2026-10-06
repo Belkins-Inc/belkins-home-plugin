@@ -106,7 +106,8 @@ When something stops:
   (the task says how), then `bh domain retry <name>` — nothing is bought again. A failed purchase is
   approved again with `bh domain approve`, which places a new order.
 - **Microsoft mailboxes waiting.** The tenant is out of licences: `bh tenant seats <id> --provider
-microsoft` shows it; a person buys seats and the orders carry on by themselves.
+microsoft` shows it. The engine buys them itself on the tenant's bill; it asks a person only when
+it may not (the app lacks the billing role) or Microsoft refuses — the task says which.
 - **A DKIM task.** Publish what the person minted: `bh domain dkim <name> --record "<TXT value>"`.
 
 ## Other DNS, and letting a domain go
