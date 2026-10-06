@@ -337,7 +337,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   slack connect [--project <slug>]       the install URL to open in a browser; with a project, Slack's
                                          own screen picks the channel its nudges go to and joins the
                                          app to it (a private channel included)
-  slack channel <#channel|id|none>       change where this project's nudges go; "none" leaves it quiet
+  slack channel <#channel|id|none>       the project's fallback for people without Slack linked; "none" leaves it quiet
   slack disconnect                       (an admin only)
   slack post (--body <text> | --body-file <path|->) [--to <#channel|email>] [--thread <link|ts>]
              [--mention <email|name|member id, ...>]
