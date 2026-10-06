@@ -262,6 +262,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement show <test-id>               a test's notes: verdict, folders, filter scores
   placement look <seed address> --message-id <id>   where one message sits in a seed, e.g. a step sent
                                          there with bh copy test: verdict, folders, filter scores
+  placement digests <seed address> [--days <n>]   the quarantine digests a seed received (2 days), as text
   placement mailbox <our address> [--days <n>] [--limit <n>]   its rate per environment over the days (30) and
                                          the notes behind it: kind, seed, subject, body, verdict, scores
   placement domain <domain> [--days <n>] [--limit <n>]   the same for every mailbox on a domain
@@ -2008,6 +2009,14 @@ async function main(argv: string[]): Promise<void> {
         const q = new URLSearchParams({ seed: arg, messageId: String(o['message-id']) })
         return out(await call(config, 'GET', `/placement/look?${q}`))
       }
+      if (sub === 'digests') {
+        if (!arg) throw new BhError('Which seed?', { hint: 'bh placement seeds lists them' }, 2)
+        const q = new URLSearchParams({
+          seed: arg,
+          ...(o.days ? { days: String(Number(o.days)) } : {}),
+        })
+        return out(await call(config, 'GET', `/placement/digests?${q}`))
+      }
       if (sub === 'mailbox' || sub === 'domain') {
         if (!arg)
           throw new BhError(
@@ -2029,7 +2038,7 @@ async function main(argv: string[]): Promise<void> {
       }
       throw new BhError(
         `bh placement has no ${sub}`,
-        { hint: 'status, seeds, seed, test, show, look or mailbox' },
+        { hint: 'status, seeds, seed, test, show, look, digests or mailbox' },
         2,
       )
     }
