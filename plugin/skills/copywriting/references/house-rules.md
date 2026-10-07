@@ -128,7 +128,8 @@ Valedictions: "Best regards", "Kind regards", "Warm regards", "Warmest regards",
 ## LinkedIn
 
 - `linkedin_invite`: ≤ 300 characters (LinkedIn refuses more; the engine refuses too). Two short
-  sentences. No subject, no greeting line, no signature, no pitch, no ask beyond connecting.
+  sentences. No subject, no greeting line, no signature, no pitch, no ask beyond connecting. A
+  step set `withoutNote` sends none and has nothing to write.
 - `linkedin_message`: ≤ 1 900 characters by the engine; write two to four sentences. No subject,
   no greeting line (the thread is headed by their name), no signature. One ask.
 - Never assumes the emails arrived; never mentions them.

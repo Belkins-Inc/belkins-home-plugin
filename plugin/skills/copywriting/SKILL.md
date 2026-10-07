@@ -71,7 +71,8 @@ A message is rewritable while it is `needs_copy` or `ready`; once `sending`/`sen
 - email: body under 20 characters (trimmed) or over 2 500 — "the body is shorter than 20
   characters" / "longer than 2500"; subject missing or under 3 characters — "an email needs a
   subject"; subject over 90 — "the subject is longer than 90 characters".
-- `linkedin_invite`: body 1–300 characters; `linkedin_message`: body 1–1 900 characters; either with
+- `linkedin_invite`: body 1–300 characters, or refused outright on a step set `withoutNote` ("the
+  step sends its invitation without a note"); `linkedin_message`: body 1–1 900 characters; either with
   a subject — "a LinkedIn message has no subject".
 - any channel: "a placeholder was left in the copy" when body or subject contains `{{` or `}}`,
   `[name]` / `[first name]` / `[last name]` / `[full name]`, `[company…]`, or **any square

@@ -105,6 +105,13 @@ steps first. Accepted values:
 - `maxWaitDays` (default 10): a step whose condition is still unmet this long after it fell due is
   skipped and the next one is scheduled.
 - `newThread` (email, default false): start a new thread with its own subject instead of "Re:".
+- `withoutNote` (`linkedin_invite` only, default false): send the connection request with no note.
+  LinkedIn caps invitations with a note well below bare ones (a free account hits it after a
+  handful), so use it when an account sends more invitations than that cap allows. The step needs
+  no copy: its messages are ready as soon as a lead is enrolled, and copy written for them is
+  refused. `bh plan step <strategy-id> <step-id> --file` with `{"withoutNote": true}` switches a
+  frozen template's invite step (a person only): its unsent invitations drop their notes at once;
+  `false` puts the ones left bare back in the copy queue.
 - `guidance`: what this step says and how directly it asks — the copywriter's instruction. It may
   fix the exact question per persona ("Question, word for word: Want us to check last month's invoices?"; the first email offers
   something free for a yes and the question asks for it); the writer then uses it word for word. Edits the person makes to the

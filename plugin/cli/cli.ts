@@ -69,7 +69,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
-  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis"}: one step's, frozen templates too; step ids in strategy show
+  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote"}: one step's, frozen templates too; step ids in strategy show
+                                         withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
   companies upsert --file <json|jsonl|->               [{"domain","name","employeeCount","country","facts"}]
                                          every --file of rows: a JSON array, or JSONL (a .jsonl file always is);
                                          sent 500 rows or 512 KB at a time, answered as one; a refused row exits 1

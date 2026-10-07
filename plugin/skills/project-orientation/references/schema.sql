@@ -2297,11 +2297,13 @@ CREATE TABLE public.strategy_steps (
     new_thread boolean DEFAULT false NOT NULL,
     guidance text,
     hypothesis text,
+    without_note boolean DEFAULT false NOT NULL,
     CONSTRAINT strategy_steps_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
     CONSTRAINT strategy_steps_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text]))),
     CONSTRAINT strategy_steps_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT strategy_steps_delay_days_check CHECK ((delay_days >= 0)),
-    CONSTRAINT strategy_steps_position_check CHECK (("position" >= 1))
+    CONSTRAINT strategy_steps_position_check CHECK (("position" >= 1)),
+    CONSTRAINT strategy_steps_without_note_check CHECK (((NOT without_note) OR (channel = 'linkedin_invite'::text)))
 );
 
 
@@ -6427,4 +6429,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261002190227'),
     ('20261005195817'),
     ('20261006155802'),
-    ('20261007113613');
+    ('20261007113613'),
+    ('20261007131121');
