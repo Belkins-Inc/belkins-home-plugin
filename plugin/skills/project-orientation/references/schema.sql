@@ -514,7 +514,7 @@ CREATE TABLE public.meetings (
     project_id uuid NOT NULL,
     contact_id uuid NOT NULL,
     thread_id uuid,
-    calendar_id uuid NOT NULL,
+    calendar_id uuid,
     slot_id uuid,
     strategy_id uuid,
     segment_id uuid,
@@ -541,6 +541,8 @@ CREATE TABLE public.meetings (
     cancel_reason text,
     cancel_by uuid,
     cancel_via public.actor_via,
+    sender_id uuid,
+    booked_through text,
     CONSTRAINT meetings_check CHECK (((outcome IS NULL) OR (status = 'held'::text))),
     CONSTRAINT meetings_outcome_check CHECK ((outcome = ANY (ARRAY['qualified'::text, 'not_qualified'::text, 'opportunity'::text, 'won'::text, 'lost'::text]))),
     CONSTRAINT meetings_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'held'::text, 'no_show'::text, 'cancelled'::text, 'rescheduled'::text])))
@@ -5101,6 +5103,14 @@ ALTER TABLE ONLY public.meetings
 
 
 --
+-- Name: meetings meetings_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meetings
+    ADD CONSTRAINT meetings_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id);
+
+
+--
 -- Name: meetings meetings_slot_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6434,4 +6444,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261006155802'),
     ('20261007113613'),
     ('20261007131121'),
-    ('20261007172045');
+    ('20261007172045'),
+    ('20261007181449');

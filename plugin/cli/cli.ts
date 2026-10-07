@@ -180,6 +180,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   meeting book --thread <id> | --contact <id> --calendar <id> --at <iso>
                                          asks the calendar again, then writes the event with the lead invited;
                                          a scheduled agent books only a slot offered to this lead
+  meeting record --thread <id> | --contact <id> --at <iso> --through <where> [--minutes <n>] [--sender <id>] [--notes <t>]
+                                         a meeting booked outside Home (the client's own link): counted, written
+                                         to no calendar; the sender defaults to the thread's (a person only)
   meeting move <id> --at <iso>           on the calendar too (an agent: only to an offered slot)
   meeting cancel <id> [--reason <t>]     after 60 s, on the calendar too; the lead is told (a person only)
   meeting uncancel <id>                  keep it: within the 60 s after cancel
@@ -550,6 +553,8 @@ async function main(argv: string[]): Promise<void> {
       thread: { type: 'string' },
       mention: { type: 'string' },
       at: { type: 'string' },
+      through: { type: 'string' },
+      minutes: { type: 'string' },
       outcome: { type: 'string' },
       'allow-repeat': { type: 'boolean' },
       feedback: { type: 'string' },
@@ -1717,6 +1722,18 @@ async function main(argv: string[]): Promise<void> {
             ...(o.contact ? { contactId: o.contact } : {}),
             calendarId: o.calendar,
             at: o.at,
+          }),
+        )
+      if (sub === 'record')
+        return out(
+          await call(config, 'POST', `/projects/${p()}/meetings/record`, {
+            ...(o.thread ? { threadId: o.thread } : {}),
+            ...(o.contact ? { contactId: o.contact } : {}),
+            ...(o.sender ? { senderId: o.sender } : {}),
+            ...(o.minutes ? { minutes: Number(o.minutes) } : {}),
+            ...(o.notes ? { notes: o.notes } : {}),
+            at: o.at,
+            bookedThrough: o.through,
           }),
         )
       if (sub === 'move')

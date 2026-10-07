@@ -127,6 +127,9 @@ Mark it handled with `bh triage` and say why in `--note`.
   task for a person; a person may book any free time.
 - Moving to another offered slot is `bh meeting move <id> --at <iso>`. Cancelling is a person's:
   draft the answer and open a task.
+- A project with no calendar connected books through the client's own link, by a person. Once it
+  is booked there, a person records it so the goal counts it: `bh meeting record --thread <id> --at
+  <iso> --through <where it was booked> [--minutes <n>]`. Nothing is written to any calendar.
 - Booking pauses the lead's colleagues at the same company until a week after the meeting; nothing
   to do about it, but do not write to them in the meantime.
 - Where a meeting is already booked, state its day and time exactly as recorded; that is the one
