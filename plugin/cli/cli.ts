@@ -153,6 +153,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          a mailbox of theirs, shared by every project they are on
   agency smtp <org> --sender <id> --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          a password mailbox of theirs (rows as for mailbox smtp)
+  agency jmap <org> --sender <id> --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
+                                         a JMAP mailbox of theirs (rows as for mailbox jmap)
   agency linkedin <org> <unipile-account-id> --sender <id> [--invite-limit <n>] [--message-limit <n>]
   agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
   agency approve <org> <name>… --max-cents <n> [--redirect <url>] [--platform google|microsoft]
@@ -191,9 +193,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          [{"provider":"google|microsoft","refreshToken","sender":"<name>"|"senderId"}]
   mailbox smtp --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          a mailbox on any SMTP/IMAP host, signed in with its password; both logins
-                                         are tried first. [{"address","password","host":"zoho|zoho-eu|migadu|purelymail|fastmail"
+                                         are tried first. [{"address","password","host":"zoho|zoho-eu|migadu|purelymail|fastmail|belkins"
                                          | "smtp":{"host","port"},"imap":{"host","port"}, "sender":"<name>"|"senderId",
                                          "saveSent":false (the host files sent mail itself)}] — adding it again reconnects it
+  mailbox jmap --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
+                                         a mailbox on a JMAP host (Stalwart), signed in with its password; the login
+                                         and the right to send as the address are tried first. [{"address","password",
+                                         "host":"belkins" | "url":"https://…", "user" (else the address), "sender":"<name>"|"senderId"}]
+                                         — adding it again reconnects it, also one added with mailbox smtp
   mailbox update <id> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed|--not-warmed] [--status active|paused|archived]
                  [--sender <id>]            another sender of the project writes from it
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
@@ -1069,8 +1076,8 @@ async function main(argv: string[]): Promise<void> {
             ...(o['not-warmed'] ? { warmed: false } : {}),
           }),
         )
-      if (sub === 'smtp')
-        return addSmtpMailboxes(config, `/orgs/${arg}/mailboxes/smtp`, need(o.file), {
+      if (sub === 'smtp' || sub === 'jmap')
+        return addPasswordMailboxes(config, `/orgs/${arg}/mailboxes/${sub}`, need(o.file), {
           senderId: o.sender,
           ...mailboxLimits(o),
         })
@@ -1914,8 +1921,13 @@ async function main(argv: string[]): Promise<void> {
         }
         return
       }
-      if (sub === 'smtp')
-        return addSmtpMailboxes(config, `/projects/${p()}/mailboxes/smtp`, need(o.file), limits)
+      if (sub === 'smtp' || sub === 'jmap')
+        return addPasswordMailboxes(
+          config,
+          `/projects/${p()}/mailboxes/${sub}`,
+          need(o.file),
+          limits,
+        )
       if (sub === 'order') {
         const mailboxes = o.file
           ? await readRows(o.file)
@@ -2295,7 +2307,7 @@ function mailboxLimits(o: Record<string, unknown>) {
  * Password mailboxes, one at a time: each is logged in to before it is stored, and one refused
  * must not stop the rest. A refusal names the address only — never the password it came with.
  */
-async function addSmtpMailboxes(
+async function addPasswordMailboxes(
   config: BhConfig,
   path: string,
   file: string,
