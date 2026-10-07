@@ -1,7 +1,7 @@
 \restrict dbmate
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.4
+-- Dumped by pg_dump version 18.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -965,6 +965,9 @@ CREATE TABLE public.thread_messages (
     triaged_by uuid,
     triaged_via public.actor_via,
     reply_id uuid,
+    alerted_at timestamp with time zone,
+    last_alerted_at timestamp with time zone,
+    alerts integer DEFAULT 0 NOT NULL,
     CONSTRAINT thread_messages_classification_check CHECK ((classification = ANY (ARRAY['interested'::text, 'meeting'::text, 'question'::text, 'not_now'::text, 'referral'::text, 'not_interested'::text, 'unsubscribe'::text, 'wrong_person'::text, 'acknowledgement'::text, 'out_of_office'::text, 'other'::text]))),
     CONSTRAINT thread_messages_direction_check CHECK ((direction = ANY (ARRAY['in'::text, 'out'::text]))),
     CONSTRAINT thread_messages_kind_check CHECK ((kind = ANY (ARRAY['reply'::text, 'auto_reply'::text, 'bounce'::text, 'outreach'::text, 'manual'::text])))
@@ -6430,4 +6433,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261005195817'),
     ('20261006155802'),
     ('20261007113613'),
-    ('20261007131121');
+    ('20261007131121'),
+    ('20261007172045');
