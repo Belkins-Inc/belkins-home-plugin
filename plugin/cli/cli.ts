@@ -143,8 +143,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   sender unshare <id>                    takes them off it again
 
   mail-health <org> [--days <n>]         each sending domain over the last days (14): state and why, mailboxes and
-                                         egresses, sent, bounces, Gmail's refusals, replies (Google's recipients
-                                         apart), seed verdicts — worst first
+                                         egresses, sent, bounces, Gmail's refusals, replies and blocks by receiving
+                                         side (Google, Microsoft, Proofpoint, Mimecast, other gateways), seed
+                                         verdicts — worst first
   agency senders <org>                   the agency's own people, and who they write for
   agency add <org> --name <n> [--title <t>] [--signature <text>] [--signature-html-file <file.html>]
   agency remove <org> <id>               while they are on no project and hold no channel
