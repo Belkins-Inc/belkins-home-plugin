@@ -264,15 +264,16 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement seeds                        the seed mailboxes: environment, status, last note
   placement seed connect --env google|m365|m365_defender|m365_proofpoint
                                          the URL to sign in to as the seed; it is only ever read (an admin)
-  placement seed activate|suspect|archive <id>   put a seed back in the tests, set it aside, or retire it
+  placement seed activate|suspect|archive <id>   put a seed back in the tests, set it aside, or retire it (an admin)
   placement test <our address> [--per-environment <n>]   notes from that mailbox to n seeds in each environment
                                          (default 2), queued and sent at the mailbox's own pace; they count
-                                         toward its daily limit (an admin)
+                                         toward its daily limit; once a mailbox a day, but for an admin
   placement show <test-id>               a test's notes: verdict, folders, filter scores
   placement look <seed address> --message-id <id>   where one message sits in a seed, e.g. a step sent
                                          there with bh copy test: verdict, folders, filter scores
   placement digests <seed address> [--days <n>] [--all]   the quarantine digests a seed received (2 days),
                                          as text; --all lists every envelope instead, each marked digest or not
+                                         (an admin: a seed's mail is every organisation's)
   placement mailbox <our address> [--days <n>] [--limit <n>]   its rate per environment over the days (30) and
                                          the notes behind it: kind, seed, subject, body, verdict, scores
   placement domain <domain> [--days <n>] [--limit <n>]   the same for every mailbox on a domain
@@ -293,10 +294,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   linkedin update <id> [--invite-limit <n>] [--message-limit <n>] [--delay-min <s>] [--delay-max <s>] [--status active|paused|archived]
   inbox                                  replies waiting for triage, with the engine's classification
   inbox test-send --from <our address> --to <our address> [--subject <t>] [--body <t>] [--reply]
-                                         an admin's test of the round trip: sends through the provider; the
+                                         a test of the round trip: sends through the provider; the
                                          answer reaches the inbox only through the reader. --reply answers
                                          the newest message --to sent --from
-  inbox placement --mailbox <our address> --message-id <id>   where it landed: INBOX, SPAM, a tab (an admin)
+  inbox placement --mailbox <our address> --message-id <id>   where it landed: INBOX, SPAM, a tab
   thread <id>                            the whole conversation, with our replies
   thread close <id> --note <why>         no answer needed: it leaves Needs reply until the lead
                                          writes again; the note says why, for whoever reads the
