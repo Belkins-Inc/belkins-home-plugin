@@ -6,7 +6,7 @@ reads — anything else answers `422 Api key required`).
 Apollo is used for **one question: which LinkedIn profile is this named person.** It is not a
 sourcing search here.
 
-## People match — a name and an employer to a profile ($0.0083 per call, found or not)
+## People match — a name and an employer to a profile ($0.0065 per call, found or not)
 
 ```sh
 bh call apollo POST /people/match --contact <contact-id> --body '{
