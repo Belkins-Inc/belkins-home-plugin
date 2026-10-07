@@ -29,8 +29,20 @@ stands.
   agreed, what you are about to do anyway. Repeating it is the clearest sign nobody is typing.
 - **Do not recite figures** (percentages, multiples) unless the message you answer asked for them.
 - **No rubrics**: no "What I do:", "Next steps:", no headings, no bullets, no markdown. Plain text.
-- **Match the register** of the thread. Short sentences. No exclamation marks, no "I hope this email
-  finds you well", no "just following up".
+- **Greet once per conversation.** Read the date and time of every message in the thread before
+  writing. If we already greeted the lead in this thread within the last day, the conversation is
+  live: start with the point, no "Hi <name>,". A greeting opens only a new conversation or an answer
+  after a gap of a day or more.
+- **Write like a person typing a quick email**: plain, conversational American English, short
+  sentences, the words a salesperson would use on the phone. If it reads like a template, rewrite
+  it.
+- **Match the register** of the thread. No exclamation marks in a first answer, no "I hope this
+  email finds you well", no "just following up". A warm close once a meeting is agreed ("See you
+  Monday!") is fine.
+- **No colon as punctuation** ("Monday works: would 11:30 suit you?"): two sentences, or a comma. A
+  colon inside a time (11:30 am) stays.
+- **No word twice** in a short email ("the invite for Monday at 1 pm. See you Monday!" says Monday
+  once too often).
 - **No dash as punctuation.** Not an em dash, not an en dash, not a hyphen between two clauses:
   write two sentences or join them with a comma. A hyphen inside a word (follow-up) stays.
 - **Sign nothing.** The engine appends the sender's signature (the enrollment's sender).
@@ -88,9 +100,20 @@ Mark it handled with `bh triage` and say why in `--note`.
 
 - Free time comes from the client's calendars: `bh slots [--days 7] [--calendar <id>]` lists free
   starts, soonest first, with each calendar's zone and the local time. Offer only those, two or
-  three, spread over different days, in the lead's time zone (`contacts.timezone`, else
-  `companies.timezone`, else the project's), with the zone written out and the length. Never a
-  booking link, never "send me your availability", never a time you made up.
+  three, in the lead's time zone (`contacts.timezone`, else `companies.timezone`, else where the
+  company sits, else the project's). Never a booking link, never "send me your availability", never
+  a time you made up.
+- **The body names times as the lead's own, with no zone label**: "Monday at 11:30 am or 1 pm",
+  not "11:30 am ET". The zone, the UTC time and the calendar they were read from go in `--note`.
+  Never the approver's own time zone: the meeting is between the client and the lead, and nobody
+  else's clock matters.
+- **When the client books through their own page** (the project's rules say so, for example a
+  HubSpot meetings link, and `bh slots` is empty because the project's calendars are archived):
+  read the free times on that page, convert them to the lead's zone, and offer two in the body. Once
+  the lead picks one, a person books it on that page in the lead's name, with whoever the project's
+  rules say to copy; the confirming draft says the invite was sent ("Great, I just sent over the
+  invite for 1 pm. See you Monday!"). Such a meeting is not in `bh meetings`; record it in a
+  decision note.
 - Hold what you offer: with the draft, run `bh slots offer <thread-id> --slots <iso>,<iso>
   [--calendar <id>]`. The slots are then kept for this lead — nobody else is offered them — for 72
   hours; a newer offer to the same thread replaces the older one. Set `--approve-by` on the draft to
@@ -108,6 +131,29 @@ Mark it handled with `bh triage` and say why in `--note`.
   to do about it, but do not write to them in the meantime.
 - Where a meeting is already booked, state its day and time exactly as recorded; that is the one
   date you may name without offering it.
+
+## An example
+
+The lead asked for a call on Monday after 11 am; an hour later we offered two times, and they
+answered "1pm would work." The client books through their own page, where the person has just
+booked it.
+
+Not this:
+
+```
+Hi Sam,
+
+Great, I just sent over the invite for Monday at 1:00 pm ET. Talk to you then.
+```
+
+It greets someone we greeted an hour ago, labels the time with a zone the lead lives in, and says
+Monday where the next sentence can.
+
+This:
+
+```
+Great, I just sent over the invite for 1 pm. See you Monday!
+```
 
 ## The note to the approver (`--note`)
 

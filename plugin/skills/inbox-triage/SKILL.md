@@ -179,4 +179,7 @@ offer; re-engagements and referrals made or handed to whom; what to watch>"`.
   list; offering them without `bh slots offer` (someone else may be offered the same hour);
   sending a booking link.
 - Writing the approver's note into the body.
+- Opening with "Hi <name>," when we greeted the lead in the same thread within the day; a zone label
+  ("1 pm ET") or the approver's own time in the body; a colon between clauses; the same word twice in
+  a three-line email. Read the thread's timestamps before writing (references/answers.md).
 - Leaving positives for later: they go first, every run.
