@@ -164,14 +164,15 @@ new BetterContact or FullEnrich search is a person's session.
 ## D. Phone numbers (when a person wants phones)
 
 1. **Apollo first**: the same `bulk_match` with `"reveal_phone_number": true` — the emails come at
-   once, the phones within a minute to the engine; read them with `bh call show <call-id>`
+   once, the phones within seconds to the engine; read them with `bh call show <call-id>`
    (`deliveries`, apollo.md). Five credits ($0.032) per person a number was found for.
 2. **BetterContact for whom Apollo found none** (`enrich_phone_number: true`, about $0.50 a number),
    then FullEnrich (`contact.phones`) for the few that matter most.
 3. **Write** the number to `facts.phone` (`value`, `source`, `seenAt`, `type`, `confidence`; apollo.md).
    A contact with a different number already keeps it; the new one goes in `facts.phone_alt`.
 4. **Do Not Call**: Apollo's `dnc_status_cd: "found"` → `"dnc": true` on that number; nobody dials it.
-5. Record a miss: `"facts":{"phone_search":{"result":"not_found","source":"apollo,bettercontact","seenAt":"…"}}`.
+5. Record a miss — no delivery ten minutes on means Apollo found no number for anyone in the call:
+   `"facts":{"phone_search":{"result":"not_found","source":"apollo,bettercontact","seenAt":"…"}}`.
 
 ## Before you stop
 

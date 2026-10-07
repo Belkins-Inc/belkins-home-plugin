@@ -47,11 +47,14 @@ bh call apollo POST /people/bulk_match --strategy <id> --body '{"details":[…],
 
 - Apollo reveals phones **only to a webhook**: the engine adds its own `webhook_url` (never pass one)
   and books the delivery as a call of its own. The answer itself carries the emails at once; the
-  phones arrive within about a minute.
+  phones arrive within seconds.
 - Read them with `bh call show <call-id>`: `deliveries[].response.people[]` is
   `{id, phone_numbers: [{sanitized_number, type_cd, confidence_cd, status_cd, dnc_status_cd}]}`.
-  Join `people[].id` to `matches[].id` of the answer. An empty `deliveries` a few minutes later means
-  Apollo has not sent it yet; it does not mean "no phones".
+  Join `people[].id` to `matches[].id` of the answer; a person with empty `phone_numbers` has none.
+- **When Apollo finds no number for anyone in the call, it sends nothing** — `deliveries` stays empty
+  and no phone credits are charged. A delivery comes within seconds when there is one (production,
+  2026-10-07: one in 2 s; none after 17 minutes for two people without numbers). So an empty
+  `deliveries` ten minutes on means no numbers: record the miss (email-finding, section D).
 - **Five credits ($0.032) per person a number was found for**, nothing otherwise — so there is no
   need to check first whether a phone exists.
 - `type_cd`: `mobile`, `work_direct`, `home`, `other`. Take a mobile first, then `work_direct`.
