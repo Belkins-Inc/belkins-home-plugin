@@ -3,8 +3,9 @@
 Waterfall enrichment for emails and phones. Base `https://app.fullenrich.com/api/v1`; the engine
 sends the key as `Authorization: Bearer …`. Asynchronous: submit, then poll.
 
-Use it as the **second** email finder (for people BetterContact found nothing for) and for
-**phones only when a person asks** — a phone costs roughly ten times an email.
+Use it as the **third** email finder (for people Apollo and BetterContact found nothing for) and for
+**phones only when a person asks**, and after Apollo and BetterContact — a phone costs roughly ten
+times an email.
 
 ## Submit (free)
 

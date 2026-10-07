@@ -334,7 +334,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   call <provider> <METHOD> <path?query> [--body <json> | --body-file <path|->] [--again]
        [--strategy <id>] [--segment <id>] [--source <id>] [--search <id>] [--company <id>] [--contact <id>]
                                          the provider's answer on stdout, untouched; cost on stderr
-  call show <call-id>                    an earlier call with what the provider answered (use it again instead of paying again)
+  call show <call-id>                    an earlier call with what the provider answered (use it again instead of paying again),
+                                         and what it delivered later (Apollo's phones) under deliveries
   spend [--from <date>] [--to <date>]    this month's spend by provider unless dates are given, and credits left
   spend add --provider <p> --operation subscription|data_purchase|infrastructure|llm|other --usd <n> [--note <t>]
   address check <contact-id> --address <a> [--provider bouncer|scrubby] [--reason bounce_replacement|catch_all|new_contact] [--again]
@@ -1358,6 +1359,7 @@ async function main(argv: string[]): Promise<void> {
         results: number | null
         credits: number | null
         creditsLeft: number | null
+        deliveredLater?: boolean
         body: unknown
       }
       const cost = answer.costUsd === null ? 'cost unknown' : `$${answer.costUsd.toFixed(4)}`
@@ -1368,6 +1370,10 @@ async function main(argv: string[]): Promise<void> {
       process.stderr.write(
         `# ${name} ${answer.status} · ${cost}${credits} · ${answer.results ?? '?'} results · call ${answer.callId}\n`,
       )
+      if (answer.deliveredLater)
+        process.stderr.write(
+          `# the rest arrives later, to the engine: bh call show ${answer.callId} lists it under deliveries\n`,
+        )
       out(answer.body)
       if (answer.status >= 400) process.exitCode = 1
       return

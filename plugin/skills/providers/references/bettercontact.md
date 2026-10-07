@@ -33,8 +33,9 @@ bh call bettercontact POST / --strategy <strategy-id> --body-file /tmp/bc/batch1
   back as a **list** — `"custom_fields": [{"name": "contact", "value": "<id>", "position": 0}]` —
   read it by `name`, never by position. A row whose key you cannot read is dropped, not guessed.
 - Give it everything you have: a LinkedIn URL raises the hit rate; a name plus domain works without.
-- **`enrich_phone_number` stays false.** A phone costs about ten times an address; phones are
-  bought only when a person asks (FullEnrich).
+- **`enrich_phone_number` stays false** unless a person wants phones and Apollo found none for these
+  people: a number here costs ten credits ($0.50), Apollo's $0.032 (apollo.md). On Fuel Me's 280
+  BetterContact found 207 numbers for $99; Apollo 255 for about $10.
 - The submit is guarded against repeats: the same batch body twice within 30 days is refused with
   409 — which is what you want.
 

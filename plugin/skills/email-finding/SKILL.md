@@ -1,11 +1,12 @@
 ---
 name: email-finding
-description: Finding and verifying email addresses — BetterContact / FullEnrich async enrichment, Bouncer verification, catch-all and unknown handling (LinkedIn instead of email; Scrubby is off), the email_status values, and replacing an address after a hard bounce with up to three checked guesses. Use when contacts need addresses, when an address's status is in doubt, or when a "Replace the bounced address" task is open.
+description: Finding and verifying email addresses and phone numbers — Apollo first, then BetterContact / FullEnrich async enrichment, Bouncer verification, catch-all and unknown handling (LinkedIn instead of email; Scrubby is off), the email_status values, and replacing an address after a hard bounce with up to three checked guesses. Use when contacts need addresses, when an address's status is in doubt, or when a "Replace the bounced address" task is open.
 ---
 
 # Finding and verifying addresses
 
-Provider mechanics: [bettercontact](../providers/references/bettercontact.md),
+Provider mechanics: [apollo](../providers/references/apollo.md),
+[bettercontact](../providers/references/bettercontact.md),
 [fullenrich](../providers/references/fullenrich.md), [bouncer](../providers/references/bouncer.md),
 [scrubby](../providers/references/scrubby.md) (off for now).
 
@@ -58,38 +59,50 @@ run the batch's company domains through `bh dnc check` first and drop what it na
    `"facts":{"email_search":{"value":"name_incomplete","source":"linkedin","note":"last name \"A\" on LinkedIn, 2026-09-24"}}`,
    then either find the full name first (the profile, the company's team page) and submit it in a
    later batch, or work that person through LinkedIn only.
-3. **Submit to BetterContact** (≤ 100 per batch; `custom_fields.contact` = the contact id; LinkedIn
-   URL, name, domain, company name). Keep the request id: write it down with
-   `bh note add --kind todo --title "Collect BetterContact batch <id>" --body "<strategy>, <n> contacts"`
-   so another session can collect it, and supersede the note once collected.
-4. **Collect once**, when `status` is `terminated` (minutes, sometimes twenty). Match rows by the echoed
-   `custom_fields` entry named `contact`.
-5. **Verify every found address with Bouncer**, one call each, tied to the contact:
+3. **Ask Apollo first** (`people/bulk_match`, 10 a call, $0.0065 per person matched; apollo.md):
+   LinkedIn URL, name, domain, company name. Keep the contact id beside each `details[]` entry —
+   `matches[]` comes back in the same order.
+4. **Verify every Apollo address with Bouncer**, one call each, tied to the contact:
    `bh call bouncer GET "/email/verify?email=<urlencoded>&timeout=20" --contact <id>`. Map the answer
    (bouncer.md): deliverable → `valid`; undeliverable → `invalid`; risky + `acceptAll: "yes"` →
    `catch_all`; anything else → `unknown`. (For an address already on the contact,
    `bh address check <contact-id> --address <a> --reason new_contact` does the same check and writes
-   the status itself.)
-6. **Write** with the contact's existing key, so the upsert updates it instead of creating a second
+   the status itself.) **Only `deliverable` settles the contact**: write it
+   (`"source":"apollo"`, step 7). Everyone else — no match, no email, catch-all, unknown,
+   undeliverable — goes on to BetterContact; do not write Apollo's address for them.
+5. **Submit the rest to BetterContact** (≤ 100 per batch; `custom_fields.contact` = the contact id;
+   LinkedIn URL, name, domain, company name). Keep the request id: write it down with
+   `bh note add --kind todo --title "Collect BetterContact batch <id>" --body "<strategy>, <n> contacts"`
+   so another session can collect it, and supersede the note once collected.
+6. **Collect once**, when `status` is `terminated` (minutes, sometimes twenty). Match rows by the
+   echoed `custom_fields` entry named `contact`, and verify every address it found with Bouncer as in
+   step 4. BetterContact's catch-all and unknown addresses are written with that status (section B).
+7. **Write** with the contact's existing key, so the upsert updates it instead of creating a second
    contact — always include the `linkedinUrl` the contact already has:
 
    ```json
    {"linkedinUrl":"https://www.linkedin.com/in/anna-berg","email":"anna.berg@acme.com","emailStatus":"valid",
-    "facts":{"email_search":{"value":"found","source":"bettercontact","note":"bouncer deliverable 2026-09-24"},
+    "facts":{"email_search":{"value":"found","source":"apollo","note":"bouncer deliverable 2026-10-07"},
              "mx":{"value":"aspmx.l.google.com","source":"bouncer"}}}
    ```
 
+   `source` is the provider the address came from (`apollo`, `bettercontact`, `fullenrich`).
    Store `invalid` addresses too (with `emailStatus: "invalid"`) so nobody buys them again.
    The contact keeps its company even when the address is on another domain (a group domain like
    `global.ntt` for a contact at `services.global.ntt`); only `companyDomain` moves it.
-7. **Not found** → `"facts":{"email_search":{"value":"not_found","source":"bettercontact","note":"2026-09-24"}}`.
-   For contacts worth a second try (top persona, strong signal) submit them to FullEnrich
+8. **Not found** by either →
+   `"facts":{"email_search":{"value":"not_found","source":"apollo,bettercontact","note":"2026-10-07"}}`.
+   For contacts worth a third try (top persona, strong signal) submit them to FullEnrich
    (`contact.emails` only) and verify the same way. Otherwise the contact goes LinkedIn-only.
 
-Never take an address from Apollo, Generect or a web page as found: provider-incidental addresses
-were right 74% of the time against 91% for BetterContact, and the wrong ones are plausible patterns
-on catch-all domains. Never write `email_not_unlocked@…`. Never write a guessed pattern as an
-address without a check.
+Why Apollo goes first and Bouncer decides (measured 2026-10-07 against what our sends delivered and
+bounced): Apollo agreed with 99 of 127 addresses BetterContact had found and we had delivered to, at
+a seventh of the price — but its own `verified` covered 8 addresses that had bounced `no_such_user`,
+and its catch-all patterns are plausible guesses verification cannot refuse. So an Apollo address is
+taken only on Bouncer's `deliverable`, and a catch-all one goes to BetterContact instead.
+
+Never take an address from Generect or a web page as found. Never write `email_not_unlocked@…`.
+Never write a guessed pattern as an address without a check.
 
 ## B. Catch-all and unknown
 
@@ -148,6 +161,18 @@ task **"Replace the bounced address <address>"**.
 A scheduled agent can call only Bouncer (Scrubby is off), so it replaces by guessing and checking; a
 new BetterContact or FullEnrich search is a person's session.
 
+## D. Phone numbers (when a person wants phones)
+
+1. **Apollo first**: the same `bulk_match` with `"reveal_phone_number": true` — the emails come at
+   once, the phones within a minute to the engine; read them with `bh call show <call-id>`
+   (`deliveries`, apollo.md). Five credits ($0.032) per person a number was found for.
+2. **BetterContact for whom Apollo found none** (`enrich_phone_number: true`, about $0.50 a number),
+   then FullEnrich (`contact.phones`) for the few that matter most.
+3. **Write** the number to `facts.phone` (`value`, `source`, `seenAt`, `type`, `confidence`; apollo.md).
+   A contact with a different number already keeps it; the new one goes in `facts.phone_alt`.
+4. **Do Not Call**: Apollo's `dnc_status_cd: "found"` → `"dnc": true` on that number; nobody dials it.
+5. Record a miss: `"facts":{"phone_search":{"result":"not_found","source":"apollo,bettercontact","seenAt":"…"}}`.
+
 ## Before you stop
 
 - Collect every submitted batch, or leave its request id in a `todo` note.
@@ -165,4 +190,6 @@ new BetterContact or FullEnrich search is a person's session.
 - Checking the same address twice within 30 days (refused as a repeat; the verdict is already in
   `bh address checks`, the answer in `bh call show <call-id>`). `--again` pays for a fresh check —
   only when something changed.
-- Buying phones with addresses (`enrich_phone_number: true`) — ten times the cost, only when a person asks.
+- Buying phones nobody asked for — only when a person wants phones, and from Apollo first (section C).
+- Writing an Apollo address that Bouncer called catch-all, unknown or undeliverable — that contact
+  goes to BetterContact.

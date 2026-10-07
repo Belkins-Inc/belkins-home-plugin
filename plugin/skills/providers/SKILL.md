@@ -75,13 +75,13 @@ what you need from an answer in the same session anyway — a lost large answer 
 
 ### Unknown prices
 
-A few endpoints have no known rate (Scrubby submission, Apollo people search). Their calls print `cost unknown` and write no `spend` row; the `results` count is still
+A few endpoints have no known rate (Scrubby submission). Their calls print `cost unknown` and write no `spend` row; the `results` count is still
 kept. Never invent a cost. If an invoice for such a provider arrives, a person records it with
 `bh spend add --provider <p> --operation data_purchase --usd <n> --note <what>`.
 
-BetterContact and FullEnrich state the credits a batch used in the answer, and the engine books
-those at the plan's price per credit (BetterContact $0.05, FullEnrich $0.055; `usdPerCredit` in
-`bh providers`). When a plan changes, an admin sets the new price with
+BetterContact, FullEnrich and Apollo state the credits a call used, and the engine books those at
+the plan's price per credit (BetterContact $0.05, FullEnrich $0.055, Apollo $0.006473; `usdPerCredit`
+in `bh providers`). When a plan changes, an admin sets the new price with
 `bh providers price <provider> --usd <n>`; it applies from then on.
 
 ### Spend
@@ -99,9 +99,11 @@ Check it before a large order and mention it in `bh session end`.
 | Companies in a market (LinkedIn data) | Generect database companies, $0.0045/row | [generect](references/generect.md) |
 | People inside a company, or off a segment | Generect database leads, $0.0045/row | [generect](references/generect.md) |
 | Which LinkedIn profile is this named person | Apollo `people/match` first, Generect realtime leads only when Apollo is silent | [apollo](references/apollo.md) |
+| A person's email address — first try | Apollo `people/bulk_match` (10 a call), $0.0065 per person matched; Bouncer decides | [apollo](references/apollo.md) |
 | A company's LinkedIn page from its name | Generect realtime companies with `keywords`, $0.007/row | [generect](references/generect.md) |
-| A person's email address | BetterContact (async, up to 100 per batch), $0.05 per address found | [bettercontact](references/bettercontact.md) |
-| A second try, or a phone number (when a person asks) | FullEnrich (async), $0.055 per credit | [fullenrich](references/fullenrich.md) |
+| A person's email address — second try, for whom Apollo gave nothing Bouncer calls deliverable | BetterContact (async, up to 100 per batch), $0.05 per address found | [bettercontact](references/bettercontact.md) |
+| A phone number (when phones are wanted) | Apollo `bulk_match` with `reveal_phone_number`, $0.032 per number found; BetterContact for whom Apollo has none, ~$0.50 per number | [apollo](references/apollo.md) |
+| A third try for an address or a number | FullEnrich (async), $0.055 per credit | [fullenrich](references/fullenrich.md) |
 | Is this address deliverable, is the domain catch-all | Bouncer, $0.0056/address | [bouncer](references/bouncer.md) |
 | Settle a catch-all / unknown address, confirm a guess | **off for now** — such an address goes by LinkedIn | [scrubby](references/scrubby.md) |
 | A web page as text, a site's page list | Firecrawl scrape / map, $0.0009 each | [firecrawl](references/firecrawl.md) |
@@ -114,8 +116,9 @@ Rules that cut across providers:
   what you think before a single row is bought.
 - **Page small first.** Ask for 10–25 rows, read them, check they are the market you meant, then
   go wider.
-- **An address from a search or profile provider is not an address.** Apollo and Generect addresses
-  are ignored; addresses come from BetterContact/FullEnrich and are verified with Bouncer.
+- **An address is a candidate until Bouncer calls it deliverable.** Apollo's `bulk_match` and
+  BetterContact/FullEnrich give candidates; Generect's addresses and Apollo's search placeholders are
+  ignored.
 - **Nothing sends to an unverified address.** See the `email-finding` skill.
 - **A scheduled agent may call only Bouncer and Scrubby** (Scrubby is off for now: its paid calls are
   refused with `provider_off`, collecting old checks still works) for address checks after a bounce; every
@@ -136,6 +139,8 @@ Rules that cut across providers:
 - Re-running page 1 of a query in a new session instead of reading `searches.cursor`.
 - Sending Apollo search filters as a JSON body (ignored — the search becomes "everybody").
 - Ordering a Bright Data snapshot without `records_limit`.
-- Taking `email_not_unlocked@…` or an incidental provider email as a contact's address.
+- Taking `email_not_unlocked@…`, a Generect address, or an Apollo address Bouncer has not called
+  deliverable as a contact's address.
+- Passing a `webhook_url` to Apollo — the engine adds its own; phones are read with `bh call show`.
 - Using `--again` to "retry" a call that failed: a failed call is not guarded, so `--again` is only
   needed to repeat a call that succeeded.
