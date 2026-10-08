@@ -70,8 +70,10 @@ the earlier call produced — it should already be in `companies` / `contacts` /
 `bh call show <call-id>` prints the provider's answer again for free. Add `--again` (and pay again)
 only when the data itself must be fresh.
 
-The ledger keeps answers up to 1 MB (`provider_calls.response`); a larger answer is not kept. Upsert
-what you need from an answer in the same session anyway — a lost large answer costs a second call.
+The ledger keeps answers up to 1 MB (`provider_calls.response`); a larger answer is not kept. A
+Firecrawl page or map keeps only its first 16 KB. After 30 days every answer is cleared
+(`{"cleared": "kept for 30 days"}`) and only the call's row stays. Upsert what you need from an
+answer in the same session anyway — a lost large answer costs a second call.
 
 ### Unknown prices
 
