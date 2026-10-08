@@ -149,6 +149,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          egresses, sent, bounces, Gmail's refusals, replies and blocks by receiving
                                          side (Google, Microsoft, Proofpoint, Mimecast, other gateways), seed
                                          verdicts — worst first
+  bounces <org> [--days <n>] [--project <slug>]
+                                         how the mail sent over the last days (14) bounced: by class, day, sending
+                                         mailbox, strategy, receiving side and recipient domain; codes; latest 50
   agency senders <org>                   the agency's own people, and who they write for
   agency add <org> --name <n> [--title <t>] [--signature <text>] [--signature-html-file <file.html>]
   agency remove <org> <id>               while they are on no project and hold no channel
@@ -2146,6 +2149,14 @@ async function main(argv: string[]): Promise<void> {
       if (!sub) throw new BhError('Which organisation?', { hint: 'bh mail-health belkins' }, 2)
       const q = o.days ? `?days=${Number(o.days)}` : ''
       return out(await call(config, 'GET', `/orgs/${encodeURIComponent(sub)}/mail-health${q}`))
+    }
+    case 'bounces': {
+      if (!sub) throw new BhError('Which organisation?', { hint: 'bh bounces belkins' }, 2)
+      const q = new URLSearchParams()
+      if (o.days) q.set('days', String(Number(o.days)))
+      if (o.project) q.set('project', String(o.project))
+      const qs = q.size ? `?${q}` : ''
+      return out(await call(config, 'GET', `/orgs/${encodeURIComponent(sub)}/bounces${qs}`))
     }
     case 'warmup':
       if (!sub || sub === 'status') return out(await call(config, 'GET', `/projects/${p()}/warmup`))
