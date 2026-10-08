@@ -193,7 +193,7 @@ Details and examples in [references/judging.md](references/judging.md). The core
 
 ### The server agent's part
 
-When a project's agent is on, a run takes up to 20 companies at a time from segments with an open
+When a project's agent is on, a run takes up to 40 companies at a time from segments with an open
 judging task, and is told which. Rules for that run (details in
 [references/judging.md](references/judging.md), "The server agent's part"):
 
