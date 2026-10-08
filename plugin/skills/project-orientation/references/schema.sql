@@ -1,7 +1,7 @@
 \restrict dbmate
 
--- Dumped from database version 18.4
--- Dumped by pg_dump version 18.4
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3681,6 +3681,20 @@ CREATE INDEX ix_meetings__cancel_at ON public.meetings USING btree (cancel_at) W
 
 
 --
+-- Name: ix_meetings__contact; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_meetings__contact ON public.meetings USING btree (contact_id);
+
+
+--
+-- Name: ix_meetings__thread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_meetings__thread ON public.meetings USING btree (thread_id) WHERE (thread_id IS NOT NULL);
+
+
+--
 -- Name: ix_messages__claimed; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3828,6 +3842,13 @@ CREATE INDEX ix_provider_calls__project_at ON public.provider_calls USING btree 
 
 
 --
+-- Name: ix_replies__thread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_replies__thread ON public.replies USING btree (thread_id, created_at);
+
+
+--
 -- Name: ix_searches__source; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3884,10 +3905,24 @@ CREATE INDEX ix_tasks__open ON public.tasks USING btree (project_id, due_at) WHE
 
 
 --
+-- Name: ix_thread_messages__thread_sent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_thread_messages__thread_sent ON public.thread_messages USING btree (thread_id, sent_at DESC, id DESC);
+
+
+--
 -- Name: ix_thread_messages__triage; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_thread_messages__triage ON public.thread_messages USING btree (sent_at) WHERE ((direction = 'in'::text) AND (kind = 'reply'::text) AND (triaged_at IS NULL));
+
+
+--
+-- Name: ix_threads__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_threads__project ON public.threads USING btree (project_id);
 
 
 --
@@ -6445,4 +6480,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261007113613'),
     ('20261007131121'),
     ('20261007172045'),
-    ('20261007181449');
+    ('20261007181449'),
+    ('20261008101001');
