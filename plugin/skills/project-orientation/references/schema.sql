@@ -3570,6 +3570,13 @@ CREATE INDEX ix_companies__esp_unknown ON public.companies USING btree (domain) 
 
 
 --
+-- Name: ix_contacts__company; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_contacts__company ON public.contacts USING btree (company_id) WHERE (company_id IS NOT NULL);
+
+
+--
 -- Name: ix_contacts__esp_unknown; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3612,6 +3619,13 @@ CREATE INDEX ix_domains__project_status ON public.domains USING btree (project_i
 
 
 --
+-- Name: ix_enrollments__linkedin_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_enrollments__linkedin_account ON public.enrollments USING btree (linkedin_account_id) WHERE (linkedin_account_id IS NOT NULL);
+
+
+--
 -- Name: ix_enrollments__mailbox; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3633,10 +3647,31 @@ CREATE INDEX ix_enrollments__paused ON public.enrollments USING btree (paused_un
 
 
 --
+-- Name: ix_enrollments__persona; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_enrollments__persona ON public.enrollments USING btree (persona_id, strategy_id);
+
+
+--
 -- Name: ix_enrollments__scheduled; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_enrollments__scheduled ON public.enrollments USING btree (starts_at) WHERE (status = 'scheduled'::text);
+
+
+--
+-- Name: ix_enrollments__sender; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_enrollments__sender ON public.enrollments USING btree (sender_id);
+
+
+--
+-- Name: ix_enrollments__strategy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_enrollments__strategy ON public.enrollments USING btree (strategy_id, segment_id);
 
 
 --
@@ -3850,10 +3885,24 @@ CREATE INDEX ix_replies__thread ON public.replies USING btree (thread_id, create
 
 
 --
+-- Name: ix_searches__segment; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_searches__segment ON public.searches USING btree (segment_id, ran_at) WHERE (segment_id IS NOT NULL);
+
+
+--
 -- Name: ix_searches__source; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_searches__source ON public.searches USING btree (source_id, ran_at) WHERE (source_id IS NOT NULL);
+
+
+--
+-- Name: ix_segment_company_verdicts__company; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_segment_company_verdicts__company ON public.segment_company_verdicts USING btree (segment_id, company_id, id DESC);
 
 
 --
@@ -3882,6 +3931,13 @@ CREATE INDEX ix_slack_posts__posted_at ON public.slack_posts USING btree (posted
 --
 
 CREATE INDEX ix_spend__project_at ON public.spend USING btree (project_id, at);
+
+
+--
+-- Name: ix_strategy_contacts__persona; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_strategy_contacts__persona ON public.strategy_contacts USING btree (persona_id, status);
 
 
 --
@@ -3917,6 +3973,13 @@ CREATE INDEX ix_thread_messages__thread_sent ON public.thread_messages USING btr
 --
 
 CREATE INDEX ix_thread_messages__triage ON public.thread_messages USING btree (sent_at) WHERE ((direction = 'in'::text) AND (kind = 'reply'::text) AND (triaged_at IS NULL));
+
+
+--
+-- Name: ix_threads__enrollment; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_threads__enrollment ON public.threads USING btree (enrollment_id) WHERE (enrollment_id IS NOT NULL);
 
 
 --
@@ -6484,4 +6547,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261007181449'),
     ('20261008101001'),
     ('20261008103832'),
-    ('20261008104500');
+    ('20261008104500'),
+    ('20261008130000');
