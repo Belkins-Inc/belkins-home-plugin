@@ -67,6 +67,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   lead pause <enrollment-id> | lead unpause <enrollment-id>   hold a lead by hand, and let it go on (a person only)
   lead stop <enrollment-id> --reason <t> end a lead for good; frees the contact for another strategy (a person only)
   strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent
+  strategy repick-mailboxes <id> [--dry-run]   give each lead that has sent nothing yet a mailbox of its sender
+                                         that serves its provider (mailbox update --recipients); a person only
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
   plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote"}: one step's, frozen templates too; step ids in strategy show
@@ -207,6 +209,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          — adding it again reconnects it, also one added with mailbox smtp
   mailbox update <id> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed|--not-warmed] [--status active|paused|archived]
                  [--sender <id>]            another sender of the project writes from it
+                 [--recipients google,microsoft,…|any]   write only to leads whose mail that provider takes
+                                         (bh esp names them); a lead no mailbox of its sender serves may use any.
+                                         Leads already enrolled keep theirs until strategy repick-mailboxes
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
   domain quote <name> [<name>…]          availability and price at the registrar (free)
   domain approve <name> [<name>…] --max-cents <n> [--redirect <client site url>] [--platform google|microsoft]
@@ -525,6 +530,7 @@ async function main(argv: string[]): Promise<void> {
       state: { type: 'string' },
       offset: { type: 'string' },
       sender: { type: 'string' },
+      recipients: { type: 'string' },
       signature: { type: 'string' },
       'signature-html-file': { type: 'string' },
       out: { type: 'string' },
@@ -835,6 +841,12 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       }
+      if (sub === 'repick-mailboxes')
+        return out(
+          await call(config, 'POST', `/strategies/${arg}/mailboxes/repick`, {
+            dryRun: Boolean(o['dry-run']),
+          }),
+        )
       if (sub === 'launch') return out(await call(config, 'POST', `/strategies/${arg}/launch`, {}))
       if (sub === 'archive')
         return out(await call(config, 'POST', `/strategies/${arg}/archive`, {}))
@@ -1971,6 +1983,9 @@ async function main(argv: string[]): Promise<void> {
             ...limits,
             ...(o.status ? { status: o.status } : {}),
             ...(o.sender ? { senderId: o.sender } : {}),
+            ...(o.recipients
+              ? { recipientEsps: o.recipients === 'any' ? null : list(o.recipients) }
+              : {}),
           }),
         )
       break

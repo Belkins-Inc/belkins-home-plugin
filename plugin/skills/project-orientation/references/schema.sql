@@ -1,7 +1,7 @@
 \restrict dbmate
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.4
+-- Dumped by pg_dump version 18.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1319,6 +1319,7 @@ CREATE TABLE public.mailboxes (
     push_client_state_hash text,
     microsoft_tenant_id uuid,
     egress_id uuid,
+    recipient_esps text[],
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 200))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'smtp'::text, 'jmap'::text]))),
@@ -6481,4 +6482,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261007131121'),
     ('20261007172045'),
     ('20261007181449'),
-    ('20261008101001');
+    ('20261008101001'),
+    ('20261008103832');
