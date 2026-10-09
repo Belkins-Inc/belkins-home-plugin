@@ -269,8 +269,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   warmup status                          the switch, the seed types, and each mailbox's notes and placement
   warmup on [--seeds gmail,gsuite,outlook,yahoo,aol|default] | warmup off   (a person only)
   warmup seeds                           our own seed organisations: seeds, today's notes, spam and tabs (an admin)
-  warmup seeds <admin email>             adds an organisation lent to us, or reads its users again; its Admin console
-                                         grants the WARMUP_SEED_KEY service account domain-wide delegation first
+  warmup seeds <admin email> [--count <n>]   adds an organisation lent to us, or tends it again: the engine keeps
+                                         n seed users of its own there (default 4), in the home-seeds unit, on its
+                                         domains; its Admin console grants the WARMUP_SEED_KEY service account
+                                         domain-wide delegation first
                                          on warms every mailbox not yet warmed; --seeds picks the seed
                                          types it writes to (default: gmail, gsuite, outlook); off tells the provider too
   agent stats [--hours <n>]              across projects: runs, cost, queued / running, wait from reply to run
@@ -591,6 +593,7 @@ async function main(argv: string[]): Promise<void> {
       notes: { type: 'string' },
       upcoming: { type: 'boolean' },
       seeds: { type: 'string' },
+      count: { type: 'string' },
       claim: { type: 'string' },
       evidence: { type: 'string' },
       'add-evidence': { type: 'string' },
@@ -2181,7 +2184,10 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'seeds')
         return out(
           arg
-            ? await call(config, 'POST', '/warmup/seeds', { adminEmail: arg })
+            ? await call(config, 'POST', '/warmup/seeds', {
+                adminEmail: arg,
+                ...(o.count !== undefined ? { count: Number(o.count) } : {}),
+              })
             : await call(config, 'GET', '/warmup/seeds'),
         )
       if (sub === 'on') {

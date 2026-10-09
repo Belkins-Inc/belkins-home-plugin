@@ -2504,6 +2504,10 @@ CREATE TABLE public.warmup_seed_tenants (
     added_by uuid NOT NULL,
     added_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    seeds_wanted integer DEFAULT 4 NOT NULL,
+    seeds_wanted_by uuid,
+    seeds_wanted_via public.actor_via,
+    CONSTRAINT warmup_seed_tenants_seeds_wanted_check CHECK (((seeds_wanted >= 0) AND (seeds_wanted <= 20))),
     CONSTRAINT warmup_seed_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'failed'::text])))
 );
 
@@ -2522,6 +2526,7 @@ CREATE TABLE public.warmup_seeds (
     fetched_at timestamp with time zone DEFAULT now() NOT NULL,
     tenant_id uuid,
     retired_at timestamp with time zone,
+    made_at timestamp with time zone,
     CONSTRAINT warmup_seeds_provider_check CHECK ((provider = ANY (ARRAY['warmupip'::text, 'own'::text]))),
     CONSTRAINT warmup_seeds_seed_type_check CHECK ((seed_type = ANY (ARRAY['gmail'::text, 'gsuite'::text, 'outlook'::text, 'yahoo'::text, 'aol'::text, 'seznam'::text, 'zoho'::text, 'icloud'::text, 'other'::text])))
 );
@@ -6471,6 +6476,14 @@ ALTER TABLE ONLY public.warmup_seed_tenants
 
 
 --
+-- Name: warmup_seed_tenants warmup_seed_tenants_seeds_wanted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_seed_tenants
+    ADD CONSTRAINT warmup_seed_tenants_seeds_wanted_by_fkey FOREIGN KEY (seeds_wanted_by) REFERENCES public.users(id);
+
+
+--
 -- Name: warmup_seeds warmup_seeds_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6619,4 +6632,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261008104500'),
     ('20261008130000'),
     ('20261009110000'),
-    ('20261009160000');
+    ('20261009160000'),
+    ('20261009161800');
