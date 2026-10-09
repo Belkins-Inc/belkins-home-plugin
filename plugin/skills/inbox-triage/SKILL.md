@@ -66,7 +66,9 @@ there are many:
      The note is one sentence for the salesperson: a time, a name, a condition. No advice.
 4. **Answer if it needs one** (references/answers.md says which classes get none):
    `bh reply draft <threadId> --body-file <path> --note "<for the approver>" [--send-at <iso>]
-   [--approve-by <iso>] [--sender <id>]`. A draft already waiting in the thread (`bh thread`
+   [--approve-by <iso>] [--sender <id>] [--cc <a,b>] [--bcc <c>]`. `--cc` copies someone in the
+   open (a colleague of ours brought into the conversation), `--bcc` without the lead seeing it;
+   email only, five addresses each at most. A draft already waiting in the thread (`bh thread`
    shows it) is changed with `bh reply revise <replyId> --body-file <path> --note "<what changed>"`,
    which keeps the old version — never a second draft beside it. A person can ask for a rewrite in
    the web app or with `bh reply rewrite <replyId> --ask "<what to change>"`; a server-agent run

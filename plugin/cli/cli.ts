@@ -322,10 +322,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   triage undo <message-id>              take it back: an unsubscribe within 60 s, or back into the queue
                                          confirm or change what a reply means; no --class marks it handled
   reply draft <thread-id> --body <text> | --body-file <path> [--note <for the approver>] [--send-at <iso>]
-       [--approve-by <iso>] [--sender <id>]
+       [--approve-by <iso>] [--sender <id>] [--cc a@x.com,b@y.com] [--bcc c@z.com]
+                                         --cc copies people in the open, --bcc without the lead seeing them
   replies [--status draft|approved|sent|failed|discarded]
-  reply approve <id> [--body <final text>] (a person only) | reply discard <id>
-  reply revise <id> --body <text> | --body-file <path> [--note <for the approver>]   a new version of a draft
+  reply approve <id> [--body <final text>] [--cc …] [--bcc …] (a person only) | reply discard <id>
+  reply revise <id> --body <text> | --body-file <path> [--note <for the approver>] [--cc …] [--bcc …]
+                                         a new version of a draft; --cc/--bcc replace its copies ("" for none)
   reply rewrite <id> --ask <what to change>   the server agent rewrites it (a person only) | reply versions <id>
   reply agent <thread-id> [--ask <what to say>]  the server agent writes the first draft (a person only)
   reply-templates <strategy-id>          the fixed answers the engine sends on its own, by kind of reply
@@ -394,6 +396,20 @@ function linkOf(value: unknown): string | null {
   const first = Array.isArray(value) ? value[0] : value
   const link = first && typeof first === 'object' ? (first as { link?: unknown }).link : null
   return typeof link === 'string' && link ? link : null
+}
+
+const addresses = (list: string) =>
+  list
+    .split(',')
+    .map((a) => a.trim())
+    .filter(Boolean)
+
+/** --cc and --bcc as given: a flag left out keeps what is there, an empty one clears it. */
+function copies(o: { cc?: string; bcc?: string }) {
+  return {
+    ...(o.cc !== undefined ? { cc: addresses(o.cc) } : {}),
+    ...(o.bcc !== undefined ? { bcc: addresses(o.bcc) } : {}),
+  }
 }
 
 function need(file: string | undefined): string {
@@ -547,6 +563,7 @@ async function main(argv: string[]): Promise<void> {
       'domain-cap': { type: 'string' },
       class: { type: 'string' },
       cc: { type: 'string' },
+      bcc: { type: 'string' },
       'follow-up': { type: 'string' },
       return: { type: 'string' },
       'body-file': { type: 'string' },
@@ -1536,14 +1553,7 @@ async function main(argv: string[]): Promise<void> {
             classification: o.class,
             ...(o.subject ? { subject: o.subject } : {}),
             body: text,
-            ...(o.cc
-              ? {
-                  cc: o.cc
-                    .split(',')
-                    .map((a) => a.trim())
-                    .filter(Boolean),
-                }
-              : {}),
+            ...(o.cc !== undefined ? { cc: addresses(o.cc) } : {}),
           }),
         )
       }
@@ -1579,12 +1589,16 @@ async function main(argv: string[]): Promise<void> {
             ...(o['send-at'] ? { sendAt: o['send-at'] } : {}),
             ...(o['approve-by'] ? { approveBy: o['approve-by'] } : {}),
             ...(o.sender ? { senderId: o.sender } : {}),
+            ...copies(o),
           }),
         )
       }
       if (sub === 'approve')
         return out(
-          await call(config, 'POST', `/replies/${arg}/approve`, o.body ? { body: o.body } : {}),
+          await call(config, 'POST', `/replies/${arg}/approve`, {
+            ...(o.body ? { body: o.body } : {}),
+            ...copies(o),
+          }),
         )
       if (sub === 'discard') return out(await call(config, 'POST', `/replies/${arg}/discard`, {}))
       if (sub === 'unapprove')
@@ -1595,6 +1609,7 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', `/replies/${arg}/revise`, {
             body: text,
             ...(o.note ? { note: o.note } : {}),
+            ...copies(o),
           }),
         )
       }

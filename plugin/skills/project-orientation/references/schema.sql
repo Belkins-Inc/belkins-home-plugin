@@ -1764,6 +1764,7 @@ CREATE TABLE public.replies (
     slack_ref text,
     template_id uuid,
     cc text[] DEFAULT '{}'::text[] NOT NULL,
+    bcc text[] DEFAULT '{}'::text[] NOT NULL,
     CONSTRAINT replies_check CHECK (((status <> ALL (ARRAY['approved'::text, 'sending'::text, 'sent'::text])) OR (approved_at IS NOT NULL))),
     CONSTRAINT replies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'approved'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'discarded'::text, 'superseded'::text])))
 );
@@ -6617,4 +6618,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261008103832'),
     ('20261008104500'),
     ('20261008130000'),
-    ('20261009110000');
+    ('20261009110000'),
+    ('20261009160000');
