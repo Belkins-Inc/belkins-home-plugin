@@ -1,13 +1,13 @@
 ---
 name: email-finding
-description: Finding and verifying email addresses and phone numbers — Apollo first, then BetterContact / FullEnrich async enrichment, Bouncer verification, catch-all and unknown handling (LinkedIn instead of email; Scrubby is off), the email_status values, and replacing an address after a hard bounce with up to three checked guesses. Use when contacts need addresses, when an address's status is in doubt, or when a "Replace the bounced address" task is open.
+description: Finding and verifying email addresses and phone numbers — Apollo first, then BetterContact async enrichment (FullEnrich is off), Bouncer verification, catch-all and unknown handling (LinkedIn instead of email; Scrubby is off), the email_status values, and replacing an address after a hard bounce with up to three checked guesses. Use when contacts need addresses, when an address's status is in doubt, or when a "Replace the bounced address" task is open.
 ---
 
 # Finding and verifying addresses
 
 Provider mechanics: [apollo](../providers/references/apollo.md),
 [bettercontact](../providers/references/bettercontact.md),
-[fullenrich](../providers/references/fullenrich.md), [bouncer](../providers/references/bouncer.md),
+[fullenrich](../providers/references/fullenrich.md) (off), [bouncer](../providers/references/bouncer.md),
 [scrubby](../providers/references/scrubby.md) (off for now).
 
 **Email goes only to an address Bouncer called valid.** Scrubby is off for now, so nothing settles
@@ -92,8 +92,8 @@ run the batch's company domains through `bh dnc check` first and drop what it na
    `global.ntt` for a contact at `services.global.ntt`); only `companyDomain` moves it.
 8. **Not found** by either →
    `"facts":{"email_search":{"value":"not_found","source":"apollo,bettercontact","note":"2026-10-07"}}`.
-   For contacts worth a third try (top persona, strong signal) submit them to FullEnrich
-   (`contact.emails` only) and verify the same way. Otherwise the contact goes LinkedIn-only.
+   There is no third try: FullEnrich is off (the engine refuses a submission with
+   `409 provider_off`). The contact goes LinkedIn-only.
 
 Why Apollo goes first and Bouncer decides (measured 2026-10-07 against what our sends delivered and
 bounced): Apollo agreed with 99 of 127 addresses BetterContact had found and we had delivered to, at
@@ -121,7 +121,7 @@ Scrubby is off for now (the engine refuses its paid calls), so neither is settle
 
 **Two spellings on a catch-all domain is not an address.** When two sources give one person two
 addresses at the same domain — our waterfall against the client's list, BetterContact against
-FullEnrich — and the domain is catch-all, verification accepts both and one of them goes nowhere.
+Apollo — and the domain is catch-all, verification accepts both and one of them goes nowhere.
 Seen on five of thirteen people found by both sides: `asmith@` against
 `anna.smith@acme.com`, `rjones@` against `robert.jones@northwind.com`, and three more like them.
 Never pick one. Keep the contact off email — upsert it with `emailStatus: "unknown"` and both
@@ -159,7 +159,7 @@ task **"Replace the bounced address <address>"**.
    continues on LinkedIn if it has a plan there.
 
 A scheduled agent can call only Bouncer (Scrubby is off), so it replaces by guessing and checking; a
-new BetterContact or FullEnrich search is a person's session.
+new BetterContact search is a person's session.
 
 ## D. Phone numbers (when a person wants phones)
 
@@ -167,7 +167,7 @@ new BetterContact or FullEnrich search is a person's session.
    once, the phones within seconds to the engine; read them with `bh call show <call-id>`
    (`deliveries`, apollo.md). Five credits ($0.032) per person a number was found for.
 2. **BetterContact for whom Apollo found none** (`enrich_phone_number: true`, about $0.50 a number),
-   then FullEnrich (`contact.phones`) for the few that matter most.
+   and nothing after it (FullEnrich is off).
 3. **Write** the number to `facts.phone` (`value`, `source`, `seenAt`, `type`, `confidence`; apollo.md).
    A contact with a different number already keeps it; the new one goes in `facts.phone_alt`.
 4. **Do Not Call**: Apollo's `dnc_status_cd: "found"` → `"dnc": true` on that number; nobody dials it.

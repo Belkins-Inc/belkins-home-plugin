@@ -1,5 +1,9 @@
 # FullEnrich
 
+**Off** (2026-10-09). Addresses and numbers come from Apollo, then BetterContact; what they miss goes
+by LinkedIn. The engine refuses a submission with `409 provider_off`; collecting a batch submitted
+before still works, and its balance is no longer read or alerted on.
+
 Waterfall enrichment for emails and phones. Base `https://app.fullenrich.com/api/v1`; the engine
 sends the key as `Authorization: Bearer …`. Asynchronous: submit, then poll.
 

@@ -105,7 +105,7 @@ Check it before a large order and mention it in `bh session end`.
 | A company's LinkedIn page from its name | Generect realtime companies with `keywords`, $0.007/row | [generect](references/generect.md) |
 | A person's email address — second try, for whom Apollo gave nothing Bouncer calls deliverable | BetterContact (async, up to 100 per batch), $0.05 per address found | [bettercontact](references/bettercontact.md) |
 | A phone number (when phones are wanted) | Apollo `bulk_match` with `reveal_phone_number`, $0.032 per number found; BetterContact for whom Apollo has none, ~$0.50 per number | [apollo](references/apollo.md) |
-| A third try for an address or a number | FullEnrich (async), $0.055 per credit | [fullenrich](references/fullenrich.md) |
+| A third try for an address or a number | **off** — Apollo and BetterContact only; what they miss goes by LinkedIn | [fullenrich](references/fullenrich.md) |
 | Is this address deliverable, is the domain catch-all | Bouncer, $0.0056/address | [bouncer](references/bouncer.md) |
 | Settle a catch-all / unknown address, confirm a guess | **off for now** — such an address goes by LinkedIn | [scrubby](references/scrubby.md) |
 | A web page as text, a site's page list | Firecrawl scrape / map, $0.0009 each | [firecrawl](references/firecrawl.md) |
