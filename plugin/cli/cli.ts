@@ -268,6 +268,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   agent on | agent off                   the project's switch: whether the engine starts runs by itself
   warmup status                          the switch, the seed types, and each mailbox's notes and placement
   warmup on [--seeds gmail,gsuite,outlook,yahoo,aol|default] | warmup off   (a person only)
+  warmup seeds                           our own seed organisations: seeds, today's notes, spam and tabs (an admin)
+  warmup seeds <admin email>             adds an organisation lent to us, or reads its users again; its Admin console
+                                         grants the WARMUP_SEED_KEY service account domain-wide delegation first
                                          on warms every mailbox not yet warmed; --seeds picks the seed
                                          types it writes to (default: gmail, gsuite, outlook); off tells the provider too
   agent stats [--hours <n>]              across projects: runs, cost, queued / running, wait from reply to run
@@ -2160,6 +2163,12 @@ async function main(argv: string[]): Promise<void> {
     }
     case 'warmup':
       if (!sub || sub === 'status') return out(await call(config, 'GET', `/projects/${p()}/warmup`))
+      if (sub === 'seeds')
+        return out(
+          arg
+            ? await call(config, 'POST', '/warmup/seeds', { adminEmail: arg })
+            : await call(config, 'GET', '/warmup/seeds'),
+        )
       if (sub === 'on') {
         const seeds = o.seeds
           ? await call(config, 'PUT', `/projects/${p()}/warmup`, {

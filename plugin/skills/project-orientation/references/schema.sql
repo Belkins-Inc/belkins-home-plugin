@@ -2485,8 +2485,25 @@ CREATE TABLE public.warmup_profiles (
     status text DEFAULT 'active'::text NOT NULL,
     last_error text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT warmup_profiles_provider_check CHECK ((provider = ANY (ARRAY['warmupip'::text]))),
+    CONSTRAINT warmup_profiles_provider_check CHECK ((provider = ANY (ARRAY['warmupip'::text, 'own'::text]))),
     CONSTRAINT warmup_profiles_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'failed'::text])))
+);
+
+
+--
+-- Name: warmup_seed_tenants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.warmup_seed_tenants (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    admin_email public.citext NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    last_error text,
+    synced_at timestamp with time zone,
+    added_by uuid NOT NULL,
+    added_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT warmup_seed_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'failed'::text])))
 );
 
 
@@ -2502,7 +2519,9 @@ CREATE TABLE public.warmup_seeds (
     last_name text,
     seed_type text NOT NULL,
     fetched_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT warmup_seeds_provider_check CHECK ((provider = ANY (ARRAY['warmupip'::text]))),
+    tenant_id uuid,
+    retired_at timestamp with time zone,
+    CONSTRAINT warmup_seeds_provider_check CHECK ((provider = ANY (ARRAY['warmupip'::text, 'own'::text]))),
     CONSTRAINT warmup_seeds_seed_type_check CHECK ((seed_type = ANY (ARRAY['gmail'::text, 'gsuite'::text, 'outlook'::text, 'yahoo'::text, 'aol'::text, 'seznam'::text, 'zoho'::text, 'icloud'::text, 'other'::text])))
 );
 
@@ -2525,6 +2544,10 @@ CREATE TABLE public.warmup_sends (
     placement text,
     tab_category text,
     placement_at timestamp with time zone,
+    engage_at timestamp with time zone,
+    engage_actions text[],
+    engaged_at timestamp with time zone,
+    engage_error text,
     CONSTRAINT warmup_sends_placement_check CHECK ((placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_status_check CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text])))
 );
@@ -3454,6 +3477,14 @@ ALTER TABLE ONLY public.warmup_profiles
 
 
 --
+-- Name: warmup_seed_tenants warmup_seed_tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_seed_tenants
+    ADD CONSTRAINT warmup_seed_tenants_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: warmup_seeds warmup_seeds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3997,6 +4028,13 @@ CREATE INDEX ix_triage_holds__effective ON public.triage_holds USING btree (effe
 
 
 --
+-- Name: ix_warmup_sends__engage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_sends__engage ON public.warmup_sends USING btree (engage_at) WHERE ((engage_at IS NOT NULL) AND (engaged_at IS NULL));
+
+
+--
 -- Name: ix_warmup_sends__mailbox_day; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4008,6 +4046,13 @@ CREATE INDEX ix_warmup_sends__mailbox_day ON public.warmup_sends USING btree (ma
 --
 
 CREATE INDEX ix_warmup_sends__seed ON public.warmup_sends USING btree (mailbox_id, seed_address);
+
+
+--
+-- Name: ix_warmup_sends__seed_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_sends__seed_day ON public.warmup_sends USING btree (seed_id, sent_at DESC);
 
 
 --
@@ -4218,6 +4263,13 @@ CREATE UNIQUE INDEX ux_threads__linkedin_chat ON public.threads USING btree (lin
 --
 
 CREATE UNIQUE INDEX ux_warmup_profiles__mailbox ON public.warmup_profiles USING btree (mailbox_id);
+
+
+--
+-- Name: ux_warmup_seed_tenants__admin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_warmup_seed_tenants__admin ON public.warmup_seed_tenants USING btree (admin_email);
 
 
 --
@@ -6410,6 +6462,22 @@ ALTER TABLE ONLY public.warmup_profiles
 
 
 --
+-- Name: warmup_seed_tenants warmup_seed_tenants_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_seed_tenants
+    ADD CONSTRAINT warmup_seed_tenants_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id);
+
+
+--
+-- Name: warmup_seeds warmup_seeds_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_seeds
+    ADD CONSTRAINT warmup_seeds_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.warmup_seed_tenants(id);
+
+
+--
 -- Name: warmup_sends warmup_sends_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6548,4 +6616,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261008101001'),
     ('20261008103832'),
     ('20261008104500'),
-    ('20261008130000');
+    ('20261008130000'),
+    ('20261009110000');
