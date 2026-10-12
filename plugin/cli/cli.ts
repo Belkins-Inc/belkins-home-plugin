@@ -172,9 +172,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   agency retry <org> <domain>            the agency's bought domain that failed goes back on its way into a tenant;
                                          order its mailboxes again with agency order (its admin only)
   calendars                              the project's calendars: state, event type, last sync
-  calendar connect --sender <id> [--key <Cal.com API key> [--event-type <id>]]
-                                         the sender's Cal.com; without a key, a URL to open: sign in to
-                                         Cal.com (or sign up, connecting Google or Outlook) and allow us
+  calendar connect --sender <id> --key <Cal.com API key> [--event-type <id>]
+                                         the sender's Cal.com; its Google, Outlook and hours are set up there
   calendar invite --sender <id>          a link for the sender's owner to connect their Cal.com without
                                          access to the tool (7 days, once; a new link replaces the last)
   calendar update <id> [--event-type <id>] [--priority <n>] [--timezone <iana>] [--owner <name>] [--sender <id>]
@@ -1706,12 +1705,6 @@ async function main(argv: string[]): Promise<void> {
     case 'calendars':
       return out(await call(config, 'GET', `/projects/${p()}/calendars`))
     case 'calendar':
-      if (sub === 'connect' && !o.key)
-        return out(
-          await call(config, 'POST', `/projects/${p()}/calendars/calcom/authorize`, {
-            senderId: o.sender,
-          }),
-        )
       if (sub === 'connect')
         return out(
           await call(config, 'POST', `/projects/${p()}/calendars/calcom`, {
