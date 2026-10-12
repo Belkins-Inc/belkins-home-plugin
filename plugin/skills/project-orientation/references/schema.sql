@@ -1531,6 +1531,7 @@ CREATE TABLE public.placement_notes (
     verdict_at timestamp with time zone,
     body text,
     queued_at timestamp with time zone DEFAULT now() NOT NULL,
+    copy_message_id uuid,
     CONSTRAINT placement_notes_sent_check CHECK ((((status = 'queued'::text) = (sent_at IS NULL)) OR (status = 'cancelled'::text))),
     CONSTRAINT placement_notes_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'sent'::text, 'failed'::text, 'cancelled'::text]))),
     CONSTRAINT placement_notes_verdict_check CHECK ((verdict = ANY (ARRAY['inbox'::text, 'tab'::text, 'spam'::text, 'quarantined'::text, 'rejected'::text, 'missing'::text])))
@@ -3824,6 +3825,13 @@ CREATE INDEX ix_organisation_members__user ON public.organisation_members USING 
 
 
 --
+-- Name: ix_placement_notes__copy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_placement_notes__copy ON public.placement_notes USING btree (copy_message_id) WHERE (copy_message_id IS NOT NULL);
+
+
+--
 -- Name: ix_placement_notes__pending; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5420,6 +5428,14 @@ ALTER TABLE ONLY public.personas
 
 
 --
+-- Name: placement_notes placement_notes_copy_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_notes
+    ADD CONSTRAINT placement_notes_copy_message_id_fkey FOREIGN KEY (copy_message_id) REFERENCES public.messages(id) ON DELETE SET NULL;
+
+
+--
 -- Name: placement_notes placement_notes_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6633,4 +6649,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261008130000'),
     ('20261009110000'),
     ('20261009160000'),
-    ('20261009161800');
+    ('20261009161800'),
+    ('20261012200000');
