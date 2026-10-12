@@ -294,6 +294,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement mailbox <our address> [--days <n>] [--limit <n>]   its rate per environment over the days (30) and
                                          the notes behind it: kind, seed, subject, body, verdict, scores
   placement domain <domain> [--days <n>] [--limit <n>]   the same for every mailbox on a domain
+  placement codes [--days <n>] [--env m365|m365_defender|m365_proofpoint] [--source sfs|eng|atp|field|detection]
+                  [--code <code>] [--moved]   Microsoft's codes on the notes of the last days (30): Junk with and
+                                         without each, where seen, its meaning, new or moved on the last day (an admin)
+  placement codes meanings               every code meaning read so far (an admin)
+  placement code <source> <code> --meaning <text> --confidence documented|inferred|unknown [--evidence <text>]
+                                         set what a code means; N or x stands for a varying digit (an admin)
   egress list                            the egresses mail leaves through: name, address, status, the projects
                                          and mailboxes on each (an admin; docs/decisions/sending-identity.md)
   egress add <host name> --ip <ipv4> --proxy <http://user:pass@host:port> [--spare]
@@ -602,6 +608,10 @@ async function main(argv: string[]): Promise<void> {
       threshold: { type: 'string' },
       verdict: { type: 'string' },
       dir: { type: 'string' },
+      code: { type: 'string' },
+      meaning: { type: 'string' },
+      confidence: { type: 'string' },
+      moved: { type: 'boolean' },
     },
   })
   const config = await loadConfig()
@@ -2122,9 +2132,47 @@ async function main(argv: string[]): Promise<void> {
           ),
         )
       }
+      if (sub === 'codes') {
+        if (arg === 'meanings') return out(await call(config, 'GET', '/placement/codes/meanings'))
+        const q = new URLSearchParams({
+          ...(o.days ? { days: String(Number(o.days)) } : {}),
+          ...(o.env ? { environment: String(o.env) } : {}),
+          ...(o.source ? { source: String(o.source) } : {}),
+          ...(o.code ? { code: String(o.code) } : {}),
+          ...(o.moved ? { moved: 'true' } : {}),
+        })
+        return out(await call(config, 'GET', `/placement/codes${q.size ? `?${q}` : ''}`))
+      }
+      if (sub === 'code') {
+        const code = pos[3]
+        if (!arg || !code)
+          throw new BhError(
+            'Which code?',
+            { hint: 'bh placement code <source> <code>, e.g. sfs 2069299003' },
+            2,
+          )
+        if (!o.meaning || !o.confidence)
+          throw new BhError(
+            'What does it mean, and how sure is it?',
+            { hint: '--meaning <text> --confidence documented|inferred|unknown' },
+            2,
+          )
+        return out(
+          await call(
+            config,
+            'PUT',
+            `/placement/codes/${encodeURIComponent(arg)}/${encodeURIComponent(code)}`,
+            {
+              meaning: String(o.meaning),
+              confidence: String(o.confidence),
+              ...(o.evidence ? { evidence: String(o.evidence) } : {}),
+            },
+          ),
+        )
+      }
       throw new BhError(
         `bh placement has no ${sub}`,
-        { hint: 'status, seeds, seed, test, show, look, digests or mailbox' },
+        { hint: 'status, seeds, seed, test, show, look, digests, mailbox, codes or code' },
         2,
       )
     }

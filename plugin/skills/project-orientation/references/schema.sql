@@ -1511,6 +1511,24 @@ CREATE VIEW public.persona_usage AS
 
 
 --
+-- Name: placement_codes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.placement_codes (
+    source text NOT NULL,
+    code text NOT NULL,
+    meaning text NOT NULL,
+    confidence text NOT NULL,
+    evidence text,
+    updated_by uuid NOT NULL,
+    updated_via public.actor_via NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT placement_codes_confidence_check CHECK ((confidence = ANY (ARRAY['documented'::text, 'inferred'::text, 'unknown'::text]))),
+    CONSTRAINT placement_codes_source_check CHECK ((source = ANY (ARRAY['sfs'::text, 'eng'::text, 'atp'::text, 'field'::text, 'detection'::text])))
+);
+
+
+--
 -- Name: placement_notes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2977,6 +2995,14 @@ ALTER TABLE ONLY public.personas
 
 ALTER TABLE ONLY public.personas
     ADD CONSTRAINT personas_project_id_name_key UNIQUE (project_id, name);
+
+
+--
+-- Name: placement_codes placement_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_codes
+    ADD CONSTRAINT placement_codes_pkey PRIMARY KEY (source, code);
 
 
 --
@@ -5428,6 +5454,14 @@ ALTER TABLE ONLY public.personas
 
 
 --
+-- Name: placement_codes placement_codes_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_codes
+    ADD CONSTRAINT placement_codes_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
 -- Name: placement_notes placement_notes_copy_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6650,4 +6684,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261009110000'),
     ('20261009160000'),
     ('20261009161800'),
-    ('20261012200000');
+    ('20261012200000'),
+    ('20261012210000');
