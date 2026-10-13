@@ -250,11 +250,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          the key is proved against the tenant before it is kept (an admin)
   tenant update <id> [--status active|paused] [--max-domains <n>] [--admin-email <e>] [--key <file>]   (an admin)
   tenant add --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id> --key <private key PEM>
-             --cert <certificate PEM> [--max-domains <n>]
+             --cert <certificate PEM> [--admin-email <e>] [--max-domains <n>]
                                          a Microsoft 365 tenant: the app's certificate is proved against Graph and
-                                         Exchange before it is kept (an admin)
+                                         Exchange before it is kept; --admin-email records its administrator (an admin)
   tenant seats <id> --provider microsoft   its licences: bought and used; new mailboxes wait for a free one
-  tenant update <id> --provider microsoft [--status active|paused] [--max-domains <n>]
+  tenant update <id> --provider microsoft [--status active|paused] [--max-domains <n>] [--admin-email <e>]
   tenant console-login <id>              sign in to the Google Admin console through the console service's IP,
                                          so it can do DKIM (an admin; #home-alerts says when it is needed again)
   tenant console-credentials <id> --email <admin> [--totp]   the login the console service signs in with by
@@ -1900,6 +1900,7 @@ async function main(argv: string[]): Promise<void> {
               clientId: o['client-id'],
               key: await readFile(need(o.key), 'utf8'),
               cert: await readFile(need(o.cert), 'utf8'),
+              ...(o['admin-email'] ? { adminEmail: o['admin-email'] } : {}),
               ...maxDomains,
             }),
           )
@@ -1910,6 +1911,7 @@ async function main(argv: string[]): Promise<void> {
           return out(
             await call(config, 'PATCH', `/microsoft-tenants/${arg}`, {
               ...(o.status ? { status: o.status } : {}),
+              ...(o['admin-email'] ? { adminEmail: o['admin-email'] } : {}),
               ...maxDomains,
             }),
           )

@@ -1360,6 +1360,7 @@ CREATE TABLE public.microsoft_tenants (
     created_by uuid NOT NULL,
     created_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    admin_email public.citext,
     CONSTRAINT microsoft_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 900))),
     CONSTRAINT microsoft_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
@@ -6692,4 +6693,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261012210000'),
     ('20261013081116'),
     ('20261013081747'),
-    ('20261013102637');
+    ('20261013102637'),
+    ('20261013103629');
