@@ -300,11 +300,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement codes meanings               every code meaning read so far (an admin)
   placement code <source> <code> --meaning <text> --confidence documented|inferred|unknown [--evidence <text>]
                                          set what a code means; N or x stands for a varying digit (an admin)
-  egress list                            the egresses mail leaves through: name, address, status, the projects
-                                         and mailboxes on each (an admin; docs/decisions/sending-identity.md)
-  egress add <host name> --ip <ipv4> --proxy <http://user:pass@host:port> [--spare]
+  egress list                            the egresses mail leaves through: name, address, region, status, the
+                                         projects and mailboxes on each (an admin; docs/decisions/sending-identity.md)
+  egress add <host name> --ip <ipv4> --proxy <http://user:pass@host:port> [--region <region>] [--spare]
                                          a host whose reverse DNS is <host name>, reached through its CONNECT proxy
   egress active|spare|retire <id>        put an egress in use, set it aside as a spare, or retire it
+  egress region <id> <region|none>       the cloud region the egress's address belongs to
+  egress regions                         each region with the addresses the cloud lets us hold there
+  egress quota <region> <addresses>      record a region's address quota as the cloud granted it (a new region too)
   egress assign <host name|none> --project <slug> | --mailbox <address>
                                          a client's mail, or one mailbox's, leaves through that egress (none: the
                                          engine's own address; for a mailbox, back to its project's)
@@ -500,6 +503,7 @@ async function main(argv: string[]): Promise<void> {
       ip: { type: 'string' },
       proxy: { type: 'string' },
       spare: { type: 'boolean' },
+      region: { type: 'string' },
       'tenant-id': { type: 'string' },
       'client-id': { type: 'string' },
       cert: { type: 'string' },
@@ -2193,8 +2197,34 @@ async function main(argv: string[]): Promise<void> {
             ipv4: String(o.ip),
             proxy: String(o.proxy),
             status: o.spare ? 'spare' : 'active',
+            ...(o.region ? { region: String(o.region) } : {}),
           }),
         )
+      }
+      if (sub === 'regions') return out(await call(config, 'GET', '/egresses/regions'))
+      if (sub === 'region') {
+        const region = pos[3]
+        if (!arg || !region)
+          throw new BhError(
+            'Which egress, and which region?',
+            { hint: 'bh egress region <id> us-east-1 (or none); bh egress list prints the ids' },
+            2,
+          )
+        return out(
+          await call(config, 'PATCH', `/egresses/${arg}`, {
+            region: region === 'none' ? null : region,
+          }),
+        )
+      }
+      if (sub === 'quota') {
+        const quota = Number(pos[3])
+        if (!arg || !Number.isInteger(quota) || quota < 0)
+          throw new BhError(
+            'Which region, and how many addresses?',
+            { hint: 'bh egress quota us-east-1 25' },
+            2,
+          )
+        return out(await call(config, 'PUT', `/egresses/regions/${arg}`, { ipQuota: quota }))
       }
       const status = { active: 'active', spare: 'spare', retire: 'retired' }[sub]
       if (status) {
@@ -2217,7 +2247,7 @@ async function main(argv: string[]): Promise<void> {
       }
       throw new BhError(
         `bh egress has no ${sub}`,
-        { hint: 'list, add, active, spare, retire or assign' },
+        { hint: 'list, add, active, spare, retire, region, regions, quota or assign' },
         2,
       )
     }

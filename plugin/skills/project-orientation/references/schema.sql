@@ -837,6 +837,21 @@ CREATE TABLE public.domains (
 
 
 --
+-- Name: egress_regions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.egress_regions (
+    name text NOT NULL,
+    ip_quota integer NOT NULL,
+    updated_by uuid NOT NULL,
+    updated_via public.actor_via NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT egress_regions_ip_quota_check CHECK ((ip_quota >= 0)),
+    CONSTRAINT egress_regions_name_check CHECK ((name ~ '^[a-z0-9-]{2,40}$'::text))
+);
+
+
+--
 -- Name: enrollments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2016,6 +2031,7 @@ CREATE TABLE public.sending_egresses (
     created_by uuid NOT NULL,
     created_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    region text,
     CONSTRAINT sending_egresses_status_check CHECK ((status = ANY (ARRAY['active'::text, 'spare'::text, 'retired'::text])))
 );
 
@@ -2803,6 +2819,14 @@ ALTER TABLE ONLY public.domains
 
 ALTER TABLE ONLY public.domains
     ADD CONSTRAINT domains_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: egress_regions egress_regions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.egress_regions
+    ADD CONSTRAINT egress_regions_pkey PRIMARY KEY (name);
 
 
 --
@@ -4886,6 +4910,14 @@ ALTER TABLE ONLY public.domains
 
 
 --
+-- Name: egress_regions egress_regions_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.egress_regions
+    ADD CONSTRAINT egress_regions_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
 -- Name: enrollments enrollments_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6022,6 +6054,14 @@ ALTER TABLE ONLY public.sending_egresses
 
 
 --
+-- Name: sending_egresses sending_egresses_region_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_egresses
+    ADD CONSTRAINT sending_egresses_region_fkey FOREIGN KEY (region) REFERENCES public.egress_regions(name);
+
+
+--
 -- Name: sessions sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6685,4 +6725,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261009160000'),
     ('20261009161800'),
     ('20261012200000'),
-    ('20261012210000');
+    ('20261012210000'),
+    ('20261013081116');
