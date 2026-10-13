@@ -1308,7 +1308,7 @@ CREATE TABLE public.mailboxes (
     credential bytea,
     credential_expires_at timestamp with time zone,
     status text DEFAULT 'active'::text NOT NULL,
-    daily_limit integer DEFAULT 30 NOT NULL,
+    daily_limit integer DEFAULT 40 NOT NULL,
     delay_min_seconds integer DEFAULT 60 NOT NULL,
     delay_max_seconds integer DEFAULT 300 NOT NULL,
     warmed boolean DEFAULT false NOT NULL,
@@ -1335,8 +1335,9 @@ CREATE TABLE public.mailboxes (
     microsoft_tenant_id uuid,
     egress_id uuid,
     recipient_esps text[],
+    warmup_started_at timestamp with time zone,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
-    CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 200))),
+    CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 40))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'smtp'::text, 'jmap'::text]))),
     CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 )
@@ -1704,9 +1705,6 @@ CREATE TABLE public.projects (
     slack_channel_set_via public.actor_via,
     warmup_enabled boolean DEFAULT false NOT NULL,
     warmup_enabled_by uuid,
-    warmup_seed_types text[],
-    warmup_seed_types_by uuid,
-    warmup_seed_types_via public.actor_via,
     setup_skipped text[] DEFAULT '{}'::text[] NOT NULL,
     setup_skipped_by uuid,
     setup_skipped_via public.actor_via,
@@ -1715,8 +1713,7 @@ CREATE TABLE public.projects (
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
-    CONSTRAINT projects_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'archived'::text]))),
-    CONSTRAINT projects_warmup_seed_types_check CHECK (((warmup_seed_types IS NULL) OR ((cardinality(warmup_seed_types) > 0) AND (warmup_seed_types <@ ARRAY['gmail'::text, 'gsuite'::text, 'outlook'::text, 'yahoo'::text, 'aol'::text]))))
+    CONSTRAINT projects_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'archived'::text])))
 );
 
 
@@ -2509,24 +2506,6 @@ CREATE TABLE public.users (
 
 
 --
--- Name: warmup_profiles; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.warmup_profiles (
-    id uuid DEFAULT uuidv7() NOT NULL,
-    mailbox_id uuid NOT NULL,
-    provider text NOT NULL,
-    external_id text,
-    from_name text NOT NULL,
-    status text DEFAULT 'active'::text NOT NULL,
-    last_error text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT warmup_profiles_provider_check CHECK ((provider = ANY (ARRAY['warmupip'::text, 'own'::text]))),
-    CONSTRAINT warmup_profiles_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'failed'::text])))
-);
-
-
---
 -- Name: warmup_seed_tenants; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2589,6 +2568,7 @@ CREATE TABLE public.warmup_sends (
     engage_actions text[],
     engaged_at timestamp with time zone,
     engage_error text,
+    copy_message_id uuid,
     CONSTRAINT warmup_sends_placement_check CHECK ((placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_status_check CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text])))
 );
@@ -3526,14 +3506,6 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: warmup_profiles warmup_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.warmup_profiles
-    ADD CONSTRAINT warmup_profiles_pkey PRIMARY KEY (id);
-
-
---
 -- Name: warmup_seed_tenants warmup_seed_tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4092,6 +4064,13 @@ CREATE INDEX ix_triage_holds__effective ON public.triage_holds USING btree (effe
 
 
 --
+-- Name: ix_warmup_sends__copy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_sends__copy ON public.warmup_sends USING btree (copy_message_id) WHERE (copy_message_id IS NOT NULL);
+
+
+--
 -- Name: ix_warmup_sends__engage; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4320,13 +4299,6 @@ CREATE UNIQUE INDEX ux_tasks__open_signal ON public.tasks USING btree (strategy_
 --
 
 CREATE UNIQUE INDEX ux_threads__linkedin_chat ON public.threads USING btree (linkedin_account_id, provider_thread_id) WHERE (channel = 'linkedin'::text);
-
-
---
--- Name: ux_warmup_profiles__mailbox; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX ux_warmup_profiles__mailbox ON public.warmup_profiles USING btree (mailbox_id);
 
 
 --
@@ -5726,14 +5698,6 @@ ALTER TABLE ONLY public.projects
 
 
 --
--- Name: projects projects_warmup_seed_types_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.projects
-    ADD CONSTRAINT projects_warmup_seed_types_by_fkey FOREIGN KEY (warmup_seed_types_by) REFERENCES public.users(id);
-
-
---
 -- Name: provider_calls provider_calls_company_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6550,14 +6514,6 @@ ALTER TABLE ONLY public.triage_holds
 
 
 --
--- Name: warmup_profiles warmup_profiles_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.warmup_profiles
-    ADD CONSTRAINT warmup_profiles_mailbox_id_fkey FOREIGN KEY (mailbox_id) REFERENCES public.mailboxes(id) ON DELETE CASCADE;
-
-
---
 -- Name: warmup_seed_tenants warmup_seed_tenants_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6579,6 +6535,14 @@ ALTER TABLE ONLY public.warmup_seed_tenants
 
 ALTER TABLE ONLY public.warmup_seeds
     ADD CONSTRAINT warmup_seeds_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.warmup_seed_tenants(id);
+
+
+--
+-- Name: warmup_sends warmup_sends_copy_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_sends
+    ADD CONSTRAINT warmup_sends_copy_message_id_fkey FOREIGN KEY (copy_message_id) REFERENCES public.messages(id) ON DELETE SET NULL;
 
 
 --
@@ -6726,4 +6690,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261009161800'),
     ('20261012200000'),
     ('20261012210000'),
-    ('20261013081116');
+    ('20261013081116'),
+    ('20261013081747');

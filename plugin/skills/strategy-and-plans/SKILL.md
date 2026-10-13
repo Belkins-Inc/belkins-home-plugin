@@ -148,11 +148,14 @@ real limits:
 
 - **Messages needed** = leads × steps on each channel. Every step spends capacity, not only the
   first touch; count a conditional step at the share expected to fire.
-- **Email** — each mailbox sends at most its `dailyLimit` a day (`bh mailboxes`; 30 by default), on
-  the strategy's `sendDays` only (weekdays by default). Warm-up notes draw on the same limit.
+- **Email** — each mailbox sends at most its `dailyLimit` a day (`bh mailboxes`; 40 by default, and
+  40 is the most the engine allows), on the strategy's `sendDays` only (weekdays by default).
+  Warm-up notes draw on the same limit.
 - **The ramp** — a mailbox not marked `warmed` climbs 15 / 30 / 45 / 60 / 75 / 90 / 100% of its
-  limit, one rung every two sending days, so over its first twelve sending days it delivers about
-  half its nominal capacity: 186 messages at 30 a day, not 360. Where each one stands:
+  limit, one rung every two sending days, full on its twelfth sending day. With warm-up on (a new
+  mailbox's usual start), its first week sends no outreach at all and its second only half the
+  ramped limit: plan on a new mailbox carrying outreach from about day 8, and its full 40 from about
+  day 12, when it is warmed and warm-up stops. Where each one stands:
   `bh sql "select address, daily_limit, warmed, sending_days from mailboxes where sender_id in ('<sender-id>')"`.
 - **LinkedIn** — each account sends 15 invites and 40 messages a day (`daily_invite_limit`,
   `daily_message_limit`), on send days. One invite per lead, so an account opens at most about 75

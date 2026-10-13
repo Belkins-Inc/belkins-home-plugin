@@ -267,15 +267,15 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   agent run                              queue a run for the waiting work now (a person only)
   agent cancel <run-id>                  stop a queued or running run (a person only)
   agent on | agent off                   the project's switch: whether the engine starts runs by itself
-  warmup status                          the switch, the seed types, and each mailbox's notes and placement
-  warmup on [--seeds gmail,gsuite,outlook,yahoo,aol|default] | warmup off   (a person only)
+  warmup status                          the switch, the seeds, and each mailbox's ramp, notes and placement
+  warmup on | warmup off                 (a person only) on ramps every mailbox not yet warmed on our own seeds:
+                                         a week of warm-up alone, then beside outreach (half its notes the
+                                         project's real copy) until the full daily limit, when it stops
   warmup seeds                           our own seed organisations: seeds, today's notes, spam and tabs (an admin)
   warmup seeds <admin email> [--count <n>]   adds an organisation lent to us, or tends it again: the engine keeps
                                          n seed users of its own there (default 4), in the home-seeds unit, on its
                                          domains; its Admin console grants the WARMUP_SEED_KEY service account
                                          domain-wide delegation first
-                                         on warms every mailbox not yet warmed; --seeds picks the seed
-                                         types it writes to (default: gmail, gsuite, outlook); off tells the provider too
   agent stats [--hours <n>]              across projects: runs, cost, queued / running, wait from reply to run
   placement [--days <n>]                 inbox placement on our own seeds, per environment, over the last days (an admin)
   placement seeds                        the seed mailboxes: environment, status, last note
@@ -603,7 +603,6 @@ async function main(argv: string[]): Promise<void> {
       feedback: { type: 'string' },
       notes: { type: 'string' },
       upcoming: { type: 'boolean' },
-      seeds: { type: 'string' },
       count: { type: 'string' },
       claim: { type: 'string' },
       evidence: { type: 'string' },
@@ -2275,15 +2274,7 @@ async function main(argv: string[]): Promise<void> {
               })
             : await call(config, 'GET', '/warmup/seeds'),
         )
-      if (sub === 'on') {
-        const seeds = o.seeds
-          ? await call(config, 'PUT', `/projects/${p()}/warmup`, {
-              seedTypes: o.seeds === 'default' ? null : list(o.seeds),
-            })
-          : null
-        const on = (await call(config, 'POST', `/projects/${p()}/warmup/on`, {})) as object
-        return out(seeds ? { ...on, ...(seeds as object) } : on)
-      }
+      if (sub === 'on') return out(await call(config, 'POST', `/projects/${p()}/warmup/on`, {}))
       if (sub === 'off') return out(await call(config, 'POST', `/projects/${p()}/warmup/off`, {}))
       break
     case 'linkedin': {
