@@ -37,7 +37,8 @@ CREATE TYPE public.actor_via AS ENUM (
     'web',
     'session',
     'scheduled_agent',
-    'engine'
+    'engine',
+    'client'
 );
 
 
@@ -223,6 +224,58 @@ begin
   return new;
 end
 $$;
+
+
+--
+-- Name: refuse_client_user(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.refuse_client_user() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if exists (select 1 from users where id = new.user_id and kind = 'client') then
+    raise exception 'a client user cannot be added to %', tg_table_name using errcode = 'check_violation';
+  end if;
+  return new;
+end $$;
+
+
+--
+-- Name: refuse_kind_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.refuse_kind_change() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if new.kind = 'client' and (
+    exists (select 1 from organisation_members where user_id = new.id)
+    or exists (select 1 from project_members where user_id = new.id)
+    or exists (select 1 from api_tokens where user_id = new.id)
+  ) then
+    raise exception 'a user with staff access cannot become a client' using errcode = 'check_violation';
+  end if;
+  if new.kind = 'staff' and exists (select 1 from client_project_grants where user_id = new.id) then
+    raise exception 'a user with client grants cannot become staff' using errcode = 'check_violation';
+  end if;
+  return new;
+end $$;
+
+
+--
+-- Name: refuse_staff_grant(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.refuse_staff_grant() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if not exists (select 1 from users where id = new.user_id and kind = 'client') then
+    raise exception 'only a client user can be granted a project' using errcode = 'check_violation';
+  end if;
+  return new;
+end $$;
 
 
 --
@@ -661,6 +714,26 @@ CREATE TABLE public.cli_logins (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT cli_logins_check CHECK (((approved_by IS NULL) = (approved_at IS NULL))),
     CONSTRAINT cli_logins_check1 CHECK (((claimed_at IS NULL) OR (approved_at IS NOT NULL)))
+);
+
+
+--
+-- Name: client_project_grants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.client_project_grants (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    user_id uuid NOT NULL,
+    project_id uuid NOT NULL,
+    role text DEFAULT 'member'::text NOT NULL,
+    granted_by uuid NOT NULL,
+    granted_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    ended_at timestamp with time zone,
+    ended_by uuid,
+    ended_via public.actor_via,
+    CONSTRAINT client_project_grants_check CHECK ((((ended_at IS NULL) = (ended_by IS NULL)) AND ((ended_at IS NULL) = (ended_via IS NULL)))),
+    CONSTRAINT client_project_grants_role_check CHECK ((role = ANY (ARRAY['owner'::text, 'member'::text])))
 );
 
 
@@ -2062,7 +2135,13 @@ CREATE TABLE public.sessions (
     user_id uuid NOT NULL,
     token_hash bytea NOT NULL,
     expires_at timestamp with time zone NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    audience text DEFAULT 'staff'::text NOT NULL,
+    revoked_at timestamp with time zone,
+    revoked_by uuid,
+    revoked_via public.actor_via,
+    last_seen_at timestamp with time zone,
+    CONSTRAINT sessions_audience_check CHECK ((audience = ANY (ARRAY['staff'::text, 'client'::text])))
 );
 
 
@@ -2521,7 +2600,10 @@ CREATE TABLE public.users (
     is_admin boolean DEFAULT false NOT NULL,
     slack_user_id text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    disabled_at timestamp with time zone
+    disabled_at timestamp with time zone,
+    kind text DEFAULT 'staff'::text NOT NULL,
+    CONSTRAINT users_client_not_admin CHECK (((kind = 'staff'::text) OR (NOT is_admin))),
+    CONSTRAINT users_kind_check CHECK ((kind = ANY (ARRAY['staff'::text, 'client'::text])))
 );
 
 
@@ -2755,6 +2837,14 @@ ALTER TABLE ONLY public.cli_logins
 
 ALTER TABLE ONLY public.cli_logins
     ADD CONSTRAINT cli_logins_user_code_key UNIQUE (user_code);
+
+
+--
+-- Name: client_project_grants client_project_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_project_grants
+    ADD CONSTRAINT client_project_grants_pkey PRIMARY KEY (id);
 
 
 --
@@ -3579,6 +3669,20 @@ ALTER TABLE ONLY public.workspace_tenants
 
 ALTER TABLE ONLY public.workspace_tenants
     ADD CONSTRAINT workspace_tenants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: client_project_grants_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX client_project_grants_active ON public.client_project_grants USING btree (user_id, project_id) WHERE (ended_at IS NULL);
+
+
+--
+-- Name: client_project_grants_project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX client_project_grants_project ON public.client_project_grants USING btree (project_id);
 
 
 --
@@ -4454,6 +4558,20 @@ CREATE OR REPLACE VIEW public.source_usage AS
 
 
 --
+-- Name: api_tokens api_tokens_staff_only; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER api_tokens_staff_only BEFORE INSERT OR UPDATE OF user_id ON public.api_tokens FOR EACH ROW EXECUTE FUNCTION public.refuse_client_user();
+
+
+--
+-- Name: client_project_grants client_project_grants_clients_only; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER client_project_grants_clients_only BEFORE INSERT OR UPDATE OF user_id ON public.client_project_grants FOR EACH ROW EXECUTE FUNCTION public.refuse_staff_grant();
+
+
+--
 -- Name: companies companies_esp_insert; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4538,6 +4656,13 @@ CREATE TRIGGER messages_replan_update AFTER UPDATE ON public.messages REFERENCIN
 
 
 --
+-- Name: organisation_members organisation_members_staff_only; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER organisation_members_staff_only BEFORE INSERT OR UPDATE OF user_id ON public.organisation_members FOR EACH ROW EXECUTE FUNCTION public.refuse_client_user();
+
+
+--
 -- Name: placement_notes placement_notes_count_sent; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4552,6 +4677,13 @@ CREATE TRIGGER placement_notes_count_sent_update AFTER UPDATE OF status ON publi
 
 
 --
+-- Name: project_members project_members_staff_only; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER project_members_staff_only BEFORE INSERT OR UPDATE OF user_id ON public.project_members FOR EACH ROW EXECUTE FUNCTION public.refuse_client_user();
+
+
+--
 -- Name: projects projects_replan; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4563,6 +4695,13 @@ CREATE TRIGGER projects_replan AFTER UPDATE OF timezone ON public.projects FOR E
 --
 
 CREATE TRIGGER strategies_replan AFTER UPDATE OF status, send_days, window_start, window_end ON public.strategies FOR EACH ROW WHEN (((((old.status IS DISTINCT FROM new.status) OR (old.send_days IS DISTINCT FROM new.send_days)) OR (old.window_start IS DISTINCT FROM new.window_start)) OR (old.window_end IS DISTINCT FROM new.window_end))) EXECUTE FUNCTION public.replan_on_strategy();
+
+
+--
+-- Name: users users_kind_change; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER users_kind_change BEFORE UPDATE OF kind ON public.users FOR EACH ROW WHEN ((old.kind IS DISTINCT FROM new.kind)) EXECUTE FUNCTION public.refuse_kind_change();
 
 
 --
@@ -4776,6 +4915,38 @@ ALTER TABLE ONLY public.cli_logins
 
 ALTER TABLE ONLY public.cli_logins
     ADD CONSTRAINT cli_logins_token_id_fkey FOREIGN KEY (token_id) REFERENCES public.api_tokens(id) ON DELETE SET NULL;
+
+
+--
+-- Name: client_project_grants client_project_grants_ended_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_project_grants
+    ADD CONSTRAINT client_project_grants_ended_by_fkey FOREIGN KEY (ended_by) REFERENCES public.users(id);
+
+
+--
+-- Name: client_project_grants client_project_grants_granted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_project_grants
+    ADD CONSTRAINT client_project_grants_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: client_project_grants client_project_grants_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_project_grants
+    ADD CONSTRAINT client_project_grants_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+
+--
+-- Name: client_project_grants client_project_grants_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_project_grants
+    ADD CONSTRAINT client_project_grants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -6083,6 +6254,14 @@ ALTER TABLE ONLY public.sending_egresses
 
 
 --
+-- Name: sessions sessions_revoked_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions
+    ADD CONSTRAINT sessions_revoked_by_fkey FOREIGN KEY (revoked_by) REFERENCES public.users(id);
+
+
+--
 -- Name: sessions sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6760,6 +6939,8 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261013102637'),
     ('20261013103629'),
     ('20261013112753'),
+    ('20261013115353'),
+    ('20261013115354'),
     ('20261013135404'),
     ('20261013141215'),
     ('20261013144134');
