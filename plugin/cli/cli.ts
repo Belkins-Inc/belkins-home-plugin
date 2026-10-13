@@ -271,11 +271,22 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   warmup on | warmup off                 (a person only) on ramps every mailbox not yet warmed on our own seeds:
                                          a week of warm-up alone, then beside outreach (half its notes the
                                          project's real copy) until the full daily limit, when it stops
-  warmup seeds                           our own seed organisations: seeds, today's notes, spam and tabs (an admin)
+  warmup seeds                           our own seed organisations, Google and Microsoft 365: seeds held and
+                                         ready, today's notes, spam and tabs (an admin)
   warmup seeds <admin email> [--count <n>]   adds an organisation lent to us, or tends it again: the engine keeps
                                          n seed users of its own there (default 4), in the home-seeds unit, on its
                                          domains; its Admin console grants the WARMUP_SEED_KEY service account
                                          domain-wide delegation first
+  warmup seeds <admin email> --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id>
+      --key <private key PEM> --cert <certificate PEM> [--count <n>] [--egress <host name|none>]
+                                         adds a Microsoft 365 seed tenant of ours (never a sending one), proved
+                                         against Graph and Exchange first: the engine keeps n users of department
+                                         home-seeds on its own domain (default 4), licensed with Exchange Online
+                                         (Plan 1) — bought on the tenant's bill when none is free; a lower count
+                                         takes the retired seeds' licences off and lowers the bill where Microsoft
+                                         allows. Answers leave only through --egress, an egress of its own that
+                                         nothing of our sending holds; without one they are not sent. Without
+                                         --key and --cert, tends it again, --count and --egress changed (an admin)
   agent stats [--hours <n>]              across projects: runs, cost, queued / running, wait from reply to run
   placement [--days <n>]                 inbox placement on our own seeds, per environment, over the last days (an admin)
   placement seeds                        the seed mailboxes: environment, status, last note
@@ -301,7 +312,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement code <source> <code> --meaning <text> --confidence documented|inferred|unknown [--evidence <text>]
                                          set what a code means; N or x stands for a varying digit (an admin)
   egress list                            the egresses mail leaves through: name, address, region, status, the
-                                         projects and mailboxes on each (an admin; docs/decisions/sending-identity.md)
+                                         projects, mailboxes and warm-up seed tenants on each (an admin;
+                                         docs/decisions/sending-identity.md); a seed tenant's egress carries
+                                         nothing else (bh warmup seeds <admin> --egress <host name>)
   egress add <host name> --ip <ipv4> --proxy <http://user:pass@host:port> [--region <region>] [--spare]
                                          a host whose reverse DNS is <host name>, reached through its CONNECT proxy
   egress active|spare|retire <id>        put an egress in use, set it aside as a spare, or retire it
@@ -505,6 +518,7 @@ async function main(argv: string[]): Promise<void> {
       spare: { type: 'boolean' },
       region: { type: 'string' },
       'tenant-id': { type: 'string' },
+      egress: { type: 'string' },
       'client-id': { type: 'string' },
       cert: { type: 'string' },
       'max-cents': { type: 'string' },
@@ -2273,6 +2287,15 @@ async function main(argv: string[]): Promise<void> {
             ? await call(config, 'POST', '/warmup/seeds', {
                 adminEmail: arg,
                 ...(o.count !== undefined ? { count: Number(o.count) } : {}),
+                // A Microsoft 365 seed tenant: its app, as bh tenant add --provider microsoft takes it.
+                ...(o.provider ? { provider: o.provider } : {}),
+                ...(o.name ? { name: o.name } : {}),
+                ...(o['tenant-id'] ? { directoryId: o['tenant-id'] } : {}),
+                ...(o['client-id'] ? { clientId: o['client-id'] } : {}),
+                ...(o.key ? { key: await readFile(o.key, 'utf8') } : {}),
+                ...(o.cert ? { cert: await readFile(o.cert, 'utf8') } : {}),
+                // The egress its answers leave through; none takes it away (they are then not sent).
+                ...(o.egress ? { egress: o.egress === 'none' ? null : o.egress } : {}),
               })
             : await call(config, 'GET', '/warmup/seeds'),
         )

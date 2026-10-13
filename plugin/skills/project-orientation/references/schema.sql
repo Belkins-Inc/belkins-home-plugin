@@ -2522,6 +2522,20 @@ CREATE TABLE public.warmup_seed_tenants (
     seeds_wanted integer DEFAULT 4 NOT NULL,
     seeds_wanted_by uuid,
     seeds_wanted_via public.actor_via,
+    provider text DEFAULT 'google'::text NOT NULL,
+    name text,
+    directory_id uuid,
+    client_id uuid,
+    initial_domain public.citext,
+    credential bytea,
+    egress_id uuid,
+    licence_note text,
+    replies_blocked_at timestamp with time zone,
+    replies_blocked_code text,
+    replies_bounced_at timestamp with time zone,
+    replies_tried_at timestamp with time zone,
+    CONSTRAINT warmup_seed_tenants_microsoft_check CHECK (((provider = 'google'::text) OR ((name IS NOT NULL) AND (directory_id IS NOT NULL) AND (client_id IS NOT NULL) AND (initial_domain IS NOT NULL) AND (credential IS NOT NULL)))),
+    CONSTRAINT warmup_seed_tenants_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
     CONSTRAINT warmup_seed_tenants_seeds_wanted_check CHECK (((seeds_wanted >= 0) AND (seeds_wanted <= 20))),
     CONSTRAINT warmup_seed_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'failed'::text])))
 );
@@ -2542,6 +2556,7 @@ CREATE TABLE public.warmup_seeds (
     tenant_id uuid,
     retired_at timestamp with time zone,
     made_at timestamp with time zone,
+    ready_at timestamp with time zone,
     CONSTRAINT warmup_seeds_provider_check CHECK ((provider = ANY (ARRAY['warmupip'::text, 'own'::text]))),
     CONSTRAINT warmup_seeds_seed_type_check CHECK ((seed_type = ANY (ARRAY['gmail'::text, 'gsuite'::text, 'outlook'::text, 'yahoo'::text, 'aol'::text, 'seznam'::text, 'zoho'::text, 'icloud'::text, 'other'::text])))
 );
@@ -2570,6 +2585,7 @@ CREATE TABLE public.warmup_sends (
     engaged_at timestamp with time zone,
     engage_error text,
     copy_message_id uuid,
+    reply_skipped text,
     CONSTRAINT warmup_sends_placement_check CHECK ((placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_status_check CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text])))
 );
@@ -4307,6 +4323,20 @@ CREATE UNIQUE INDEX ux_threads__linkedin_chat ON public.threads USING btree (lin
 --
 
 CREATE UNIQUE INDEX ux_warmup_seed_tenants__admin ON public.warmup_seed_tenants USING btree (admin_email);
+
+
+--
+-- Name: ux_warmup_seed_tenants__directory; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_warmup_seed_tenants__directory ON public.warmup_seed_tenants USING btree (directory_id) WHERE (directory_id IS NOT NULL);
+
+
+--
+-- Name: ux_warmup_seed_tenants__egress; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_warmup_seed_tenants__egress ON public.warmup_seed_tenants USING btree (egress_id) WHERE (egress_id IS NOT NULL);
 
 
 --
@@ -6523,6 +6553,14 @@ ALTER TABLE ONLY public.warmup_seed_tenants
 
 
 --
+-- Name: warmup_seed_tenants warmup_seed_tenants_egress_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_seed_tenants
+    ADD CONSTRAINT warmup_seed_tenants_egress_id_fkey FOREIGN KEY (egress_id) REFERENCES public.sending_egresses(id);
+
+
+--
 -- Name: warmup_seed_tenants warmup_seed_tenants_seeds_wanted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6694,4 +6732,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261013081116'),
     ('20261013081747'),
     ('20261013102637'),
-    ('20261013103629');
+    ('20261013103629'),
+    ('20261013112753'),
+    ('20261013135404'),
+    ('20261013141215');
