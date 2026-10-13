@@ -348,6 +348,25 @@ end
 $$;
 
 
+--
+-- Name: warmup_seed_tenants_egress_group(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.warmup_seed_tenants_egress_group() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if new.egress_id is not null and (
+    select count(*) from warmup_seed_tenants
+     where egress_id = new.egress_id and id <> new.id
+  ) >= 5 then
+    raise exception 'an egress carries at most five warm-up seed tenants'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end $$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -4081,6 +4100,13 @@ CREATE INDEX ix_triage_holds__effective ON public.triage_holds USING btree (effe
 
 
 --
+-- Name: ix_warmup_seed_tenants__egress; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_seed_tenants__egress ON public.warmup_seed_tenants USING btree (egress_id) WHERE (egress_id IS NOT NULL);
+
+
+--
 -- Name: ix_warmup_sends__copy; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4333,13 +4359,6 @@ CREATE UNIQUE INDEX ux_warmup_seed_tenants__directory ON public.warmup_seed_tena
 
 
 --
--- Name: ux_warmup_seed_tenants__egress; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX ux_warmup_seed_tenants__egress ON public.warmup_seed_tenants USING btree (egress_id) WHERE (egress_id IS NOT NULL);
-
-
---
 -- Name: ux_warmup_seeds__address; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4544,6 +4563,13 @@ CREATE TRIGGER projects_replan AFTER UPDATE OF timezone ON public.projects FOR E
 --
 
 CREATE TRIGGER strategies_replan AFTER UPDATE OF status, send_days, window_start, window_end ON public.strategies FOR EACH ROW WHEN (((((old.status IS DISTINCT FROM new.status) OR (old.send_days IS DISTINCT FROM new.send_days)) OR (old.window_start IS DISTINCT FROM new.window_start)) OR (old.window_end IS DISTINCT FROM new.window_end))) EXECUTE FUNCTION public.replan_on_strategy();
+
+
+--
+-- Name: warmup_seed_tenants warmup_seed_tenants_egress_group; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER warmup_seed_tenants_egress_group BEFORE INSERT OR UPDATE OF egress_id ON public.warmup_seed_tenants FOR EACH ROW EXECUTE FUNCTION public.warmup_seed_tenants_egress_group();
 
 
 --
@@ -6735,4 +6761,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261013103629'),
     ('20261013112753'),
     ('20261013135404'),
-    ('20261013141215');
+    ('20261013141215'),
+    ('20261013144134');

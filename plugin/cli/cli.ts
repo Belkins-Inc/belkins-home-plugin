@@ -284,8 +284,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          home-seeds on its own domain (default 4), licensed with Exchange Online
                                          (Plan 1) — bought on the tenant's bill when none is free; a lower count
                                          takes the retired seeds' licences off and lowers the bill where Microsoft
-                                         allows. Answers leave only through --egress, an egress of its own that
-                                         nothing of our sending holds; without one they are not sent. Without
+                                         allows. Answers leave only through --egress, an egress of a group of up
+                                         to five seed tenants that nothing of our sending holds; without one they
+                                         are not sent. Without
                                          --key and --cert, tends it again, --count and --egress changed (an admin)
   agent stats [--hours <n>]              across projects: runs, cost, queued / running, wait from reply to run
   placement [--days <n>]                 inbox placement on our own seeds, per environment, over the last days (an admin)
@@ -313,8 +314,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          set what a code means; N or x stands for a varying digit (an admin)
   egress list                            the egresses mail leaves through: name, address, region, status, the
                                          projects, mailboxes and warm-up seed tenants on each (an admin;
-                                         docs/decisions/sending-identity.md); a seed tenant's egress carries
-                                         nothing else (bh warmup seeds <admin> --egress <host name>)
+                                         docs/decisions/sending-identity.md); an egress of seed tenants carries
+                                         up to five of them and nothing of our sending (bh warmup seeds <admin>
+                                         --egress <host name>)
   egress add <host name> --ip <ipv4> --proxy <http://user:pass@host:port> [--region <region>] [--spare]
                                          a host whose reverse DNS is <host name>, reached through its CONNECT proxy
   egress active|spare|retire <id>        put an egress in use, set it aside as a spare, or retire it
