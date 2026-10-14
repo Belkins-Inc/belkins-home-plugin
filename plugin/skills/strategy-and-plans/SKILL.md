@@ -251,6 +251,12 @@ Read the results against the hypotheses the strategy tests (`bh hypothesis list`
 (`--add-evidence`); at it, settle it — `--status confirmed|rejected --verdict "<the figures, with
 their base>"` — and put what follows (a persona dropped, a segment widened) in front of a person.
 
+Before calling a sender stuck, check two things. A mailbox sends only inside the strategy's window
+in the lead's time zone (the project's when the lead has none), so a US project's mailboxes are
+quiet until the window opens. A LinkedIn account that `bh linkedin` shows with `limitedUntil` is
+resting on Unipile's rate limit (`limitedReason` has Unipile's words); it goes on by itself then,
+and pausing and resuming it changes nothing.
+
 A person pauses with `bh strategy pause <id> --reason "<the figures>"` (only a running strategy) and
 resumes with `bh strategy launch <id>`. A strategy that is finished or replaced:
 `bh strategy archive <id>` — refused while it runs (pause first); its leads and history stay.
