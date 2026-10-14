@@ -93,6 +93,17 @@ begin
   if new.channel = 'email' then
     if r.mailbox_id is not null then
       perform count_daily_send(d, 'mailbox', r.mailbox_id::text);
+      -- The lead's first email: the mailbox takes on every email of its plan still to go.
+      if not exists (select 1 from messages o
+                      where o.enrollment_id = new.enrollment_id and o.channel = 'email'
+                        and o.status = 'sent' and o.id <> new.id) then
+        insert into daily_sends (day, scope, key, sent)
+        select d, 'mailbox_intake', r.mailbox_id::text, count(*)
+          from messages k
+         where k.enrollment_id = new.enrollment_id and k.channel = 'email'
+           and k.resend_of is null and k.status not in ('cancelled', 'skipped')
+        on conflict (day, scope, key) do update set sent = daily_sends.sent + excluded.sent;
+      end if;
     end if;
     if new.to_address like '%@%' then
       perform count_daily_send(d, 'recipient_domain',
@@ -863,7 +874,7 @@ CREATE TABLE public.daily_sends (
     scope text NOT NULL,
     key text NOT NULL,
     sent integer DEFAULT 0 NOT NULL,
-    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text])))
+    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'mailbox_intake'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
@@ -6943,4 +6954,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261013115354'),
     ('20261013135404'),
     ('20261013141215'),
-    ('20261013144134');
+    ('20261013144134'),
+    ('20261014100544');

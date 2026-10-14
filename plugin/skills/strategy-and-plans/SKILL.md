@@ -164,6 +164,10 @@ real limits:
   per day across the whole project, and binds when several people at one company are enrolled; a
   mailbox shared across projects gives this one only its `daily_share` of the sender; `dailyLimit` on the strategy
   caps first touches.
+- **The engine's own brake** — a mailbox starts each day only as many new leads as their whole
+  sequences fit its daily limit (a four-email plan on 40 a day: ten new leads), and sends follow-ups
+  before first emails. Enrolling more than the mailboxes carry does not break sequences; it starts
+  the extra leads days or weeks later. So the plan above still decides when the goal is met.
 
 Worked with the engine's defaults: 250 leads on a four-step email plan are 1,000 messages. Four fresh
 mailboxes send 4 × 186 = 744 in their first twelve sending days and the remaining 256 at 120 a day,
