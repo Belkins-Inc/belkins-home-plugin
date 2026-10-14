@@ -296,7 +296,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement seed activate|suspect|archive <id>   put a seed back in the tests, set it aside, or retire it (an admin)
   placement test <our address> [--per-environment <n>]   notes from that mailbox to n seeds in each environment
                                          (default 2), queued and sent at the mailbox's own pace; they count
-                                         toward its daily limit; once a mailbox a day, but for an admin
+                                         toward its daily limit; once a week a mailbox, whoever asks
   placement show <test-id>               a test's notes: verdict, folders, filter scores
   placement look <seed address> --message-id <id>   where one message sits in a seed, e.g. a step sent
                                          there with bh copy test: verdict, folders, filter scores
