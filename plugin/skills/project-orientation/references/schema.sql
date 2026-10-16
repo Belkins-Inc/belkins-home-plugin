@@ -1442,7 +1442,7 @@ CREATE TABLE public.mailboxes (
     recipient_esps text[],
     warmup_started_at timestamp with time zone,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
-    CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 40))),
+    CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 60))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'smtp'::text, 'jmap'::text]))),
     CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 )
@@ -6958,4 +6958,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261013141215'),
     ('20261013144134'),
     ('20261014100544'),
-    ('20261014132408');
+    ('20261014132408'),
+    ('20261016121955');
