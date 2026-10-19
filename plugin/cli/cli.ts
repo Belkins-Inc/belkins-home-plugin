@@ -257,9 +257,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          in each; a Google one's users as the engine counts them and as Google does
                                          (the larger counts against --max-users), and whether Google refused it a
                                          user for want of a licence (fullAt) (an admin)
-  tenant add --name <n> --admin-email <super admin> --key <service account JSON file> [--max-domains <n>]
-             [--max-users <n>] [--default-pool yes|no]
+  tenant add --name <n> --admin-email <super admin> --key <service account JSON file> | --key-from <tenant>
+             [--max-domains <n>] [--max-users <n>] [--default-pool yes|no]
                                          the key is proved against the tenant before it is kept (an admin);
+                                         --key-from shares the key another tenant holds, opened in the engine,
                                          --max-users caps its users (default 250; Google's Business cap is 300),
                                          --default-pool no takes only domains approved into it with --tenant
   tenant update <id> [--status active|paused] [--max-domains <n>] [--max-users <n>] [--default-pool yes|no]
@@ -544,6 +545,7 @@ async function main(argv: string[]): Promise<void> {
       'admin-email': { type: 'string' },
       'max-domains': { type: 'string' },
       'max-users': { type: 'string' },
+      'key-from': { type: 'string' },
       'default-pool': { type: 'string' },
       tenant: { type: 'string' },
       env: { type: 'string' },
@@ -2026,7 +2028,7 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', '/tenants', {
             name: o.name,
             adminEmail: o['admin-email'],
-            key,
+            ...(o['key-from'] ? { keyFrom: o['key-from'] } : { key }),
             ...room,
             ...maxUsers,
           }),
