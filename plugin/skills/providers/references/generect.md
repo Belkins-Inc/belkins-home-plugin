@@ -227,10 +227,15 @@ one imported by domain). The database enrich can refuse a firm the search return
 does not exist`).
 
 **Answered from the cache when it can.** Every person and company any Generect answer carried is
-kept across projects. A lead by link whose body is only `url` comes back from the cache when a live
-row of that person is at most two weeks old; a company enrichment whose body is only `linkedin_url`
+kept across projects. A lead by link whose body is only `url` comes back from the cache when a whole
+profile of that person is kept that LinkedIn showed in the last 90 days — a lead by link bought
+before, or a row a database search bought (judged by the row's `updated_at`, when Generect's index
+last read it, not by when we paid). Such an answer is the `lead` of a by-link answer, a search row's
+fields as they came (`educations`, `skills`… beyond what by link names), `meta.cached.source`
+saying which endpoint bought it. Up to 90 days is older than Generect's own two weeks: when the
+title must be today's (a reply says they moved), `--again`. A company enrichment whose body is only `linkedin_url`
 when the company was kept in the last 365 days (a `realtime` one only from a live row of the last
-30). The answer carries `meta.cached` (`fetched_at`, `call_id`) and nothing is charged. Look first
+30). The answer carries `meta.cached` (`fetched_at`, `source`, `call_id`) and nothing is charged. Look first
 with `bh cache person <url>` / `bh cache company <url>`; `--again` buys anew.
 
 ## Errors

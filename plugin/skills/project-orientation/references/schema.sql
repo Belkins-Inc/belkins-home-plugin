@@ -1398,7 +1398,8 @@ CREATE TABLE public.linkedin_people (
     provider_call_id uuid NOT NULL,
     data jsonb NOT NULL,
     fetched_at timestamp with time zone NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    profile_at timestamp with time zone
 );
 
 
@@ -7064,4 +7065,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261016121955'),
     ('20261019084149'),
     ('20261019103613'),
-    ('20261019111153');
+    ('20261019111153'),
+    ('20261019121409');
