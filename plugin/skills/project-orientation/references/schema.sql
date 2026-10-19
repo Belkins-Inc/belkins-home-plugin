@@ -1357,6 +1357,52 @@ CREATE TABLE public.linkedin_accounts (
 
 
 --
+-- Name: linkedin_companies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_companies (
+    linkedin_id text NOT NULL,
+    slug text,
+    domain public.citext,
+    name text,
+    industry text,
+    country_code text,
+    live boolean NOT NULL,
+    provider text NOT NULL,
+    source text NOT NULL,
+    provider_call_id uuid NOT NULL,
+    data jsonb NOT NULL,
+    fetched_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: linkedin_people; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_people (
+    sales_id text NOT NULL,
+    slug text,
+    full_name text,
+    job_title text,
+    company_name text,
+    company_linkedin_id text,
+    company_slug text,
+    location text,
+    is_current boolean DEFAULT true NOT NULL,
+    complete boolean NOT NULL,
+    live boolean NOT NULL,
+    provider text NOT NULL,
+    source text NOT NULL,
+    provider_call_id uuid NOT NULL,
+    data jsonb NOT NULL,
+    fetched_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: mail_domains; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3006,6 +3052,22 @@ ALTER TABLE ONLY public.linkedin_accounts
 
 
 --
+-- Name: linkedin_companies linkedin_companies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_companies
+    ADD CONSTRAINT linkedin_companies_pkey PRIMARY KEY (linkedin_id);
+
+
+--
+-- Name: linkedin_people linkedin_people_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_people
+    ADD CONSTRAINT linkedin_people_pkey PRIMARY KEY (sales_id);
+
+
+--
 -- Name: mail_domains mail_domains_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4257,6 +4319,41 @@ CREATE INDEX ix_warmup_sends__seed ON public.warmup_sends USING btree (mailbox_i
 --
 
 CREATE INDEX ix_warmup_sends__seed_day ON public.warmup_sends USING btree (seed_id, sent_at DESC);
+
+
+--
+-- Name: linkedin_companies_domain; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX linkedin_companies_domain ON public.linkedin_companies USING btree (domain);
+
+
+--
+-- Name: linkedin_companies_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX linkedin_companies_slug ON public.linkedin_companies USING btree (slug);
+
+
+--
+-- Name: linkedin_people_company_linkedin_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX linkedin_people_company_linkedin_id ON public.linkedin_people USING btree (company_linkedin_id);
+
+
+--
+-- Name: linkedin_people_company_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX linkedin_people_company_slug ON public.linkedin_people USING btree (company_slug);
+
+
+--
+-- Name: linkedin_people_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX linkedin_people_slug ON public.linkedin_people USING btree (slug);
 
 
 --
@@ -6961,4 +7058,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261014100544'),
     ('20261014132408'),
     ('20261016121955'),
-    ('20261019084149');
+    ('20261019084149'),
+    ('20261019103613');

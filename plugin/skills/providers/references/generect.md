@@ -206,6 +206,12 @@ bh call generect POST /enrich/database/lead/ --contact <id> --body '{"linkedin_u
 bh call generect POST /enrich/database/company/ --company <id> --body '{"linkedin_url":"https://www.linkedin.com/company/acme-inc"}'
 ```
 
+**Answered from the cache when it can.** Every person and company any Generect answer carried is
+kept across projects; an enrichment whose body is only `linkedin_url` of a page kept recently
+enough (a person 180 days, a company 365; a `realtime` enrichment only from a live row of the last
+30 days) comes back from the cache, unpaid, with `meta.cached` (`fetched_at`, `call_id`). Look
+first with `bh cache person <url>` / `bh cache company <url>`; `--again` buys anew.
+
 A lead enrich takes either form (`/in/<slug>` or `/sales/lead/<URN>`) and answers both
 (`linkedin_url`, `sales_id`, `linkedin_id`). A company enrich adds nothing a search row lacks — buy
 it only for a company no search found (e.g. one imported by domain). The database enrich can refuse

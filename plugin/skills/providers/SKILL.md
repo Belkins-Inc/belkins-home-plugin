@@ -30,6 +30,13 @@ key, forwards the request as written, records the call in `provider_calls` and i
    `bh sql` is not scoped to a project: filter by `@project` (replaced with the current project's id)
    or by an id.
 
+   LinkedIn people and companies bought by **any** project are kept and free to read:
+   `bh cache person <linkedin-url>`, `bh cache company <linkedin-url>` (or `--domain <d>`),
+   `bh cache people <company-url>` (the people bought so far who work there — not all of them).
+   A Generect enrichment by URL of a page already kept is answered from the cache by itself
+   (`# from the cache` on stderr, `meta.cached` in the answer, nothing charged); `--again` buys it
+   anew when the data itself must be fresh.
+
 ## The call
 
 ```sh

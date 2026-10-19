@@ -112,6 +112,10 @@ Decide before spending, and write the reason in one sentence (a note or the sess
 
    A company with no LinkedIn page cannot be searched inside: find its page first (Generect
    realtime by name, generect.md) or leave it.
+
+   Another project may have bought people there already: `bh cache people <company_link>` lists
+   them free (only those bought, so it never proves nobody else fits). Enough who fit the ladder →
+   take them from there and skip the paid search.
 3. **Search inside each company** with `company_link`, `limit_by` about 3 × `max_per_company`,
    `--strategy <id> --company <id>` (a lead count while sizing, before any strategy exists, takes
    `--segment <id>` instead). Record each as a contact search:

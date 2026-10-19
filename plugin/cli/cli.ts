@@ -380,6 +380,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          the provider's answer on stdout, untouched; cost on stderr
   call show <call-id>                    an earlier call with what the provider answered (use it again instead of paying again),
                                          and what it delivered later (Apollo's phones) under deliveries
+  cache person <linkedin-url>            what was bought about a person, any project, free; a Generect enrichment by URL
+                                         is answered from here by itself (--again buys it anew)
+  cache company <linkedin-url> | cache company --domain <d>    the same for a company
+  cache people <company-url|linkedin-id> [--former]           the people bought so far who work there (not all of them)
   spend [--from <date>] [--to <date>]    this month's spend by provider unless dates are given, and credits left
   spend add --provider <p> --operation subscription|data_purchase|infrastructure|llm|other --usd <n> [--note <t>]
   address check <contact-id> --address <a> [--provider bouncer|scrubby] [--reason bounce_replacement|catch_all|new_contact] [--again]
@@ -551,6 +555,8 @@ async function main(argv: string[]): Promise<void> {
       search: { type: 'string' },
       company: { type: 'string' },
       again: { type: 'boolean' },
+      domain: { type: 'string' },
+      former: { type: 'boolean' },
       'every-project': { type: 'boolean' },
       address: { type: 'string' },
       'brief-file': { type: 'string' },
@@ -1437,6 +1443,7 @@ async function main(argv: string[]): Promise<void> {
         credits: number | null
         creditsLeft: number | null
         deliveredLater?: boolean
+        cached?: { fetchedAt: string; callId: string }
         body: unknown
       }
       const cost = answer.costUsd === null ? 'cost unknown' : `$${answer.costUsd.toFixed(4)}`
@@ -1447,6 +1454,10 @@ async function main(argv: string[]): Promise<void> {
       process.stderr.write(
         `# ${name} ${answer.status} · ${cost}${credits} · ${answer.results ?? '?'} results · call ${answer.callId}\n`,
       )
+      if (answer.cached)
+        process.stderr.write(
+          `# from the cache: bought ${answer.cached.fetchedAt} by call ${answer.cached.callId}; --again buys it anew\n`,
+        )
       if (answer.deliveredLater)
         process.stderr.write(
           `# the rest arrives later, to the engine: bh call show ${answer.callId} lists it under deliveries\n`,
@@ -1454,6 +1465,36 @@ async function main(argv: string[]): Promise<void> {
       out(answer.body)
       if (answer.status >= 400) process.exitCode = 1
       return
+    }
+    case 'cache': {
+      const what = pos[2]
+      if (sub === 'person' && what)
+        return out(
+          await call(config, 'GET', `/linkedin-cache/person?url=${encodeURIComponent(what)}`),
+        )
+      if (sub === 'company' && (what || o.domain))
+        return out(
+          await call(
+            config,
+            'GET',
+            `/linkedin-cache/company?${what ? `url=${encodeURIComponent(what)}` : `domain=${encodeURIComponent(o.domain!)}`}`,
+          ),
+        )
+      if (sub === 'people' && what)
+        return out(
+          await call(
+            config,
+            'GET',
+            `/linkedin-cache/people?company=${encodeURIComponent(what)}${o.former ? '&former=true' : ''}`,
+          ),
+        )
+      throw new BhError(
+        'Which page?',
+        {
+          hint: 'bh cache person https://www.linkedin.com/in/<name> | cache company <url> | cache people <company-url>',
+        },
+        2,
+      )
     }
     case 'spend':
       if (sub === 'add')
