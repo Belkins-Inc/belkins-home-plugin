@@ -43,7 +43,7 @@ written as they should be sent.
   "appliesWhen": "email_and_linkedin",
   "steps": [
     { "channel": "email", "guidance": "As step 1 of email_only." },
-    { "channel": "linkedin_invite", "delayDays": 1, "guidance": "Connection note, under 300 characters. Asks for nothing but the connection; does not pitch; does not mention the email." },
+    { "channel": "linkedin_invite", "delayDays": 1 },
     { "channel": "email", "delayDays": 3, "guidance": "Proof step in the email thread. Must not mention LinkedIn." },
     { "channel": "linkedin_message", "anchor": "invite_accepted", "condition": "invite_accepted", "delayDays": 1, "maxWaitDays": 7, "guidance": "Thanks for connecting. One sentence of value, one soft question. Stands on its own; does not rely on the emails having arrived." },
     { "channel": "email", "delayDays": 4, "guidance": "Last touch. Direct ask for a call or a polite close. References only the earlier emails." }
@@ -54,14 +54,18 @@ written as they should be sent.
 A lead whose invite is never accepted skips the LinkedIn message after `maxWaitDays` and continues
 with the next step. A fallback step for that case carries `"condition": "invite_not_accepted"`.
 
+Invitations go without a note by default. Only when the person asks for notes does the invite
+step carry `"withoutNote": false` and a guidance such as "Connection note, under 300 characters.
+Asks for nothing but the connection; does not pitch; does not mention the email."
+
 ## linkedin_only
 
 ```json
 {
   "appliesWhen": "linkedin_only",
   "steps": [
-    { "channel": "linkedin_invite", "guidance": "Connection note under 300 characters, opening on the signal. No pitch, no ask beyond connecting." },
-    { "channel": "linkedin_message", "anchor": "invite_accepted", "condition": "invite_accepted", "delayDays": 1, "maxWaitDays": 10, "guidance": "Interest question in two or three sentences." },
+    { "channel": "linkedin_invite" },
+    { "channel": "linkedin_message", "anchor": "invite_accepted", "condition": "invite_accepted", "delayDays": 1, "maxWaitDays": 10, "guidance": "Opens on the signal, then an interest question; two or three sentences." },
     { "channel": "linkedin_message", "delayDays": 4, "condition": "invite_accepted", "guidance": "Proof and a direct, polite ask for a call." }
   ]
 }

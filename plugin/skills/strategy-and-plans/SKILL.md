@@ -108,13 +108,17 @@ steps first. Accepted values:
   `bh plan step <strategy-id> <step-id> --file` with `{"newThread": false}` moves a frozen
   template's follow-up into the lead's first thread (a person only); every email of it not yet
   sent follows, written ones included (their own subject is then not used).
-- `withoutNote` (`linkedin_invite` only, default false): send the connection request with no note.
-  LinkedIn caps invitations with a note well below bare ones (a free account hits it after a
-  handful), so use it when an account sends more invitations than that cap allows. The step needs
-  no copy: its messages are ready as soon as a lead is enrolled, and copy written for them is
-  refused. `bh plan step <strategy-id> <step-id> --file` with `{"withoutNote": true}` switches a
-  frozen template's invite step (a person only): its unsent invitations drop their notes at once;
-  `false` puts the ones left bare back in the copy queue.
+- `withoutNote` (`linkedin_invite` only, default **true**): an invitation goes as a bare
+  connection request unless its step says `"withoutNote": false`. LinkedIn caps invitations with a
+  note far below bare ones (a free account runs out after a handful and every further one is
+  refused with "You have reached the limit for custom messages"), so a note is the exception: set
+  `false` only when the person asks for notes while the strategy is being made, and say in the
+  proposal that the account's cap will stop them. A bare step needs no copy (its messages are
+  ready as soon as a lead is enrolled, copy written for them is refused) and no guidance; what a
+  note would have said goes into the first message after acceptance. `bh plan step <strategy-id>
+  <step-id> --file` with `{"withoutNote": true}` switches a frozen template's invite step (a person
+  only): its unsent invitations drop their notes at once; `false` puts the ones left bare back in
+  the copy queue.
 - `guidance`: what this step says and how directly it asks — the copywriter's instruction. It may
   fix the exact question per persona ("Question, word for word: Want us to check last month's invoices?"; the first email offers
   something free for a yes and the question asks for it); the writer then uses it word for word. Edits the person makes to the

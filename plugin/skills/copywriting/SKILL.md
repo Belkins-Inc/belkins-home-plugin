@@ -71,8 +71,8 @@ A message is rewritable while it is `needs_copy` or `ready`; once `sending`/`sen
 - email: body under 20 characters (trimmed) or over 2 500 — "the body is shorter than 20
   characters" / "longer than 2500"; subject missing or under 3 characters — "an email needs a
   subject"; subject over 90 — "the subject is longer than 90 characters".
-- `linkedin_invite`: body 1–300 characters, or refused outright on a step set `withoutNote` ("the
-  step sends its invitation without a note"); `linkedin_message`: body 1–1 900 characters; either with
+- `linkedin_invite`: body 1–300 characters on a step set `"withoutNote": false`; refused outright
+  on any other ("the step sends its invitation without a note"), as invitations go bare by default; `linkedin_message`: body 1–1 900 characters; either with
   a subject — "a LinkedIn message has no subject".
 - any channel: "a placeholder was left in the copy" when body or subject contains `{{` or `}}`,
   `[name]` / `[first name]` / `[last name]` / `[full name]`, `[company…]`, or **any square
@@ -140,8 +140,9 @@ you hold. Full rules, lists and examples: [references/house-rules.md](references
 
 ## LinkedIn
 
-- `linkedin_invite`: at most 300 characters including spaces and line breaks; two short sentences;
-  asks for nothing beyond connecting; no pitch; no greeting needed.
+- `linkedin_invite`: only on a step that asks for a note (they go bare by default). At most 300
+  characters including spaces and line breaks; two short sentences; asks for nothing beyond
+  connecting; no pitch; no greeting needed.
 - `linkedin_message`: two to four sentences (well under the 1 900 limit); no subject, no greeting
   line, no signature; one ask.
 

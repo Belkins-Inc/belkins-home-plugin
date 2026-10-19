@@ -71,6 +71,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          that serves its provider (mailbox update --recipients); a person only
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
+                                         a linkedin_invite step goes without a note unless it says "withoutNote": false
   plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread"}: one step's, frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
                                          newThread (a follow-up email; a person only): false answers in the lead's first thread
