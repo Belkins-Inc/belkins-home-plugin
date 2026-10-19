@@ -105,6 +105,9 @@ steps first. Accepted values:
 - `maxWaitDays` (default 10): a step whose condition is still unmet this long after it fell due is
   skipped and the next one is scheduled.
 - `newThread` (email, default false): start a new thread with its own subject instead of "Re:".
+  `bh plan step <strategy-id> <step-id> --file` with `{"newThread": false}` moves a frozen
+  template's follow-up into the lead's first thread (a person only); every email of it not yet
+  sent follows, written ones included (their own subject is then not used).
 - `withoutNote` (`linkedin_invite` only, default false): send the connection request with no note.
   LinkedIn caps invitations with a note well below bare ones (a free account hits it after a
   handful), so use it when an account sends more invitations than that cap allows. The step needs
@@ -168,6 +171,12 @@ real limits:
   sequences fit its daily limit (a four-email plan on 40 a day: ten new leads), and sends follow-ups
   before first emails. Enrolling more than the mailboxes carry does not break sequences; it starts
   the extra leads days or weeks later. So the plan above still decides when the goal is met.
+  A strategy whose leads must all be started before a date (an event's attendees) can turn this
+  round: `{"firstEmailsFirst": true}` in `bh strategy update` (a person only) sends its first emails
+  before its follow-ups and holds none of them, and its follow-ups run late instead.
+- **A step too many in a frozen plan** — `bh plan remove <strategy-id> <step-id>` takes the plan's
+  last step out (a person only): leads enrolled later do not get it, its unsent messages are
+  cancelled, and a lead whose next step it was ends there.
 
 Worked with the engine's defaults: 250 leads on a four-step email plan are 1,000 messages. Four fresh
 mailboxes send 4 × 186 = 744 in their first twelve sending days and the remaining 256 at 120 a day,

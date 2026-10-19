@@ -71,8 +71,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          that serves its provider (mailbox update --recipients); a person only
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
-  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote"}: one step's, frozen templates too; step ids in strategy show
+  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread"}: one step's, frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
+                                         newThread (a follow-up email; a person only): false answers in the lead's first thread
+                                         ("Re: <step 1 subject>"), true starts its own; every email not yet sent follows
+  plan remove <strategy-id> <step-id>   take the plan's last step out, frozen templates too: its unsent messages are
+                                         cancelled, a lead whose next step it was ends there (a person only)
   companies upsert --file <json|jsonl|->               [{"domain","name","employeeCount","country","facts"}]
                                          every --file of rows: a JSON array, or JSONL (a .jsonl file always is);
                                          sent 500 rows or 512 KB at a time, answered as one; a refused row exits 1
@@ -932,6 +936,11 @@ async function main(argv: string[]): Promise<void> {
             await readInput(need(o.file)),
           ),
         )
+      }
+      if (sub === 'remove') {
+        if (!pos[3])
+          throw new BhError('Which step?', { hint: 'bh strategy show <id> lists its step ids' }, 2)
+        return out(await call(config, 'DELETE', `/strategies/${arg}/steps/${pos[3]}`))
       }
       break
     case 'companies':

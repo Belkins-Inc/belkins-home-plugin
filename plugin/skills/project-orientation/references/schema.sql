@@ -1,7 +1,7 @@
 \restrict dbmate
 
 -- Dumped from database version 18.4
--- Dumped by pg_dump version 18.4
+-- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2297,6 +2297,7 @@ CREATE TABLE public.strategies (
     launched_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     active_since timestamp with time zone,
+    first_emails_first boolean DEFAULT false NOT NULL,
     CONSTRAINT strategies_catch_all_policy_check CHECK ((catch_all_policy = ANY (ARRAY['hold'::text, 'linkedin_only'::text, 'send'::text]))),
     CONSTRAINT strategies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'paused'::text, 'archived'::text])))
 );
@@ -6959,4 +6960,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261013144134'),
     ('20261014100544'),
     ('20261014132408'),
-    ('20261016121955');
+    ('20261016121955'),
+    ('20261019084149');
