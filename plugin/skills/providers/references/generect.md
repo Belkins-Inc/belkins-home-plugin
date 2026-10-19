@@ -199,23 +199,39 @@ Name fields are lists (a string is refused). `company_names` barely narrows: 5 o
 namesakes at other firms. Take the first row whose `lead_company_name` is the same firm, and its
 `sales_id`; the vanity URL is not on these rows.
 
-## Enrich by LinkedIn URL ($0.0045)
+## A person by LinkedIn URL: lead by link ($0.0045)
 
 ```sh
-bh call generect POST /enrich/database/lead/ --contact <id> --body '{"linkedin_url":"https://www.linkedin.com/in/erikbern"}'
+bh call generect POST /leads/by_link/ --contact <id> --body '{"url":"https://www.linkedin.com/in/erikbern"}'
+```
+
+The one way to read a person by URL. Generect answers from its own copy when that is at most two
+weeks old and reads LinkedIn live otherwise (a few seconds more), $0.0045 either way — fresh enough
+to check a current title. It lives on Generect's older API (`/api/linkedin`, the engine knows), so
+the body is `url`, not `linkedin_url`, and the answer is `{ "amount": -1, "lead": { … } }` with no
+dollar figure (`amount` counts credits). The lead carries `full_name`, `job_title`, `company_name`,
+`company_website`, `linkedin_url`, `sales_id`, `headline`, `location` and `jobs`; a copy and a live
+read name a few other fields differently (`company_location_country` or `company_country`).
+
+`/enrich/database/lead/` and `/enrich/realtime/lead/` are refused: the stored index's profile can be
+any age, and live LinkedIn charged $0.03 a person.
+
+## A company by LinkedIn URL ($0.0045)
+
+```sh
 bh call generect POST /enrich/database/company/ --company <id> --body '{"linkedin_url":"https://www.linkedin.com/company/acme-inc"}'
 ```
 
-**Answered from the cache when it can.** Every person and company any Generect answer carried is
-kept across projects; an enrichment whose body is only `linkedin_url` of a page kept recently
-enough (a person 180 days, a company 365; a `realtime` enrichment only from a live row of the last
-30 days) comes back from the cache, unpaid, with `meta.cached` (`fetched_at`, `call_id`). Look
-first with `bh cache person <url>` / `bh cache company <url>`; `--again` buys anew.
+A company enrich adds nothing a search row lacks — buy it only for a company no search found (e.g.
+one imported by domain). The database enrich can refuse a firm the search returned (`400 Company
+does not exist`).
 
-A lead enrich takes either form (`/in/<slug>` or `/sales/lead/<URN>`) and answers both
-(`linkedin_url`, `sales_id`, `linkedin_id`). A company enrich adds nothing a search row lacks — buy
-it only for a company no search found (e.g. one imported by domain). The database enrich can refuse
-a firm the search returned (`400 Company does not exist`).
+**Answered from the cache when it can.** Every person and company any Generect answer carried is
+kept across projects. A lead by link whose body is only `url` comes back from the cache when a live
+row of that person is at most two weeks old; a company enrichment whose body is only `linkedin_url`
+when the company was kept in the last 365 days (a `realtime` one only from a live row of the last
+30). The answer carries `meta.cached` (`fetched_at`, `call_id`) and nothing is charged. Look first
+with `bh cache person <url>` / `bh cache company <url>`; `--again` buys anew.
 
 ## Errors
 
