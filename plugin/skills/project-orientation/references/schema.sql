@@ -1518,6 +1518,12 @@ CREATE TABLE public.microsoft_tenants (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     admin_email public.citext,
     default_pool boolean DEFAULT true NOT NULL,
+    graph_ok_at timestamp with time zone,
+    graph_refused_at timestamp with time zone,
+    graph_refused_code text,
+    graph_probe_sent_at timestamp with time zone,
+    graph_probe_token text,
+    graph_probe_from public.citext,
     CONSTRAINT microsoft_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 900))),
     CONSTRAINT microsoft_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
@@ -2706,6 +2712,12 @@ CREATE TABLE public.warmup_seed_tenants (
     replies_blocked_code text,
     replies_bounced_at timestamp with time zone,
     replies_tried_at timestamp with time zone,
+    graph_ok_at timestamp with time zone,
+    graph_refused_at timestamp with time zone,
+    graph_refused_code text,
+    graph_probe_sent_at timestamp with time zone,
+    graph_probe_token text,
+    graph_probe_from public.citext,
     CONSTRAINT warmup_seed_tenants_microsoft_check CHECK (((provider = 'google'::text) OR ((name IS NOT NULL) AND (directory_id IS NOT NULL) AND (client_id IS NOT NULL) AND (initial_domain IS NOT NULL) AND (credential IS NOT NULL)))),
     CONSTRAINT warmup_seed_tenants_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
     CONSTRAINT warmup_seed_tenants_seeds_wanted_check CHECK (((seeds_wanted >= 0) AND (seeds_wanted <= 20))),
@@ -7115,4 +7127,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261019121255'),
     ('20261019121409'),
     ('20261019151726'),
-    ('20261019195732');
+    ('20261019195732'),
+    ('20261019201129');
