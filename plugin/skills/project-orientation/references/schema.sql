@@ -1512,6 +1512,7 @@ CREATE TABLE public.microsoft_tenants (
     created_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     admin_email public.citext,
+    default_pool boolean DEFAULT true NOT NULL,
     CONSTRAINT microsoft_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 900))),
     CONSTRAINT microsoft_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
@@ -2774,8 +2775,11 @@ CREATE TABLE public.workspace_tenants (
     console_alerted_at timestamp with time zone,
     console_login bytea,
     console_login_failed_at timestamp with time zone,
+    default_pool boolean DEFAULT true NOT NULL,
+    max_users integer DEFAULT 250 NOT NULL,
     CONSTRAINT workspace_tenants_console_state_check CHECK ((console_state = ANY (ARRAY['none'::text, 'live'::text, 'expired'::text]))),
     CONSTRAINT workspace_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 600))),
+    CONSTRAINT workspace_tenants_max_users_check CHECK (((max_users >= 1) AND (max_users <= 5000))),
     CONSTRAINT workspace_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
 
@@ -7059,4 +7063,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261014132408'),
     ('20261016121955'),
     ('20261019084149'),
-    ('20261019103613');
+    ('20261019103613'),
+    ('20261019111153');

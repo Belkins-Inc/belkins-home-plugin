@@ -167,9 +167,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          a JMAP mailbox of theirs (rows as for mailbox jmap)
   agency linkedin <org> <unipile-account-id> --sender <id> [--invite-limit <n>] [--message-limit <n>]
   agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
-  agency approve <org> <name>… --max-cents <n> [--redirect <url>] [--platform google|microsoft]
+  agency approve <org> <name>… --max-cents <n> [--redirect <url>] [--platform google|microsoft] [--tenant <name|id>]
                                          buy them for the agency (its admin only); --platform picks where the
-                                         mailboxes on them live (default google)
+                                         mailboxes on them live (default google), --tenant which of that platform's
+                                         tenants (default: the oldest in the default pool with room)
   agency order <org> <domain> --sender <agency sender id> --first-name <n> --last-name <n> --username <u> | --file <f>
                                          a Workspace seat on it for one of its senders (its admin only)
   agency orders <org>                    what was ordered on the agency's domains and where each is
@@ -223,8 +224,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
   domain quote <name> [<name>…]          availability and price at the registrar (free)
   domain approve <name> [<name>…] --max-cents <n> [--redirect <client site url>] [--platform google|microsoft]
-                                         buy them (a person only):
+                 [--tenant <name|id>]    buy them (a person only):
                                          the engine buys, dresses DNS and puts each in a Workspace tenant
+                                         (--tenant names it; default: the oldest in the default pool with room)
   domain dkim <name> --record <TXT value> [--selector google]   publish the DKIM record minted in the
                                          Admin console (the task the engine opened says when)
   domain release <name>                  let it lapse at expiry; refused while a mailbox sends from it (a person only)
@@ -251,14 +253,19 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   tenants                                our Google Workspace and Microsoft 365 tenants, with the domains and mailboxes
                                          in each (an admin)
   tenant add --name <n> --admin-email <super admin> --key <service account JSON file> [--max-domains <n>]
-                                         the key is proved against the tenant before it is kept (an admin)
-  tenant update <id> [--status active|paused] [--max-domains <n>] [--admin-email <e>] [--key <file>]   (an admin)
+             [--max-users <n>] [--default-pool yes|no]
+                                         the key is proved against the tenant before it is kept (an admin);
+                                         --max-users caps its users (default 250; Google's Business cap is 300),
+                                         --default-pool no takes only domains approved into it with --tenant
+  tenant update <id> [--status active|paused] [--max-domains <n>] [--max-users <n>] [--default-pool yes|no]
+                     [--admin-email <e>] [--key <file>]   (an admin)
   tenant add --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id> --key <private key PEM>
-             --cert <certificate PEM> [--admin-email <e>] [--max-domains <n>]
+             --cert <certificate PEM> [--admin-email <e>] [--max-domains <n>] [--default-pool yes|no]
                                          a Microsoft 365 tenant: the app's certificate is proved against Graph and
                                          Exchange before it is kept; --admin-email records its administrator (an admin)
   tenant seats <id> --provider microsoft   its licences: bought and used; new mailboxes wait for a free one
-  tenant update <id> --provider microsoft [--status active|paused] [--max-domains <n>] [--admin-email <e>]
+  tenant update <id> --provider microsoft [--status active|paused] [--max-domains <n>] [--default-pool yes|no]
+                     [--admin-email <e>]
   tenant console-login <id>              sign in to the Google Admin console through the console service's IP,
                                          so it can do DKIM (an admin; #home-alerts says when it is needed again)
   tenant console-credentials <id> --email <admin> [--totp]   the login the console service signs in with by
@@ -447,6 +454,14 @@ function copies(o: { cc?: string; bcc?: string }) {
   }
 }
 
+/** `--default-pool yes|no`: whether a tenant takes domains approved without naming a tenant. */
+function defaultPool(value: string | undefined): { defaultPool?: boolean } {
+  if (value === undefined) return {}
+  if (['yes', 'true'].includes(value)) return { defaultPool: true }
+  if (['no', 'false'].includes(value)) return { defaultPool: false }
+  throw new BhError(`--default-pool takes yes or no, not ${value}`, {}, 2)
+}
+
 function need(file: string | undefined): string {
   if (!file)
     throw new BhError(
@@ -520,6 +535,9 @@ async function main(argv: string[]): Promise<void> {
       admin: { type: 'boolean' },
       'admin-email': { type: 'string' },
       'max-domains': { type: 'string' },
+      'max-users': { type: 'string' },
+      'default-pool': { type: 'string' },
+      tenant: { type: 'string' },
       env: { type: 'string' },
       platform: { type: 'string' },
       'per-environment': { type: 'string' },
@@ -1185,6 +1203,7 @@ async function main(argv: string[]): Promise<void> {
             maxCents: Number(o['max-cents']),
             ...(o.redirect ? { redirectTo: o.redirect } : {}),
             ...(o.platform ? { platform: o.platform } : {}),
+            ...(o.tenant ? { tenant: o.tenant } : {}),
           }),
         )
       if (sub === 'retry') {
@@ -1901,6 +1920,7 @@ async function main(argv: string[]): Promise<void> {
             maxCents: Number(o['max-cents']),
             ...(o.redirect ? { redirectTo: o.redirect } : {}),
             ...(o.platform ? { platform: o.platform } : {}),
+            ...(o.tenant ? { tenant: o.tenant } : {}),
           }),
         )
       if (sub === 'dkim')
@@ -1956,7 +1976,11 @@ async function main(argv: string[]): Promise<void> {
         microsoft: await call(config, 'GET', '/microsoft-tenants'),
       })
     case 'tenant': {
-      const maxDomains = o['max-domains'] ? { maxDomains: Number(o['max-domains']) } : {}
+      const room = {
+        ...(o['max-domains'] ? { maxDomains: Number(o['max-domains']) } : {}),
+        ...defaultPool(o['default-pool']),
+      }
+      const maxUsers = o['max-users'] ? { maxUsers: Number(o['max-users']) } : {}
       if (o.provider === 'microsoft') {
         if (sub === 'add')
           return out(
@@ -1967,7 +1991,7 @@ async function main(argv: string[]): Promise<void> {
               key: await readFile(need(o.key), 'utf8'),
               cert: await readFile(need(o.cert), 'utf8'),
               ...(o['admin-email'] ? { adminEmail: o['admin-email'] } : {}),
-              ...maxDomains,
+              ...room,
             }),
           )
         if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
@@ -1978,7 +2002,7 @@ async function main(argv: string[]): Promise<void> {
             await call(config, 'PATCH', `/microsoft-tenants/${arg}`, {
               ...(o.status ? { status: o.status } : {}),
               ...(o['admin-email'] ? { adminEmail: o['admin-email'] } : {}),
-              ...maxDomains,
+              ...room,
             }),
           )
         throw new BhError(
@@ -1994,7 +2018,8 @@ async function main(argv: string[]): Promise<void> {
             name: o.name,
             adminEmail: o['admin-email'],
             key,
-            ...maxDomains,
+            ...room,
+            ...maxUsers,
           }),
         )
       if (sub === 'console-login') {
@@ -2028,7 +2053,8 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'PATCH', `/tenants/${arg}`, {
             ...(o.status ? { status: o.status } : {}),
-            ...maxDomains,
+            ...room,
+            ...maxUsers,
             ...(o['admin-email'] ? { adminEmail: o['admin-email'] } : {}),
             ...(key ? { key } : {}),
           }),
