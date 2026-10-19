@@ -1864,9 +1864,11 @@ CREATE TABLE public.projects (
     setup_skipped_via public.actor_via,
     warmup_enabled_via public.actor_via,
     egress_id uuid,
+    slack_workspace_id uuid,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
+    CONSTRAINT projects_slack_workspace_check CHECK (((slack_channel_id IS NULL) = (slack_workspace_id IS NULL))),
     CONSTRAINT projects_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'archived'::text])))
 );
 
@@ -2240,6 +2242,7 @@ CREATE TABLE public.slack_workspaces (
     connected_at timestamp with time zone DEFAULT now() NOT NULL,
     disconnected_at timestamp with time zone,
     disconnected_reason text,
+    home boolean DEFAULT false NOT NULL,
     CONSTRAINT slack_workspaces_check CHECK (((disconnected_at IS NULL) = (disconnected_reason IS NULL)))
 );
 
@@ -2664,8 +2667,10 @@ CREATE TABLE public.users (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     disabled_at timestamp with time zone,
     kind text DEFAULT 'staff'::text NOT NULL,
+    slack_workspace_id uuid,
     CONSTRAINT users_client_not_admin CHECK (((kind = 'staff'::text) OR (NOT is_admin))),
-    CONSTRAINT users_kind_check CHECK ((kind = ANY (ARRAY['staff'::text, 'client'::text])))
+    CONSTRAINT users_kind_check CHECK ((kind = ANY (ARRAY['staff'::text, 'client'::text]))),
+    CONSTRAINT users_slack_workspace_check CHECK (((slack_user_id IS NULL) = (slack_workspace_id IS NULL)))
 );
 
 
@@ -4537,10 +4542,10 @@ CREATE UNIQUE INDEX ux_reply_templates__one_active ON public.reply_templates USI
 
 
 --
--- Name: ux_slack_workspaces__connected; Type: INDEX; Schema: public; Owner: -
+-- Name: ux_slack_workspaces__home; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX ux_slack_workspaces__connected ON public.slack_workspaces USING btree ((true)) WHERE (disconnected_at IS NULL);
+CREATE UNIQUE INDEX ux_slack_workspaces__home ON public.slack_workspaces USING btree ((true)) WHERE home;
 
 
 --
@@ -6034,6 +6039,14 @@ ALTER TABLE ONLY public.projects
 
 
 --
+-- Name: projects projects_slack_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.projects
+    ADD CONSTRAINT projects_slack_workspace_id_fkey FOREIGN KEY (slack_workspace_id) REFERENCES public.slack_workspaces(id);
+
+
+--
 -- Name: projects projects_warmup_enabled_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6866,6 +6879,14 @@ ALTER TABLE ONLY public.triage_holds
 
 
 --
+-- Name: users users_slack_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_slack_workspace_id_fkey FOREIGN KEY (slack_workspace_id) REFERENCES public.slack_workspaces(id);
+
+
+--
 -- Name: warmup_seed_tenants warmup_seed_tenants_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7066,4 +7087,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261019084149'),
     ('20261019103613'),
     ('20261019111153'),
+    ('20261019121255'),
     ('20261019121409');

@@ -405,14 +405,17 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   user set <id> [--email <e>] [--name <n>] [--admin|--no-admin]   correct a person's record (an admin only);
                                          the email is what Google sign-in matches
   user disable <id> | user enable <id>   refuse or restore every session and token they hold
-  slack                                  the workspace, each project's channel, and what is reaching nobody
+  slack                                  the workspaces the bot is in (ours is home), each project's channel,
+                                         and what is reaching nobody
   slack connect [--project <slug>]       the install URL to open in a browser; with a project, Slack's
-                                         own screen picks the channel its nudges go to and joins the
-                                         app to it (a private channel included)
-  slack channel <#channel|id|none>       the project's fallback for people without Slack linked; "none" leaves it quiet
-  slack disconnect                       (an admin only)
+                                         own screen picks the workspace (a client's own too: its admin
+                                         approves the app there) and the channel its nudges go to, and
+                                         joins the app to it (a private channel included)
+  slack channel <#channel|id|none> [--team <workspace>]   the project's fallback for people without Slack
+                                         linked, in its workspace (or the one named); "none" leaves it quiet
+  slack disconnect [--team <workspace>]  takes the bot out of one workspace (an admin only)
   slack post (--body <text> | --body-file <path|->) [--to <#channel|email>] [--thread <link|ts>]
-             [--mention <email|name|member id, ...>]
+             [--mention <email|name|member id, ...>] [--team <workspace>]
                                          the bot says it, in Markdown: to a channel, to a person by
                                          email, or to the project's channel; --thread answers under
                                          a message (Slack's "Copy link"); --mention notifies people,
@@ -640,6 +643,7 @@ async function main(argv: string[]): Promise<void> {
       slots: { type: 'string' },
       thread: { type: 'string' },
       mention: { type: 'string' },
+      team: { type: 'string' },
       at: { type: 'string' },
       through: { type: 'string' },
       minutes: { type: 'string' },
@@ -2496,9 +2500,11 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'POST', `/projects/${p()}/slack`, {
             channel: arg === 'none' ? null : arg,
+            ...(o.team ? { team: o.team } : {}),
           }),
         )
-      if (sub === 'disconnect') return out(await call(config, 'POST', '/slack/disconnect', {}))
+      if (sub === 'disconnect')
+        return out(await call(config, 'POST', '/slack/disconnect', o.team ? { team: o.team } : {}))
       if (sub === 'post') {
         const text = o['body-file'] ? await readText(o['body-file']) : need(o.body)
         const message = {
@@ -2506,6 +2512,7 @@ async function main(argv: string[]): Promise<void> {
           ...(o.to ? { to: o.to } : {}),
           ...(o.thread ? { thread: o.thread } : {}),
           ...(o.mention ? { mention: list(o.mention) } : {}),
+          ...(o.team ? { team: o.team } : {}),
         }
         // Named somewhere, or answering a thread, it needs no project; otherwise it is the project's channel.
         return out(
