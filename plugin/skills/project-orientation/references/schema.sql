@@ -930,6 +930,10 @@ CREATE TABLE public.domains (
     organisation_id uuid,
     alerted text,
     microsoft_tenant_id uuid,
+    moving_to_tenant_id uuid,
+    moved_at timestamp with time zone,
+    moved_by uuid,
+    moved_via public.actor_via,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
     CONSTRAINT domains_one_owner CHECK ((num_nonnulls(project_id, organisation_id) <= 1)),
     CONSTRAINT domains_one_tenant CHECK (((tenant_id IS NULL) OR (microsoft_tenant_id IS NULL))),
@@ -5212,6 +5216,22 @@ ALTER TABLE ONLY public.domains
 
 
 --
+-- Name: domains domains_moved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domains
+    ADD CONSTRAINT domains_moved_by_fkey FOREIGN KEY (moved_by) REFERENCES public.users(id);
+
+
+--
+-- Name: domains domains_moving_to_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domains
+    ADD CONSTRAINT domains_moving_to_tenant_id_fkey FOREIGN KEY (moving_to_tenant_id) REFERENCES public.workspace_tenants(id);
+
+
+--
 -- Name: domains domains_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7094,4 +7114,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261019111153'),
     ('20261019121255'),
     ('20261019121409'),
-    ('20261019151726');
+    ('20261019151726'),
+    ('20261019195732');

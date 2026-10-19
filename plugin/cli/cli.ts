@@ -231,6 +231,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domain dkim <name> --record <TXT value> [--selector google]   publish the DKIM record minted in the
                                          Admin console (the task the engine opened says when)
   domain release <name>                  let it lapse at expiry; refused while a mailbox sends from it (a person only)
+  domain move <name> --tenant <name|id>  a bought domain nothing lives on yet goes to another Google tenant, one
+                                         with room: the engine takes it out of its tenant and sets it up again,
+                                         DKIM included; then retry its failed orders (an admin)
   domain retry <name>                    a bought domain that failed on its way into a tenant goes back on it once
                                          the cause is fixed; nothing is bought again (a person only)
   domain redirect <name> <url>|none      where its website goes: a 301 from the apex and every subdomain to the
@@ -1945,6 +1948,17 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'POST', `/domains/${await domainId(arg)}/release`, {}))
       if (sub === 'retry')
         return out(await call(config, 'POST', `/domains/${await domainId(arg)}/retry`, {}))
+      if (sub === 'move') {
+        if (!o.tenant)
+          throw new BhError(
+            'Move it where?',
+            { hint: '--tenant <name|id> (bh tenants lists them)' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/domains/${await domainId(arg)}/move`, { tenant: o.tenant }),
+        )
+      }
       if (sub === 'redirect') {
         const url = pos[3]
         if (!url)
