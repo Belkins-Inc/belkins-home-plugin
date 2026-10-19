@@ -251,8 +251,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          [{"firstName","lastName","username"}] — a Workspace seat each, made once the
                                          domain is ready (a person only)
   mailbox orders                         what was ordered and where each order has got to
+  mailbox retry <order-id>               a failed order goes back in the queue once its cause is fixed (seats
+                                         freed in its tenant); a user already made is not made again (a person only)
   tenants                                our Google Workspace and Microsoft 365 tenants, with the domains and mailboxes
-                                         in each (an admin)
+                                         in each; a Google one's users as the engine counts them and as Google does
+                                         (the larger counts against --max-users), and whether Google refused it a
+                                         user for want of a licence (fullAt) (an admin)
   tenant add --name <n> --admin-email <super admin> --key <service account JSON file> [--max-domains <n>]
              [--max-users <n>] [--default-pool yes|no]
                                          the key is proved against the tenant before it is kept (an admin);
@@ -2120,6 +2124,11 @@ async function main(argv: string[]): Promise<void> {
         )
       }
       if (sub === 'orders') return out(await call(config, 'GET', `/projects/${p()}/mailbox-orders`))
+      if (sub === 'retry') {
+        if (!arg)
+          throw new BhError('Which order?', { hint: 'bh mailbox orders lists them, with ids' }, 2)
+        return out(await call(config, 'POST', `/mailbox-orders/${arg}/retry`, {}))
+      }
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/mailboxes/${arg}`, {

@@ -105,6 +105,12 @@ When something stops:
   still holds, a name taken between quote and purchase, a refusal by the registrar. Fix the cause
   (the task says how), then `bh domain retry <name>` — nothing is bought again. A failed purchase is
   approved again with `bh domain approve`, which places a new order.
+- **Google mailboxes waiting for a licence.** Google refused the tenant a new user ("Domain user
+  limit reached", "Insufficient licenses"): `bh tenants` shows `fullAt`, and Google's user count
+  beside the engine's. A person frees seats in the Admin console or routes new domains to another
+  tenant; the orders go ahead by themselves once Google takes a user again.
+- **A failed mailbox order** whose cause is fixed goes back in the queue with `bh mailbox retry
+  <order-id>` (the id is in `bh mailbox orders`); a user already made is not made again.
 - **Microsoft mailboxes waiting.** The tenant is out of licences: `bh tenant seats <id> --provider
 microsoft` shows it. The engine buys them itself on the tenant's bill; it asks a person only when
 it may not (the app lacks the billing role) or Microsoft refuses — the task says which.
