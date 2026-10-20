@@ -220,6 +220,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   mailbox update <id> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed|--not-warmed] [--status active|paused|archived]
                  [--sender <id>]            another sender of the project writes from it
                  [--recipients google,microsoft,…|any]   write only to leads whose mail that provider takes
+                 --not-warmed on a warmed one: warm-up again from the bottom rung, a week of it alone
                                          (bh esp names them); a lead no mailbox of its sender serves may use any.
                                          Leads already enrolled keep theirs until strategy repick-mailboxes
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
