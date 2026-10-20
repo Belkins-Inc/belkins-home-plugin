@@ -101,9 +101,59 @@ bh projects
 - `401` / `unauthorized`: the token was revoked — back to step 2.
 - `projects` is empty: they are in the organisation but in no project — their admin adds them.
 
-## 4. Done
+## 4. Done — the guide
 
-Tell the person, in a few lines: setup is complete; from now on open Claude Code in
-`~/work/belkins-home` (`cd ~/work/belkins-home && claude`, or choose that folder in the desktop app),
-start each session by naming the client. The plugin updates itself there; `claude plugin marketplace
-update belkins-home` does it at once.
+Setup is finished when steps 1–3 pass. End with one message to the person, in their language, that
+holds the two parts below — short lines and lists, no paragraphs of prose. Leave out anything that
+does not apply to them (an empty `bh projects`, say, puts "ask your admin to add you to a project"
+first).
+
+### What to do next
+
+1. **Restart Claude Code in the working directory** — `cd ~/work/belkins-home && claude`, or choose
+   `~/work/belkins-home` in the desktop app. Its `CLAUDE.md` keeps every session on client work,
+   and `bh` is on the PATH of their own terminal from a new window on.
+2. **Name the client in the first message** — for example "Let's work on <project>: where are we?".
+   The agent picks the project for that session (`bh use`), reads its state (`bh brief`) and
+   proposes what to do first. Several sessions side by side can each work a different client.
+   List the projects from step 3 by name so they can pick one.
+3. **A new client** starts with their materials: the website, call notes or a transcript, a deck,
+   ICP and exclusion lists — "Here is what we have on <client>, write the brief". A client that has
+   no project yet needs an admin to create it.
+4. **Decisions stay theirs.** Anything that spends money, sends, launches or changes rules — buying
+   domains, launching a strategy, approving a reply — the agent prepares and asks them to confirm;
+   nothing goes out on its own.
+5. **The web app**, https://home-next.belkins.io, shows the same projects: leads, inbox, strategies,
+   senders, meetings and tasks.
+6. **Updates come by themselves** in `~/work/belkins-home`; `claude plugin marketplace update
+   belkins-home` takes one at once. Something wrong with `bh` or a skill: say so to the agent — it
+   files an issue for the platform team.
+
+### What the platform does
+
+Each line is one ask away; the skill in brackets is what the agent follows.
+
+- **Client brief** — the brief, rules, exclusions and open questions for the client from their
+  materials and our own research (`client-brief`).
+- **Market** — segments (which companies) and personas (who inside them), the market sized with free
+  counts, and a proposal approved before any money is spent (`segment-design`, `persona-design`).
+- **Sourcing** — companies and people from LinkedIn data, Trustpilot reviews, websites and
+  directories, each company judged against the segment with evidence (`sourcing-linkedin`,
+  `sourcing-trustpilot`, `sourcing-web`, `providers`).
+- **Contacts** — emails and phones found and verified; a bounced address replaced
+  (`email-finding`). Do-not-contact lists are kept and checked.
+- **Strategies** — email and LinkedIn sequences per segment and persona, leads enrolled, a launch a
+  person presses, and the strategy kept full and healthy afterwards (`strategy-and-plans`).
+- **Copy** — every step of every lead's plan written and checked against the house rules, previewed
+  or sent as a test first (`copywriting`).
+- **Sending** — lookalike domains bought, mailboxes ordered and warmed up, signatures with links and a
+  photo, mail health and bounces watched (`sending-domains`, `sender-signatures`).
+- **Inbox** — each reply classified, an answer drafted for approval, "not now" and referrals turned
+  into follow-ups (`inbox-triage`).
+- **Meetings** — free slots offered in the lead's time zone and booked on the client's calendar;
+  call lists exported for callers.
+- **Memory** — notes, hypotheses, client questions and tasks kept in the project, and a hand-over at
+  the end of each session, so the next session (theirs or a colleague's) starts where this one
+  stopped (`project-orientation`).
+- **Reports** — the weekly or monthly report for the client, for a person to review and send
+  (`client-report`). Any question about the data is answered from the database (`bh sql`).
