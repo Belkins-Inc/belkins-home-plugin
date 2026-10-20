@@ -2741,6 +2741,7 @@ CREATE TABLE public.warmup_seeds (
     retired_at timestamp with time zone,
     made_at timestamp with time zone,
     ready_at timestamp with time zone,
+    no_mailbox_at timestamp with time zone,
     CONSTRAINT warmup_seeds_provider_check CHECK ((provider = ANY (ARRAY['warmupip'::text, 'own'::text]))),
     CONSTRAINT warmup_seeds_seed_type_check CHECK ((seed_type = ANY (ARRAY['gmail'::text, 'gsuite'::text, 'outlook'::text, 'yahoo'::text, 'aol'::text, 'seznam'::text, 'zoho'::text, 'icloud'::text, 'other'::text])))
 );
@@ -7128,4 +7129,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261019121409'),
     ('20261019151726'),
     ('20261019195732'),
-    ('20261019201129');
+    ('20261019201129'),
+    ('20261020124530');
