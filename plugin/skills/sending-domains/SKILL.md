@@ -130,3 +130,9 @@ it may not (the app lacks the billing role) or Microsoft refuses — the task sa
 The agency's own domains, for senders who write for many clients, have the same commands under
 `bh agency` (`agency quote`, `agency approve`, `agency order`, `agency orders`, `agency retry`),
 and are an organisation admin's to buy.
+
+A domain of one of the agency's own companies (the sending network) is approved with `--company
+<name>`: it goes to that company's pod tenant and a sending one redirects to the company's site. A
+company's mailboxes are ordered in one call with `bh company order <org> <company> --file <rows>`
+(each person's mailboxes on different domains), and its egress is the company's (`bh egress assign
+<host> --company <name>`); `bh company show` and `bh network` show where it all stands.

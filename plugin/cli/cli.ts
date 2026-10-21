@@ -158,7 +158,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          how the mail sent over the last days (14) bounced: by class, day, sending
                                          mailbox, strategy, receiving side and recipient domain; codes; latest 50
   agency senders <org>                   the agency's own people, and who they write for
-  agency add <org> --name <n> [--title <t>] [--signature <text>] [--signature-html-file <file.html>]
+  agency add <org> --name <n> [--title <t>] [--signature <text>] [--signature-html-file <file.html>] [--company <name|id>]
+                                         --company: they work at one of the agency's companies (bh company)
   agency remove <org> <id>               while they are on no project and hold no channel
   agency mailbox <org> --sender <id> --provider google|microsoft [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          a mailbox of theirs, shared by every project they are on
@@ -166,17 +167,40 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          a password mailbox of theirs (rows as for mailbox smtp)
   agency jmap <org> --sender <id> --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          a JMAP mailbox of theirs (rows as for mailbox jmap)
-  agency linkedin <org> <unipile-account-id> --sender <id> [--invite-limit <n>] [--message-limit <n>]
+  agency linkedin <org> <unipile-account-id> --sender <id> [--invite-limit <n>] [--message-limit <n>] [--ramp yes|no]
+                                         --ramp: invitations climb from 5 a day, 5 more a week, to the limit
+                                         (default yes for a person of an agency company)
   agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
   agency approve <org> <name>… --max-cents <n> [--redirect <url>] [--platform google|microsoft] [--tenant <name|id>]
+       [--company <name|id>]
                                          buy them for the agency (its admin only); --platform picks where the
                                          mailboxes on them live (default google), --tenant which of that platform's
-                                         tenants (default: the oldest in the default pool with room)
+                                         tenants (default: the oldest in the default pool with room); --company: they
+                                         are that company's, in its pod's tenant, and a sending one redirects to its site
   agency order <org> <domain> --sender <agency sender id> --first-name <n> --last-name <n> --username <u> | --file <f>
                                          a Workspace seat on it for one of its senders (its admin only)
   agency orders <org>                    what was ordered on the agency's domains and where each is
   agency retry <org> <domain>            the agency's bought domain that failed goes back on its way into a tenant;
                                          order its mailboxes again with agency order (its admin only)
+  network <org>                          the agency's sending network (docs/decisions/sending-network.md): companies,
+                                         people, mailboxes by platform and warm-up stage, LinkedIn, domains by status,
+                                         tenants against their caps, pods, egresses, the seed pool and the network's part
+  company list <org>                     its companies, each with people, mailboxes, domains, egress, who it writes for
+  company show <org> <company>           one company: its people with their mailboxes and LinkedIn, its domains,
+                                         orders under way, tenants, egress, site and who it writes for
+  company add <org> --name <n> --domain <main domain> [--site <url>] [--linkedin <url>] [--address <postal>]
+       [--pod <n>] [--google-tenant <name|id>] [--microsoft-tenant <name|id>] [--egress <host name>]
+                                         (its admin only) a company of a pod takes the pod's tenants unless named
+  company update <org> <company> [--name] [--domain] [--site] [--linkedin] [--address] [--pod] [--google-tenant]
+       [--microsoft-tenant] [--egress <host name|none>] [--status building|active|retired]   none clears a field
+  company add-person <org> <company> <sender id> | company remove-person <org> <company> <sender id>
+  company domains <org> <company> <domain>…   domains the agency holds, put under the company
+  company remove-domain <org> <company> <domain>
+  company order <org> <company> --sender <id> --first-name <n> --last-name <n> --username <u> --domains <d1,d2,…>
+       | company order <org> <company> --file <json|jsonl|->   [{"senderId","domain","firstName","lastName","username"}]
+                                         a person's mailboxes across the company's domains, or the whole company's, in
+                                         one call (a person only): one a domain each, all ordered or none
+  company warmup <org> <company> on|off  its mailboxes warm without a client (a person only; docs/decisions/warmup.md)
   calendars                              the project's calendars: state, event type, last sync
   calendar connect --sender <id> [--key <Cal.com API key> [--event-type <id>]]
                                          the sender's Cal.com; without a key, a URL to open: sign in to
@@ -348,9 +372,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   egress region <id> <region|none>       the cloud region the egress's address belongs to
   egress regions                         each region with the addresses the cloud lets us hold there
   egress quota <region> <addresses>      record a region's address quota as the cloud granted it (a new region too)
-  egress assign <host name|none> --project <slug> | --mailbox <address>
-                                         a client's mail, or one mailbox's, leaves through that egress (none: the
-                                         engine's own address; for a mailbox, back to its project's)
+  egress assign <host name|none> --project <slug> | --company <name|id> | --mailbox <address>
+                                         a client's mail, an agency company's, or one mailbox's, leaves through that
+                                         egress (none: the engine's own address; for a mailbox, back to its project's
+                                         or company's); a company's egress is its own
   linkedin                               this project's LinkedIn accounts, with today's invites and messages
   linkedin available                     accounts linked in Unipile that no project has attached
   linkedin connect <unipile-account-id> [--sender <id>] [--invite-limit <n>] [--message-limit <n>]
@@ -358,6 +383,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   linkedin invite --sender <id>          a link for the sender's owner to sign in to their LinkedIn without
                                          access to the tool; a disconnected account is signed in again
   linkedin update <id> [--invite-limit <n>] [--message-limit <n>] [--delay-min <s>] [--delay-max <s>] [--status active|paused|archived]
+       [--ramp yes|no]                   yes: invitations climb again from 5 a day, starting now
   inbox                                  replies waiting for triage, with the engine's classification
   inbox test-send --from <our address> --to <our address> [--subject <t>] [--body <t>] [--reply]
                                          a test of the round trip: sends through the provider; the
@@ -479,6 +505,148 @@ function defaultPool(value: string | undefined): { defaultPool?: boolean } {
   throw new BhError(`--default-pool takes yes or no, not ${value}`, {}, 2)
 }
 
+/** `--<name> yes|no` as a boolean field of the same name; absent when not given. */
+function yesNo(name: string, value: string | undefined): Record<string, boolean> {
+  if (value === undefined) return {}
+  if (['yes', 'true', 'on'].includes(value)) return { [name]: true }
+  if (['no', 'false', 'off'].includes(value)) return { [name]: false }
+  throw new BhError(`--${name} takes yes or no, not ${value}`, {}, 2)
+}
+
+/** `none` clears a field; anything else is its value. */
+const orNone = (value: string) => (value === 'none' ? null : value)
+
+/**
+ * The agency's companies (docs/decisions/sending-network.md): `bh company <sub> <org> [<company>] …`.
+ * An egress is given through `/egresses/assign`, so a company's address follows the same rules as
+ * every other.
+ */
+async function company(
+  config: Awaited<ReturnType<typeof loadConfig>>,
+  sub: string | undefined,
+  rest: string[],
+  o: Record<string, string | boolean | undefined>,
+) {
+  const [org, ref, ...more] = rest
+  const text = (key: string) => (typeof o[key] === 'string' ? (o[key] as string) : undefined)
+  if (!org)
+    throw new BhError('Which organisation?', { hint: `bh company ${sub ?? 'list'} belkins …` }, 2)
+  const base = `/orgs/${encodeURIComponent(org)}/companies`
+  const one = () => {
+    if (!ref) throw new BhError('Which company?', { hint: `bh company list ${org} names them` }, 2)
+    return `${base}/${encodeURIComponent(ref)}`
+  }
+  /** The fields a company is added or changed with, from the flags given. */
+  const fields = () => {
+    const f: Record<string, unknown> = {}
+    const set = (flag: string, field: string) => {
+      const v = text(flag)
+      if (v !== undefined) f[field] = orNone(v)
+    }
+    set('name', 'name')
+    set('domain', 'mainDomain')
+    set('site', 'siteUrl')
+    set('linkedin', 'linkedinUrl')
+    set('address', 'postalAddress')
+    set('google-tenant', 'workspaceTenant')
+    set('microsoft-tenant', 'microsoftTenant')
+    const pod = text('pod')
+    if (pod !== undefined) f.pod = pod === 'none' ? null : Number(pod)
+    return f
+  }
+  const egress = async (name: string) => {
+    const egressName = text('egress')
+    if (egressName === undefined) return {}
+    const answer = (await call(config, 'POST', '/egresses/assign', {
+      egress: orNone(egressName),
+      company: name,
+    })) as { egress: string | null }
+    return { egress: answer.egress }
+  }
+  switch (sub) {
+    case undefined:
+    case 'list':
+      return out(await call(config, 'GET', base))
+    case 'show':
+      return out(await call(config, 'GET', one()))
+    case 'add': {
+      if (!text('name') || !text('domain'))
+        throw new BhError(
+          'A company needs its name and main domain',
+          {
+            hint: `bh company add ${org} --name "Larkspan Partners" --domain larkspanpartners.com`,
+          },
+          2,
+        )
+      const made = (await call(config, 'POST', base, fields())) as { id: string; name: string }
+      return out({ ...made, ...(await egress(made.id)) })
+    }
+    case 'update': {
+      const { status } = o
+      const body = { ...fields(), ...(typeof status === 'string' ? { status } : {}) }
+      const changed = Object.keys(body).length
+        ? ((await call(config, 'PATCH', one(), body)) as { id: string })
+        : ((await call(config, 'GET', one())) as { id: string })
+      return out({ ...changed, ...(await egress(changed.id)) })
+    }
+    case 'add-person':
+    case 'remove-person': {
+      const sender = more[0]
+      if (!sender)
+        throw new BhError('Which person?', { hint: `bh agency senders ${org} lists their ids` }, 2)
+      return out(
+        sub === 'add-person'
+          ? await call(config, 'POST', `${one()}/people`, { senderId: sender })
+          : await call(config, 'DELETE', `${one()}/people/${encodeURIComponent(sender)}`),
+      )
+    }
+    case 'domains':
+      if (!more.length)
+        throw new BhError('Which domains?', { hint: `bh agency domains ${org} lists them` }, 2)
+      return out(await call(config, 'POST', `${one()}/domains`, { domains: more }))
+    case 'remove-domain':
+      if (!more[0]) throw new BhError('Which domain?', {}, 2)
+      return out(await call(config, 'DELETE', `${one()}/domains/${encodeURIComponent(more[0])}`))
+    case 'order': {
+      const rows = text('file')
+        ? await readRows(text('file')!)
+        : (text('domains') ?? '')
+            .split(',')
+            .map((d) => d.trim())
+            .filter(Boolean)
+            .map((domain) => ({
+              senderId: text('sender'),
+              domain,
+              firstName: text('first-name'),
+              lastName: text('last-name'),
+              username: text('username'),
+            }))
+      if (!rows.length)
+        throw new BhError(
+          'Which mailboxes?',
+          {
+            hint: `bh company order ${org} <company> --sender <id> --first-name <n> --last-name <n> --username <u> --domains a.com,b.com, or --file`,
+          },
+          2,
+        )
+      return out(await call(config, 'POST', `${one()}/mailboxes`, { mailboxes: rows }))
+    }
+    case 'warmup': {
+      const to = more[0]
+      if (to !== 'on' && to !== 'off')
+        throw new BhError('On or off?', { hint: `bh company warmup ${org} <company> on` }, 2)
+      return out(await call(config, 'POST', `${one()}/warmup/${to}`, {}))
+    }
+  }
+  throw new BhError(
+    `bh company has no ${sub}`,
+    {
+      hint: 'list, show, add, update, add-person, remove-person, domains, remove-domain, order or warmup',
+    },
+    2,
+  )
+}
+
 function need(file: string | undefined): string {
   if (!file)
     throw new BhError(
@@ -555,6 +723,13 @@ async function main(argv: string[]): Promise<void> {
       'max-users': { type: 'string' },
       'key-from': { type: 'string' },
       'default-pool': { type: 'string' },
+      'google-tenant': { type: 'string' },
+      'microsoft-tenant': { type: 'string' },
+      site: { type: 'string' },
+      linkedin: { type: 'string' },
+      pod: { type: 'string' },
+      domains: { type: 'string' },
+      ramp: { type: 'string' },
       tenant: { type: 'string' },
       env: { type: 'string' },
       platform: { type: 'string' },
@@ -1181,15 +1356,22 @@ async function main(argv: string[]): Promise<void> {
       break
     case 'agency':
       if (sub === 'senders') return out(await call(config, 'GET', `/orgs/${arg}/senders`))
-      if (sub === 'add')
-        return out(
-          await call(config, 'POST', `/orgs/${arg}/senders`, {
-            name: o.name,
-            ...(o.title ? { title: o.title } : {}),
-            ...(o.signature ? { signature: o.signature } : {}),
-            ...(await signatureHtml(o['signature-html-file'])),
-          }),
-        )
+      if (sub === 'add') {
+        const sender = (await call(config, 'POST', `/orgs/${arg}/senders`, {
+          name: o.name,
+          ...(o.title ? { title: o.title } : {}),
+          ...(o.signature ? { signature: o.signature } : {}),
+          ...(await signatureHtml(o['signature-html-file'])),
+        })) as { id: string }
+        if (!o.company) return out(sender)
+        const company = (await call(
+          config,
+          'POST',
+          `/orgs/${arg}/companies/${encodeURIComponent(o.company)}/people`,
+          { senderId: sender.id },
+        )) as { company: string }
+        return out({ ...sender, company: company.company })
+      }
       if (sub === 'remove')
         return out(await call(config, 'DELETE', `/orgs/${arg}/senders/${pos[3]}`))
       if (sub === 'mailbox')
@@ -1223,6 +1405,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.redirect ? { redirectTo: o.redirect } : {}),
             ...(o.platform ? { platform: o.platform } : {}),
             ...(o.tenant ? { tenant: o.tenant } : {}),
+            ...(o.company ? { company: o.company } : {}),
           }),
         )
       if (sub === 'retry') {
@@ -1269,9 +1452,15 @@ async function main(argv: string[]): Promise<void> {
             senderId: o.sender,
             ...(o['invite-limit'] ? { dailyInviteLimit: Number(o['invite-limit']) } : {}),
             ...(o['message-limit'] ? { dailyMessageLimit: Number(o['message-limit']) } : {}),
+            ...yesNo('ramp', o.ramp),
           }),
         )
       break
+    case 'network':
+      if (!sub) throw new BhError('Which organisation?', { hint: 'bh network belkins' }, 2)
+      return out(await call(config, 'GET', `/orgs/${encodeURIComponent(sub)}/network`))
+    case 'company':
+      return company(config, sub, pos.slice(2), o)
     case 'goal':
       if (sub === 'done')
         return out(
@@ -2360,16 +2549,22 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'PATCH', `/egresses/${arg}`, { status }))
       }
       if (sub === 'assign') {
-        if (!arg || Boolean(o.project) === Boolean(o.mailbox))
+        if (!arg || [o.project, o.mailbox, o.company].filter(Boolean).length !== 1)
           throw new BhError(
-            'Which egress, and for which project or mailbox?',
-            { hint: 'bh egress assign <host name|none> --project <slug> | --mailbox <address>' },
+            'Which egress, and for which project, company or mailbox?',
+            {
+              hint: 'bh egress assign <host name|none> --project <slug> | --company <name|id> | --mailbox <address>',
+            },
             2,
           )
         return out(
           await call(config, 'POST', '/egresses/assign', {
             egress: arg === 'none' ? null : arg,
-            ...(o.project ? { project: String(o.project) } : { mailbox: String(o.mailbox) }),
+            ...(o.project
+              ? { project: String(o.project) }
+              : o.company
+                ? { company: String(o.company) }
+                : { mailbox: String(o.mailbox) }),
           }),
         )
       }
@@ -2444,6 +2639,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o['delay-min'] ? { delayMinSeconds: Number(o['delay-min']) } : {}),
             ...(o['delay-max'] ? { delayMaxSeconds: Number(o['delay-max']) } : {}),
             ...(o.status ? { status: o.status } : {}),
+            ...yesNo('ramp', o.ramp),
           }),
         )
       break

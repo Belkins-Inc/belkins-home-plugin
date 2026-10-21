@@ -937,7 +937,9 @@ CREATE TABLE public.domains (
     moved_at timestamp with time zone,
     moved_by uuid,
     moved_via public.actor_via,
+    company_id uuid,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
+    CONSTRAINT domains_company_check CHECK (((company_id IS NULL) OR (organisation_id IS NOT NULL))),
     CONSTRAINT domains_one_owner CHECK ((num_nonnulls(project_id, organisation_id) <= 1)),
     CONSTRAINT domains_one_tenant CHECK (((tenant_id IS NULL) OR (microsoft_tenant_id IS NULL))),
     CONSTRAINT domains_registrar_check CHECK (((registrar IS NULL) OR (registrar = ANY (ARRAY['porkbun'::text])))),
@@ -1358,6 +1360,7 @@ CREATE TABLE public.linkedin_accounts (
     proxy_country text,
     limited_until timestamp with time zone,
     limited_reason text,
+    invite_ramp_from timestamp with time zone,
     CONSTRAINT linkedin_accounts_proxy_country_check CHECK ((proxy_country ~ '^[A-Z]{2}$'::text)),
     CONSTRAINT linkedin_accounts_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 );
@@ -2183,7 +2186,43 @@ CREATE TABLE public.senders (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     organisation_id uuid,
     signature_html text,
+    company_id uuid,
+    CONSTRAINT senders_company_check CHECK (((company_id IS NULL) OR (organisation_id IS NOT NULL))),
     CONSTRAINT senders_owner_check CHECK ((num_nonnulls(project_id, organisation_id) = 1))
+);
+
+
+--
+-- Name: sending_companies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sending_companies (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    organisation_id uuid NOT NULL,
+    name text NOT NULL,
+    main_domain public.citext NOT NULL,
+    site_url text,
+    linkedin_url text,
+    postal_address text,
+    pod integer,
+    workspace_tenant_id uuid,
+    microsoft_tenant_id uuid,
+    egress_id uuid,
+    status text DEFAULT 'building'::text NOT NULL,
+    status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    warmup_enabled boolean DEFAULT false NOT NULL,
+    warmup_enabled_at timestamp with time zone,
+    warmup_enabled_by uuid,
+    warmup_enabled_via public.actor_via,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by uuid,
+    updated_via public.actor_via,
+    updated_at timestamp with time zone,
+    CONSTRAINT sending_companies_name_check CHECK (((length(name) >= 1) AND (length(name) <= 200))),
+    CONSTRAINT sending_companies_pod_check CHECK (((pod >= 1) AND (pod <= 1000))),
+    CONSTRAINT sending_companies_status_check CHECK ((status = ANY (ARRAY['building'::text, 'active'::text, 'retired'::text])))
 );
 
 
@@ -3459,6 +3498,14 @@ ALTER TABLE ONLY public.senders
 
 
 --
+-- Name: sending_companies sending_companies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_companies
+    ADD CONSTRAINT sending_companies_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: sending_egresses sending_egresses_host_name_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3913,6 +3960,13 @@ CREATE INDEX ix_copy_tests__message ON public.copy_tests USING btree (message_id
 
 
 --
+-- Name: ix_domains__company; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_domains__company ON public.domains USING btree (company_id) WHERE (company_id IS NOT NULL);
+
+
+--
 -- Name: ix_domains__expiring; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4235,10 +4289,24 @@ CREATE INDEX ix_sender_images__sender ON public.sender_images USING btree (sende
 
 
 --
+-- Name: ix_senders__company; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_senders__company ON public.senders USING btree (company_id) WHERE (company_id IS NOT NULL);
+
+
+--
 -- Name: ix_senders__organisation; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_senders__organisation ON public.senders USING btree (organisation_id) WHERE (organisation_id IS NOT NULL);
+
+
+--
+-- Name: ix_sending_companies__egress; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_sending_companies__egress ON public.sending_companies USING btree (egress_id) WHERE (egress_id IS NOT NULL);
 
 
 --
@@ -4568,6 +4636,20 @@ CREATE UNIQUE INDEX ux_replies__one_draft ON public.replies USING btree (thread_
 --
 
 CREATE UNIQUE INDEX ux_reply_templates__one_active ON public.reply_templates USING btree (strategy_id, classification) WHERE (status = 'active'::text);
+
+
+--
+-- Name: ux_sending_companies__main_domain; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_sending_companies__main_domain ON public.sending_companies USING btree (main_domain);
+
+
+--
+-- Name: ux_sending_companies__name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_sending_companies__name ON public.sending_companies USING btree (organisation_id, lower(name));
 
 
 --
@@ -5225,6 +5307,14 @@ ALTER TABLE ONLY public.dnc
 
 ALTER TABLE ONLY public.domains
     ADD CONSTRAINT domains_bought_by_fkey FOREIGN KEY (bought_by) REFERENCES public.users(id);
+
+
+--
+-- Name: domains domains_company_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domains
+    ADD CONSTRAINT domains_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.sending_companies(id);
 
 
 --
@@ -6396,6 +6486,14 @@ ALTER TABLE ONLY public.sender_images
 
 
 --
+-- Name: senders senders_company_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.senders
+    ADD CONSTRAINT senders_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.sending_companies(id);
+
+
+--
 -- Name: senders senders_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6409,6 +6507,62 @@ ALTER TABLE ONLY public.senders
 
 ALTER TABLE ONLY public.senders
     ADD CONSTRAINT senders_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sending_companies sending_companies_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_companies
+    ADD CONSTRAINT sending_companies_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: sending_companies sending_companies_egress_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_companies
+    ADD CONSTRAINT sending_companies_egress_id_fkey FOREIGN KEY (egress_id) REFERENCES public.sending_egresses(id);
+
+
+--
+-- Name: sending_companies sending_companies_microsoft_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_companies
+    ADD CONSTRAINT sending_companies_microsoft_tenant_id_fkey FOREIGN KEY (microsoft_tenant_id) REFERENCES public.microsoft_tenants(id);
+
+
+--
+-- Name: sending_companies sending_companies_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_companies
+    ADD CONSTRAINT sending_companies_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id);
+
+
+--
+-- Name: sending_companies sending_companies_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_companies
+    ADD CONSTRAINT sending_companies_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: sending_companies sending_companies_warmup_enabled_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_companies
+    ADD CONSTRAINT sending_companies_warmup_enabled_by_fkey FOREIGN KEY (warmup_enabled_by) REFERENCES public.users(id);
+
+
+--
+-- Name: sending_companies sending_companies_workspace_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_companies
+    ADD CONSTRAINT sending_companies_workspace_tenant_id_fkey FOREIGN KEY (workspace_tenant_id) REFERENCES public.workspace_tenants(id);
 
 
 --
@@ -7138,4 +7292,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261019195732'),
     ('20261019201129'),
     ('20261020124530'),
-    ('20261020133247');
+    ('20261020133247'),
+    ('20261021112137');
