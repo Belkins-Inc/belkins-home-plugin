@@ -1414,6 +1414,40 @@ CREATE TABLE public.linkedin_people (
 
 
 --
+-- Name: linkedin_posts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_posts (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    linkedin_account_id uuid NOT NULL,
+    page_id text,
+    page_name text,
+    text text NOT NULL,
+    first_comment text,
+    publish_at timestamp with time zone NOT NULL,
+    status text DEFAULT 'scheduled'::text NOT NULL,
+    claimed_at timestamp with time zone,
+    provider_post_id text,
+    share_url text,
+    published_at timestamp with time zone,
+    comment_id text,
+    comment_error text,
+    error text,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    cancelled_by uuid,
+    cancelled_via public.actor_via,
+    cancelled_at timestamp with time zone,
+    CONSTRAINT linkedin_posts_check CHECK (((page_id IS NULL) OR (page_name IS NOT NULL))),
+    CONSTRAINT linkedin_posts_first_comment_check CHECK (((length(first_comment) >= 1) AND (length(first_comment) <= 1250))),
+    CONSTRAINT linkedin_posts_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'publishing'::text, 'published'::text, 'failed'::text, 'cancelled'::text]))),
+    CONSTRAINT linkedin_posts_text_check CHECK (((length(text) >= 1) AND (length(text) <= 3000)))
+);
+
+
+--
 -- Name: mail_domains; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3146,6 +3180,14 @@ ALTER TABLE ONLY public.linkedin_people
 
 
 --
+-- Name: linkedin_posts linkedin_posts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_posts
+    ADD CONSTRAINT linkedin_posts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: mail_domains mail_domains_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4058,6 +4100,27 @@ CREATE INDEX ix_hypotheses__project ON public.hypotheses USING btree (project_id
 
 
 --
+-- Name: ix_linkedin_posts__account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_linkedin_posts__account ON public.linkedin_posts USING btree (linkedin_account_id);
+
+
+--
+-- Name: ix_linkedin_posts__due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_linkedin_posts__due ON public.linkedin_posts USING btree (publish_at) WHERE (status = 'scheduled'::text);
+
+
+--
+-- Name: ix_linkedin_posts__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_linkedin_posts__project ON public.linkedin_posts USING btree (project_id, publish_at);
+
+
+--
 -- Name: ix_mail_domains__checked; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4545,6 +4608,13 @@ CREATE UNIQUE INDEX ux_enrollments__one_live ON public.enrollments USING btree (
 --
 
 CREATE UNIQUE INDEX ux_linkedin_accounts__id_sender ON public.linkedin_accounts USING btree (id, sender_id);
+
+
+--
+-- Name: ux_linkedin_posts__once; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_linkedin_posts__once ON public.linkedin_posts USING btree (linkedin_account_id, COALESCE(page_id, ''::text), md5(text)) WHERE (status = ANY (ARRAY['scheduled'::text, 'publishing'::text, 'published'::text]));
 
 
 --
@@ -5579,6 +5649,38 @@ ALTER TABLE ONLY public.linkedin_accounts
 
 ALTER TABLE ONLY public.linkedin_accounts
     ADD CONSTRAINT linkedin_accounts_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id);
+
+
+--
+-- Name: linkedin_posts linkedin_posts_cancelled_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_posts
+    ADD CONSTRAINT linkedin_posts_cancelled_by_fkey FOREIGN KEY (cancelled_by) REFERENCES public.users(id);
+
+
+--
+-- Name: linkedin_posts linkedin_posts_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_posts
+    ADD CONSTRAINT linkedin_posts_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: linkedin_posts linkedin_posts_linkedin_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_posts
+    ADD CONSTRAINT linkedin_posts_linkedin_account_id_fkey FOREIGN KEY (linkedin_account_id) REFERENCES public.linkedin_accounts(id);
+
+
+--
+-- Name: linkedin_posts linkedin_posts_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_posts
+    ADD CONSTRAINT linkedin_posts_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
 
 
 --
@@ -7293,4 +7395,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261019201129'),
     ('20261020124530'),
     ('20261020133247'),
-    ('20261021112137');
+    ('20261021112137'),
+    ('20261021143431');

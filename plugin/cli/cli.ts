@@ -384,6 +384,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          access to the tool; a disconnected account is signed in again
   linkedin update <id> [--invite-limit <n>] [--message-limit <n>] [--delay-min <s>] [--delay-max <s>] [--status active|paused|archived]
        [--ramp yes|no]                   yes: invitations climb again from 5 a day, starting now
+  linkedin pages <id>                    the company pages the account's owner manages: a post can go out as one
+  linkedin posts [--status scheduled|publishing|published|failed|cancelled]   this project's posts, by time
+  linkedin post --file <json|jsonl|-> [--dry-run]   schedules posts, all or none; the engine publishes each at its
+                                         time, then its first comment, as the same author
+                                         [{"linkedinAccountId","publishAt","text","pageId","firstComment"}]
+                                         publishAt names its offset (2026-10-22T09:00:00-04:00); without pageId the
+                                         post is the owner's own; an @ before a name in the text is a mention
+  linkedin post cancel <post-id>         a scheduled post is not published
   inbox                                  replies waiting for triage, with the engine's classification
   inbox test-send --from <our address> --to <our address> [--subject <t>] [--body <t>] [--reply]
                                          a test of the round trip: sends through the provider; the
@@ -2630,6 +2638,27 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', `/projects/${p()}/invites`, {
             channel: 'linkedin',
             senderId: o.sender,
+          }),
+        )
+      if (sub === 'pages') return out(await call(config, 'GET', `/linkedin-accounts/${arg}/pages`))
+      if (sub === 'posts')
+        return out(
+          await call(
+            config,
+            'GET',
+            `/projects/${p()}/linkedin-posts?${new URLSearchParams(o.status ? { status: o.status } : {})}`,
+          ),
+        )
+      if (sub === 'post' && arg === 'cancel') {
+        if (!pos[3])
+          throw new BhError('Which post?', { hint: 'bh linkedin posts lists their ids' }, 2)
+        return out(await call(config, 'POST', `/linkedin-posts/${pos[3]}/cancel`, {}))
+      }
+      if (sub === 'post')
+        return out(
+          await call(config, 'POST', `/projects/${p()}/linkedin-posts`, {
+            posts: await readRows(need(o.file)),
+            dryRun: Boolean(o['dry-run']),
           }),
         )
       if (sub === 'update')
