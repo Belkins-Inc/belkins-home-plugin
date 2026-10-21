@@ -291,9 +291,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   agent on | agent off                   the project's switch: whether the engine starts runs by itself
   warmup status                          the switch, the seeds, and each mailbox's ladder, notes and placement
   warmup on | warmup off                 (a person only) on puts every mailbox on the four-week ladder on our own
-                                         seeds: two weeks of warm-up alone, then outreach from 3 a day to 15 beside
-                                         15 notes (every other one the project's copy); warmed once its domain's
-                                         notes are in the inbox, it keeps 8 notes a day going. Notes in spam hold
+                                         seeds: three days of warm-up alone, a trickle of 1–3 outreach a day to
+                                         day 14, then 3 a day to 15 beside 15 notes (every other one the project's
+                                         copy); warmed once its domain's notes are in the inbox, it keeps 8 notes a
+                                         day going. Notes in spam hold
                                          the ladder; below 70% in the inbox the engine holds the domain's outreach
   warmup seeds                           our own seed organisations, Google and Microsoft 365: seeds held and
                                          ready, today's notes, spam and tabs (an admin)

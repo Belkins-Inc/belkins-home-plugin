@@ -30,7 +30,7 @@ years. It goes from lookalikes that 301-redirect to the client's site:
 - `.com` by default; `.co`, `.io`, `.net` when the `.com` is gone. Never the cheap zones (`.xyz`,
   `.top`, `.online` …): filters already distrust them.
 - How many: at most 5 mailboxes go on one domain (the engine refuses a sixth), and each mailbox
-  sends `dailyLimit` a day (40 by default; none in its first two weeks, then climbing, and a domain
+  sends `dailyLimit` a day (40 by default; 1–3 outreach a day in its first two weeks, then climbing, and a domain
   under 60 days old sends at most 40 outreach a day across its mailboxes — the `strategy-and-plans`
   skill does the arithmetic). Buy about four weeks before the volume is needed. Fewer mailboxes per domain over more domains keeps one domain's reputation from
   carrying everyone's.

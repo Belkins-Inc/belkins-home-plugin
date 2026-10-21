@@ -159,14 +159,14 @@ real limits:
   the most the engine allows), on the strategy's `sendDays` only (weekdays by default). Warm-up
   notes draw on the same day: a warmed mailbox with warm-up on keeps 8 notes a day going, so it
   carries 32 outreach emails of its 40.
-- **The ladder** — a mailbox not yet `warmed` climbs for four weeks of sending days: two weeks of
-  warm-up alone (no outreach at all), then outreach from 3 a day rising by 2 every other day to 15,
-  about 126 emails over those two weeks. It is warmed only when its domain's seed notes are in the
-  inbox, so plan on a new mailbox carrying no outreach before its third week and its full share
-  from its fifth. Buy domains about four weeks before a client needs volume (`sending-domains`).
+- **The ladder** — a mailbox not yet `warmed` climbs for four weeks of sending days: three days of
+  warm-up alone, then a trickle of 1–3 outreach emails a day to the end of its second week (about
+  20), then 3 a day rising by 2 every other day to 15, about 126 emails over those two weeks. It is
+  warmed only when its domain's seed notes are in the inbox, so plan on a new mailbox carrying a
+  test batch in its first two weeks and its full share from its fifth. Buy domains about four weeks before a client needs volume (`sending-domains`).
 - **A young domain** — under 60 days old, a mailbox sends at most 30 a day in all (22 outreach once
-  warmed) and the domain at most 40 outreach emails a day across all its mailboxes; under 14 days,
-  none. More volume early is more domains, not more mailboxes on one.
+  warmed) and the domain at most 40 outreach emails a day across all its mailboxes; a mailbox
+  marked warmed on a domain under 14 days old sends none. More volume early is more domains, not more mailboxes on one.
 - **The engine's protection** — when a domain's seed notes slip into spam, its ladder stops
   climbing; when they fall below 70% in the inbox, the engine holds the domain's outreach, opens an
   urgent task for the project's owner and lets outreach go again once the notes are back for three
@@ -191,9 +191,9 @@ real limits:
   cancelled, and a lead whose next step it was ends there.
 
 Worked with the engine's defaults: 250 leads on a four-step email plan are 1,000 messages. Four fresh
-mailboxes on one new domain send nothing for two weeks and about 500 in the two after; the domain's
-cap of 40 outreach a day then carries the other 500 in about thirteen more sending days, so the last
-step goes out around week seven. The other way round: a goal needing 1,000 leads a month on four
+mailboxes on one new domain send about 80 in their first two weeks and about 500 in the two after; the domain's
+cap of 40 outreach a day then carries the other 420 in about eleven more sending days, so the last
+step goes out around week six or seven. The other way round: a goal needing 1,000 leads a month on four
 steps is 4,000 messages in about 21 sending days. A warmed mailbox on an old domain gives about 670
 of them, a domain under 60 days old at most 840 however many mailboxes it has, so the month needs
 six warmed mailboxes on old domains or five young domains of two mailboxes each — and 67 LinkedIn

@@ -27,8 +27,8 @@ Ids must belong to the current project (`bh use <slug>` in this session), or the
 - `dailyLimit`: leave null while mailbox limits bind; set it to pace a small market (so the segment is
   not burned in a week) or to hold a new strategy to a test batch.
 - `targetActive`: roughly what the senders can carry — (active mailboxes × daily limit × send days
-  in a plan's length) ÷ steps per lead, then round down; a fresh mailbox carries no outreach for
-  its first two weeks and about 126 emails in the two after (the ladder). The full arithmetic is the
+  in a plan's length) ÷ steps per lead, then round down; a fresh mailbox carries about 20 outreach
+  emails in its first two weeks and about 126 in the two after (the ladder). The full arithmetic is the
   skill's "Capacity" section; record it in a decision note.
 - `startSpreadDays`: 3–5 so a batch does not land on one morning.
 
