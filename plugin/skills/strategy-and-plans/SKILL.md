@@ -155,15 +155,23 @@ real limits:
 
 - **Messages needed** = leads × steps on each channel. Every step spends capacity, not only the
   first touch; count a conditional step at the share expected to fire.
-- **Email** — each mailbox sends at most its `dailyLimit` a day (`bh mailboxes`; 40 by default, and
-  40 is the most the engine allows), on the strategy's `sendDays` only (weekdays by default).
-  Warm-up notes draw on the same limit.
-- **The ramp** — a mailbox not marked `warmed` climbs 15 / 30 / 45 / 60 / 75 / 90 / 100% of its
-  limit, one rung every two sending days, full on its twelfth sending day. With warm-up on (a new
-  mailbox's usual start), its first week sends no outreach at all and its second only half the
-  ramped limit: plan on a new mailbox carrying outreach from about day 8, and its full 40 from about
-  day 12, when it is warmed and warm-up stops. Where each one stands:
-  `bh sql "select address, daily_limit, warmed, sending_days from mailboxes where sender_id in ('<sender-id>')"`.
+- **Email** — each mailbox sends at most its `dailyLimit` a day (`bh mailboxes`; 40 by default, 60
+  the most the engine allows), on the strategy's `sendDays` only (weekdays by default). Warm-up
+  notes draw on the same day: a warmed mailbox with warm-up on keeps 8 notes a day going, so it
+  carries 32 outreach emails of its 40.
+- **The ladder** — a mailbox not yet `warmed` climbs for four weeks of sending days: two weeks of
+  warm-up alone (no outreach at all), then outreach from 3 a day rising by 2 every other day to 15,
+  about 126 emails over those two weeks. It is warmed only when its domain's seed notes are in the
+  inbox, so plan on a new mailbox carrying no outreach before its third week and its full share
+  from its fifth. Buy domains about four weeks before a client needs volume (`sending-domains`).
+- **A young domain** — under 60 days old, a mailbox sends at most 30 a day in all (22 outreach once
+  warmed) and the domain at most 40 outreach emails a day across all its mailboxes; under 14 days,
+  none. More volume early is more domains, not more mailboxes on one.
+- **The engine's protection** — when a domain's seed notes slip into spam, its ladder stops
+  climbing; when they fall below 70% in the inbox, the engine holds the domain's outreach, opens an
+  urgent task for the project's owner and lets outreach go again once the notes are back for three
+  days. A held mailbox shows `outreach_held_at`. Where each one stands:
+  `bh sql "select address, daily_limit, warmed, sending_days, placement_state, outreach_held_at from mailboxes where sender_id in ('<sender-id>')"`.
 - **LinkedIn** — each account sends 15 invites and 40 messages a day (`daily_invite_limit`,
   `daily_message_limit`), on send days. One invite per lead, so an account opens at most about 75
   leads a week.
@@ -183,12 +191,13 @@ real limits:
   cancelled, and a lead whose next step it was ends there.
 
 Worked with the engine's defaults: 250 leads on a four-step email plan are 1,000 messages. Four fresh
-mailboxes send 4 × 186 = 744 in their first twelve sending days and the remaining 256 at 120 a day,
-so the last step cannot go out before about fifteen sending days, three working weeks — in practice
-later, since the last lead to start still runs the plan's full length. The other way round: a goal
-needing 1,000 leads a month on four steps is 4,000 messages in about 21 sending days. A warmed
-mailbox gives 630 of them, a fresh one 456, so the month needs seven warmed mailboxes or nine fresh
-ones — and 67 LinkedIn account days if every lead gets an invite.
+mailboxes on one new domain send nothing for two weeks and about 500 in the two after; the domain's
+cap of 40 outreach a day then carries the other 500 in about thirteen more sending days, so the last
+step goes out around week seven. The other way round: a goal needing 1,000 leads a month on four
+steps is 4,000 messages in about 21 sending days. A warmed mailbox on an old domain gives about 670
+of them, a domain under 60 days old at most 840 however many mailboxes it has, so the month needs
+six warmed mailboxes on old domains or five young domains of two mailboxes each — and 67 LinkedIn
+account days if every lead gets an invite.
 
 Record the arithmetic in a `decision` note with `--strategy`, and set `targetActive` from it. Where
 the senders fall short of the goal, that goes in front of a person before enrolling (section 1):

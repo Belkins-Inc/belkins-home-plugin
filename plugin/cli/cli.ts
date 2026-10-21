@@ -220,7 +220,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   mailbox update <id> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed|--not-warmed] [--status active|paused|archived]
                  [--sender <id>]            another sender of the project writes from it
                  [--recipients google,microsoft,…|any]   write only to leads whose mail that provider takes
-                 --not-warmed on a warmed one: warm-up again from the bottom rung, a week of it alone
+                 --not-warmed on a warmed one: the ladder again from its first day; --warmed needs a
+                 domain registered 30 days ago or more
                                          (bh esp names them); a lead no mailbox of its sender serves may use any.
                                          Leads already enrolled keep theirs until strategy repick-mailboxes
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
@@ -288,10 +289,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   agent run                              queue a run for the waiting work now (a person only)
   agent cancel <run-id>                  stop a queued or running run (a person only)
   agent on | agent off                   the project's switch: whether the engine starts runs by itself
-  warmup status                          the switch, the seeds, and each mailbox's ramp, notes and placement
-  warmup on | warmup off                 (a person only) on ramps every mailbox not yet warmed on our own seeds:
-                                         a week of warm-up alone, then beside outreach (half its notes the
-                                         project's real copy) until the full daily limit, when it stops
+  warmup status                          the switch, the seeds, and each mailbox's ladder, notes and placement
+  warmup on | warmup off                 (a person only) on puts every mailbox on the four-week ladder on our own
+                                         seeds: two weeks of warm-up alone, then outreach from 3 a day to 15 beside
+                                         15 notes (every other one the project's copy); warmed once its domain's
+                                         notes are in the inbox, it keeps 8 notes a day going. Notes in spam hold
+                                         the ladder; below 70% in the inbox the engine holds the domain's outreach
   warmup seeds                           our own seed organisations, Google and Microsoft 365: seeds held and
                                          ready, today's notes, spam and tabs (an admin)
   warmup seeds <admin email> [--count <n>]   adds an organisation lent to us, or tends it again: the engine keeps

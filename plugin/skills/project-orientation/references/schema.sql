@@ -79,7 +79,8 @@ declare
   d date := (new.sent_at at time zone 'UTC')::date;
   r record;
 begin
-  select e.mailbox_id, e.linkedin_account_id, e.sender_id, st.id as strategy_id, st.project_id,
+  select e.mailbox_id, lower(split_part(mb.address::text, '@', 2)) as mailbox_domain,
+         e.linkedin_account_id, e.sender_id, st.id as strategy_id, st.project_id,
          coalesce(mb.project_id, la.project_id) as channel_project
     into r
     from enrollments e
@@ -93,6 +94,8 @@ begin
   if new.channel = 'email' then
     if r.mailbox_id is not null then
       perform count_daily_send(d, 'mailbox', r.mailbox_id::text);
+      perform count_daily_send(d, 'mailbox_outreach', r.mailbox_id::text);
+      perform count_daily_send(d, 'domain_outreach', r.mailbox_domain);
       -- The lead's first email: the mailbox takes on every email of its plan still to go.
       if not exists (select 1 from messages o
                       where o.enrollment_id = new.enrollment_id and o.channel = 'email'
@@ -874,7 +877,7 @@ CREATE TABLE public.daily_sends (
     scope text NOT NULL,
     key text NOT NULL,
     sent integer DEFAULT 0 NOT NULL,
-    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'mailbox_intake'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text])))
+    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'mailbox_outreach'::text, 'domain_outreach'::text, 'mailbox_intake'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
@@ -1492,8 +1495,12 @@ CREATE TABLE public.mailboxes (
     egress_id uuid,
     recipient_esps text[],
     warmup_started_at timestamp with time zone,
+    placement_state text DEFAULT 'unknown'::text NOT NULL,
+    placement_state_at timestamp with time zone,
+    outreach_held_at timestamp with time zone,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 60))),
+    CONSTRAINT mailboxes_placement_state_check CHECK ((placement_state = ANY (ARRAY['good'::text, 'unknown'::text, 'hold'::text, 'bad'::text]))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'smtp'::text, 'jmap'::text]))),
     CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 )
@@ -7130,4 +7137,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261019151726'),
     ('20261019195732'),
     ('20261019201129'),
-    ('20261020124530');
+    ('20261020124530'),
+    ('20261020133247');
