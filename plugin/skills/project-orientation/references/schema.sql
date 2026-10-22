@@ -505,7 +505,8 @@ CREATE TABLE public.agent_runs (
     kind text DEFAULT 'work'::text NOT NULL,
     reply_id uuid,
     thread_id uuid,
-    CONSTRAINT agent_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'rewrite'::text, 'draft'::text]))),
+    review_id uuid,
+    CONSTRAINT agent_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'rewrite'::text, 'draft'::text, 'review'::text]))),
     CONSTRAINT agent_runs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text])))
 );
 
@@ -2150,6 +2151,58 @@ CREATE TABLE public.reply_templates (
 
 
 --
+-- Name: review_alerts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.review_alerts (
+    user_id uuid NOT NULL,
+    key text NOT NULL,
+    project_id uuid NOT NULL,
+    level bigint NOT NULL,
+    text text NOT NULL,
+    first_sent_at timestamp with time zone NOT NULL,
+    sent_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: review_recipients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.review_recipients (
+    organisation_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    timezone text DEFAULT 'Europe/Berlin'::text NOT NULL,
+    reviews boolean DEFAULT true NOT NULL,
+    alerts boolean DEFAULT true NOT NULL,
+    added_by uuid,
+    added_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: reviews; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reviews (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    organisation_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    week date NOT NULL,
+    requested_by uuid,
+    requested_via public.actor_via,
+    status text DEFAULT 'running'::text NOT NULL,
+    projects jsonb DEFAULT '[]'::jsonb NOT NULL,
+    slack_ref text,
+    error text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    posted_at timestamp with time zone,
+    CONSTRAINT reviews_status_check CHECK ((status = ANY (ARRAY['running'::text, 'posted'::text, 'failed'::text])))
+);
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3687,6 +3740,30 @@ ALTER TABLE ONLY public.reply_templates
 
 
 --
+-- Name: review_alerts review_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.review_alerts
+    ADD CONSTRAINT review_alerts_pkey PRIMARY KEY (user_id, key);
+
+
+--
+-- Name: review_recipients review_recipients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.review_recipients
+    ADD CONSTRAINT review_recipients_pkey PRIMARY KEY (organisation_id, user_id);
+
+
+--
+-- Name: reviews reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reviews
+    ADD CONSTRAINT reviews_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4189,6 +4266,13 @@ CREATE INDEX ix_agent_runs__project_created ON public.agent_runs USING btree (pr
 
 
 --
+-- Name: ix_agent_runs__review; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_agent_runs__review ON public.agent_runs USING btree (review_id) WHERE (review_id IS NOT NULL);
+
+
+--
 -- Name: ix_call_list_contacts__contact; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4613,6 +4697,27 @@ CREATE INDEX ix_provider_calls__project_at ON public.provider_calls USING btree 
 --
 
 CREATE INDEX ix_replies__thread ON public.replies USING btree (thread_id, created_at);
+
+
+--
+-- Name: ix_review_alerts__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_review_alerts__project ON public.review_alerts USING btree (project_id);
+
+
+--
+-- Name: ix_review_recipients__user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_review_recipients__user ON public.review_recipients USING btree (user_id);
+
+
+--
+-- Name: ix_reviews__running; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_reviews__running ON public.reviews USING btree (created_at) WHERE (status = 'running'::text);
 
 
 --
@@ -5064,6 +5169,13 @@ CREATE UNIQUE INDEX ux_reply_templates__one_active ON public.reply_templates USI
 
 
 --
+-- Name: ux_reviews__weekly; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_reviews__weekly ON public.reviews USING btree (organisation_id, user_id, week) WHERE (requested_by IS NULL);
+
+
+--
 -- Name: ux_sending_companies__main_domain; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5450,6 +5562,14 @@ ALTER TABLE ONLY public.agent_runs
 
 ALTER TABLE ONLY public.agent_runs
     ADD CONSTRAINT agent_runs_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.users(id);
+
+
+--
+-- Name: agent_runs agent_runs_review_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_runs
+    ADD CONSTRAINT agent_runs_review_id_fkey FOREIGN KEY (review_id) REFERENCES public.reviews(id) ON DELETE SET NULL;
 
 
 --
@@ -6917,6 +7037,70 @@ ALTER TABLE ONLY public.reply_templates
 
 
 --
+-- Name: review_alerts review_alerts_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.review_alerts
+    ADD CONSTRAINT review_alerts_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: review_alerts review_alerts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.review_alerts
+    ADD CONSTRAINT review_alerts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: review_recipients review_recipients_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.review_recipients
+    ADD CONSTRAINT review_recipients_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id);
+
+
+--
+-- Name: review_recipients review_recipients_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.review_recipients
+    ADD CONSTRAINT review_recipients_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: review_recipients review_recipients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.review_recipients
+    ADD CONSTRAINT review_recipients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reviews reviews_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reviews
+    ADD CONSTRAINT reviews_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reviews reviews_requested_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reviews
+    ADD CONSTRAINT reviews_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.users(id);
+
+
+--
+-- Name: reviews reviews_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reviews
+    ADD CONSTRAINT reviews_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: searches searches_company_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7949,4 +8133,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022124223'),
     ('20261022124928'),
     ('20261022131816'),
-    ('20261022133824');
+    ('20261022133824'),
+    ('20261022144533');

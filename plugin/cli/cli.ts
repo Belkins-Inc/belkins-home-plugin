@@ -157,6 +157,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          egresses, sent, bounces, Gmail's refusals, replies and blocks by receiving
                                          side (Google, Microsoft, Proofpoint, Mimecast, other gateways), seed
                                          verdicts — worst first
+  review subscribe <org> [--email <e>] [--timezone <tz>] [--reviews on|off] [--alerts on|off]
+                                         hear the weekly review (Monday 09:00 in --timezone, Europe/Berlin by
+                                         default) and alerts about your projects in Slack; an admin may add --email
+  review unsubscribe <org> [--email <e>] | review list <org>   who hears them, and the latest reviews
+  review now <org> [--for <email>]       a review of your projects now, in your Slack messages within minutes (person)
   bounces <org> [--days <n>] [--project <slug>]
                                          how the mail sent over the last days (14) bounced: by class, day, sending
                                          mailbox, strategy, receiving side and recipient domain; codes; latest 50
@@ -815,6 +820,8 @@ async function main(argv: string[]): Promise<void> {
       domain: { type: 'string' },
       former: { type: 'boolean' },
       'every-project': { type: 'boolean' },
+      reviews: { type: 'string' },
+      alerts: { type: 'string' },
       address: { type: 'string' },
       'brief-file': { type: 'string' },
       brief: { type: 'string' },
@@ -2626,6 +2633,45 @@ async function main(argv: string[]): Promise<void> {
         `bh egress has no ${sub}`,
         { hint: 'list, add, active, spare, retire, region, regions, quota or assign' },
         2,
+      )
+    }
+    case 'review': {
+      // The operator's weekly review and alerts in Slack (docs/decisions/tools.md).
+      const org =
+        sub === 'now' || sub === 'list' || sub === 'subscribe' || sub === 'unsubscribe'
+          ? arg
+          : undefined
+      if (!org)
+        throw new BhError(
+          'Which organisation, and what?',
+          { hint: 'bh review now belkins | list | subscribe | unsubscribe' },
+          2,
+        )
+      const at = `/orgs/${encodeURIComponent(org)}/review`
+      if (sub === 'list') return out(await call(config, 'GET', at))
+      if (sub === 'now') return out(await call(config, 'POST', at, o.for ? { for: o.for } : {}))
+      if (sub === 'unsubscribe')
+        return out(
+          await call(
+            config,
+            'DELETE',
+            `${at}/recipients${o.email ? `?email=${encodeURIComponent(o.email)}` : ''}`,
+          ),
+        )
+      const onOff = (name: 'reviews' | 'alerts') => {
+        const v = o[name]
+        if (v === undefined) return {}
+        if (v !== 'on' && v !== 'off')
+          throw new BhError(`--${name} is on or off`, { hint: `--${name} off` }, 2)
+        return { [name]: v === 'on' }
+      }
+      return out(
+        await call(config, 'PUT', `${at}/recipients`, {
+          ...(o.email ? { email: o.email } : {}),
+          ...(o.timezone ? { timezone: o.timezone } : {}),
+          ...onOff('reviews'),
+          ...onOff('alerts'),
+        }),
       )
     }
     case 'mail-health': {
