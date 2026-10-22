@@ -2765,6 +2765,49 @@ CREATE TABLE public.users (
 
 
 --
+-- Name: warmup_correspondents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.warmup_correspondents (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    mailbox_id uuid NOT NULL,
+    seed_id uuid NOT NULL,
+    joined_at timestamp with time zone NOT NULL,
+    left_at timestamp with time zone,
+    left_reason text,
+    CONSTRAINT warmup_correspondents_check CHECK (((left_at IS NULL) = (left_reason IS NULL))),
+    CONSTRAINT warmup_correspondents_left_reason_check CHECK ((left_reason = ANY (ARRAY['turned'::text, 'unusable'::text])))
+);
+
+
+--
+-- Name: warmup_replies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.warmup_replies (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    send_id uuid NOT NULL,
+    mailbox_id uuid NOT NULL,
+    seed_id uuid,
+    step integer NOT NULL,
+    subject text NOT NULL,
+    rfc_message_id text,
+    sent_at timestamp with time zone NOT NULL,
+    arrived_at timestamp with time zone,
+    folders text[],
+    provider_message_id text,
+    provider_thread_id text,
+    act_at timestamp with time zone,
+    read_at timestamp with time zone,
+    answer boolean,
+    acted_at timestamp with time zone,
+    act_error text,
+    answer_send_id uuid,
+    CONSTRAINT warmup_replies_step_check CHECK ((step >= 2))
+);
+
+
+--
 -- Name: warmup_seed_tenants; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2854,6 +2897,12 @@ CREATE TABLE public.warmup_sends (
     answer_placement text,
     answer_at timestamp with time zone,
     answer_rescued_at timestamp with time zone,
+    thread_id uuid,
+    step integer DEFAULT 1 NOT NULL,
+    in_reply_to text,
+    refs text[],
+    correspondent boolean,
+    first_contact boolean,
     CONSTRAINT warmup_sends_answer_placement_check CHECK ((answer_placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_placement_check CHECK ((placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_status_check CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text])))
@@ -3840,6 +3889,22 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: warmup_correspondents warmup_correspondents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_correspondents
+    ADD CONSTRAINT warmup_correspondents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: warmup_replies warmup_replies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_replies
+    ADD CONSTRAINT warmup_replies_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: warmup_seed_tenants warmup_seed_tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4454,6 +4519,27 @@ CREATE INDEX ix_triage_holds__effective ON public.triage_holds USING btree (effe
 
 
 --
+-- Name: ix_warmup_correspondents__seed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_correspondents__seed ON public.warmup_correspondents USING btree (seed_id) WHERE (left_at IS NULL);
+
+
+--
+-- Name: ix_warmup_replies__due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_replies__due ON public.warmup_replies USING btree (mailbox_id, act_at) WHERE ((act_at IS NOT NULL) AND (acted_at IS NULL));
+
+
+--
+-- Name: ix_warmup_replies__send; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_replies__send ON public.warmup_replies USING btree (send_id);
+
+
+--
 -- Name: ix_warmup_seed_tenants__egress; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4493,6 +4579,13 @@ CREATE INDEX ix_warmup_sends__seed ON public.warmup_sends USING btree (mailbox_i
 --
 
 CREATE INDEX ix_warmup_sends__seed_day ON public.warmup_sends USING btree (seed_id, sent_at DESC);
+
+
+--
+-- Name: ix_warmup_sends__thread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_sends__thread ON public.warmup_sends USING btree (thread_id) WHERE (thread_id IS NOT NULL);
 
 
 --
@@ -4752,6 +4845,20 @@ CREATE UNIQUE INDEX ux_tasks__open_signal ON public.tasks USING btree (strategy_
 --
 
 CREATE UNIQUE INDEX ux_threads__linkedin_chat ON public.threads USING btree (linkedin_account_id, provider_thread_id) WHERE (channel = 'linkedin'::text);
+
+
+--
+-- Name: ux_warmup_correspondents__live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_warmup_correspondents__live ON public.warmup_correspondents USING btree (mailbox_id, seed_id) WHERE (left_at IS NULL);
+
+
+--
+-- Name: ux_warmup_replies__rfc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_warmup_replies__rfc ON public.warmup_replies USING btree (rfc_message_id) WHERE (rfc_message_id IS NOT NULL);
 
 
 --
@@ -7192,6 +7299,54 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: warmup_correspondents warmup_correspondents_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_correspondents
+    ADD CONSTRAINT warmup_correspondents_mailbox_id_fkey FOREIGN KEY (mailbox_id) REFERENCES public.mailboxes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: warmup_correspondents warmup_correspondents_seed_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_correspondents
+    ADD CONSTRAINT warmup_correspondents_seed_id_fkey FOREIGN KEY (seed_id) REFERENCES public.warmup_seeds(id);
+
+
+--
+-- Name: warmup_replies warmup_replies_answer_send_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_replies
+    ADD CONSTRAINT warmup_replies_answer_send_id_fkey FOREIGN KEY (answer_send_id) REFERENCES public.warmup_sends(id) ON DELETE SET NULL;
+
+
+--
+-- Name: warmup_replies warmup_replies_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_replies
+    ADD CONSTRAINT warmup_replies_mailbox_id_fkey FOREIGN KEY (mailbox_id) REFERENCES public.mailboxes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: warmup_replies warmup_replies_seed_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_replies
+    ADD CONSTRAINT warmup_replies_seed_id_fkey FOREIGN KEY (seed_id) REFERENCES public.warmup_seeds(id);
+
+
+--
+-- Name: warmup_replies warmup_replies_send_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_replies
+    ADD CONSTRAINT warmup_replies_send_id_fkey FOREIGN KEY (send_id) REFERENCES public.warmup_sends(id) ON DELETE CASCADE;
+
+
+--
 -- Name: warmup_seed_tenants warmup_seed_tenants_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7245,6 +7400,14 @@ ALTER TABLE ONLY public.warmup_sends
 
 ALTER TABLE ONLY public.warmup_sends
     ADD CONSTRAINT warmup_sends_seed_id_fkey FOREIGN KEY (seed_id) REFERENCES public.warmup_seeds(id);
+
+
+--
+-- Name: warmup_sends warmup_sends_thread_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_sends
+    ADD CONSTRAINT warmup_sends_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.warmup_sends(id) ON DELETE CASCADE;
 
 
 --
@@ -7401,4 +7564,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261020133247'),
     ('20261021112137'),
     ('20261021143431'),
-    ('20261022111701');
+    ('20261022111701'),
+    ('20261022114415');
