@@ -411,6 +411,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   linkedin created|verified <id> [--owner <user id|none>] [--undo]   marks it made on LinkedIn, or through its checks
   linkedin owner <id> <user id|none>     who works in its browser
   linkedin archive <id> [--undo]         after the undo window: signed out of Unipile, its IP never given again
+  linkedin link <id>                     a link to its browser for its owner: opened within 15 minutes, on one
+                                         device, which then works in it for an hour; a newer link stops it
+  linkedin member list|add <org> [--email <a> --name <n>]   people who sign in to work in their own account
+  linkedin member password|disable|enable <org> <user id>   (an organisation admin; passwords asked hidden)
   proxy list                             the LinkedIn IP pool: free, in use, failing, retired (the platform admin's)
   proxy add --country <US> --host <h> --port <n> --username <u> --provider <name> [--paid-until <YYYY-MM-DD>]
                                          checked through itself first; the password is asked hidden
@@ -2785,6 +2789,36 @@ async function main(argv: string[]): Promise<void> {
       }
       if (sub === 'archive')
         return out(await call(config, 'POST', `${account()}/archive${o.undo ? '/undo' : ''}`, {}))
+      if (sub === 'link') return out(await call(config, 'POST', `${account()}/links`, {}))
+      if (sub === 'member') {
+        // The people who sign in to work in their own account's browser: bh linkedin member <verb> <org> …
+        const [verb, org, who] = [arg, pos[3], pos[4]]
+        if (!org)
+          throw new BhError('Which organisation?', { hint: 'bh linkedin member list belkins' }, 2)
+        const base = `/orgs/${encodeURIComponent(org)}/linkedin-members`
+        if (verb === 'list') return out(await call(config, 'GET', base))
+        if (verb === 'add') {
+          if (!o.email || !o.name)
+            throw new BhError(
+              'Who?',
+              { hint: 'bh linkedin member add <org> --email <a> --name <n>' },
+              2,
+            )
+          const [secret] = await readSecrets(['Their password (12 characters or more): '])
+          return out(
+            await call(config, 'POST', base, { email: o.email, name: o.name, password: secret }),
+          )
+        }
+        if (!who) throw new BhError('Which member?', { hint: `bh linkedin member list ${org}` }, 2)
+        if (verb === 'password') {
+          const [secret] = await readSecrets(['New password (12 characters or more): '])
+          return out(await call(config, 'PUT', `${base}/${who}/password`, { password: secret }))
+        }
+        if (verb === 'disable' || verb === 'enable')
+          return out(
+            await call(config, 'PATCH', `${base}/${who}`, { disabled: verb === 'disable' }),
+          )
+      }
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/linkedin-accounts/${arg}`, {

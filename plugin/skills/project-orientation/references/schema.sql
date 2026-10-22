@@ -38,7 +38,9 @@ CREATE TYPE public.actor_via AS ENUM (
     'session',
     'scheduled_agent',
     'engine',
-    'client'
+    'client',
+    'member',
+    'link'
 );
 
 
@@ -1334,6 +1336,25 @@ CREATE VIEW public.inbox_queue AS
 
 
 --
+-- Name: linkedin_account_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_account_links (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    linkedin_account_id uuid NOT NULL,
+    token_hash bytea NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    opened_at timestamp with time zone,
+    device_hash bytea,
+    session_expires_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL
+);
+
+
+--
 -- Name: linkedin_accounts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1612,6 +1633,25 @@ CREATE TABLE public.mailboxes (
     CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
+
+
+--
+-- Name: member_logins; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.member_logins (
+    user_id uuid NOT NULL,
+    organisation_id uuid NOT NULL,
+    password_hash text NOT NULL,
+    password_set_at timestamp with time zone DEFAULT now() NOT NULL,
+    password_set_by uuid NOT NULL,
+    password_set_via public.actor_via NOT NULL,
+    failures integer DEFAULT 0 NOT NULL,
+    paused_until timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL
+);
 
 
 --
@@ -2366,7 +2406,7 @@ CREATE TABLE public.sessions (
     revoked_by uuid,
     revoked_via public.actor_via,
     last_seen_at timestamp with time zone,
-    CONSTRAINT sessions_audience_check CHECK ((audience = ANY (ARRAY['staff'::text, 'client'::text])))
+    CONSTRAINT sessions_audience_check CHECK ((audience = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text])))
 );
 
 
@@ -2831,7 +2871,7 @@ CREATE TABLE public.users (
     kind text DEFAULT 'staff'::text NOT NULL,
     slack_workspace_id uuid,
     CONSTRAINT users_client_not_admin CHECK (((kind = 'staff'::text) OR (NOT is_admin))),
-    CONSTRAINT users_kind_check CHECK ((kind = ANY (ARRAY['staff'::text, 'client'::text]))),
+    CONSTRAINT users_kind_check CHECK ((kind = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text]))),
     CONSTRAINT users_slack_workspace_check CHECK (((slack_user_id IS NULL) = (slack_workspace_id IS NULL)))
 );
 
@@ -3273,6 +3313,30 @@ ALTER TABLE ONLY public.hypotheses
 
 
 --
+-- Name: linkedin_account_links linkedin_account_links_device_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_account_links
+    ADD CONSTRAINT linkedin_account_links_device_hash_key UNIQUE (device_hash);
+
+
+--
+-- Name: linkedin_account_links linkedin_account_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_account_links
+    ADD CONSTRAINT linkedin_account_links_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: linkedin_account_links linkedin_account_links_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_account_links
+    ADD CONSTRAINT linkedin_account_links_token_hash_key UNIQUE (token_hash);
+
+
+--
 -- Name: linkedin_accounts linkedin_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3382,6 +3446,14 @@ ALTER TABLE ONLY public.meeting_slots
 
 ALTER TABLE ONLY public.meetings
     ADD CONSTRAINT meetings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: member_logins member_logins_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.member_logins
+    ADD CONSTRAINT member_logins_pkey PRIMARY KEY (user_id);
 
 
 --
@@ -4272,6 +4344,13 @@ CREATE INDEX ix_hypotheses__project ON public.hypotheses USING btree (project_id
 
 
 --
+-- Name: ix_linkedin_account_links__account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_linkedin_account_links__account ON public.linkedin_account_links USING btree (linkedin_account_id);
+
+
+--
 -- Name: ix_linkedin_events__account; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4346,6 +4425,13 @@ CREATE INDEX ix_meetings__contact ON public.meetings USING btree (contact_id);
 --
 
 CREATE INDEX ix_meetings__thread ON public.meetings USING btree (thread_id) WHERE (thread_id IS NOT NULL);
+
+
+--
+-- Name: ix_member_logins__organisation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_member_logins__organisation ON public.member_logins USING btree (organisation_id);
 
 
 --
@@ -5898,6 +5984,22 @@ ALTER TABLE ONLY public.hypotheses
 
 
 --
+-- Name: linkedin_account_links linkedin_account_links_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_account_links
+    ADD CONSTRAINT linkedin_account_links_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: linkedin_account_links linkedin_account_links_linkedin_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_account_links
+    ADD CONSTRAINT linkedin_account_links_linkedin_account_id_fkey FOREIGN KEY (linkedin_account_id) REFERENCES public.linkedin_accounts(id);
+
+
+--
 -- Name: linkedin_accounts linkedin_accounts_archive_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6255,6 +6357,38 @@ ALTER TABLE ONLY public.meetings
 
 ALTER TABLE ONLY public.meetings
     ADD CONSTRAINT meetings_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads(id);
+
+
+--
+-- Name: member_logins member_logins_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.member_logins
+    ADD CONSTRAINT member_logins_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: member_logins member_logins_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.member_logins
+    ADD CONSTRAINT member_logins_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id);
+
+
+--
+-- Name: member_logins member_logins_password_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.member_logins
+    ADD CONSTRAINT member_logins_password_set_by_fkey FOREIGN KEY (password_set_by) REFERENCES public.users(id);
+
+
+--
+-- Name: member_logins member_logins_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.member_logins
+    ADD CONSTRAINT member_logins_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -7800,4 +7934,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022122147'),
     ('20261022124129'),
     ('20261022124223'),
-    ('20261022124928');
+    ('20261022124928'),
+    ('20261022131816');
