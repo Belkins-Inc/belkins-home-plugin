@@ -649,6 +649,8 @@ CREATE TABLE public.meetings (
     no_show_by text,
     lead_response text,
     lead_responded_at timestamp with time zone,
+    brief_posted_at timestamp with time zone,
+    brief_ref text,
     CONSTRAINT meetings_check CHECK (((outcome IS NULL) OR (status = 'held'::text))),
     CONSTRAINT meetings_lead_response_check CHECK ((lead_response = ANY (ARRAY['accepted'::text, 'declined'::text, 'tentative'::text]))),
     CONSTRAINT meetings_no_show_by_check CHECK ((no_show_by = ANY (ARRAY['lead'::text, 'rep'::text, 'both'::text]))),
@@ -8591,4 +8593,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022211247'),
     ('20261022212820'),
     ('20261022214321'),
-    ('20261022225005');
+    ('20261022225005'),
+    ('20261022230024');
