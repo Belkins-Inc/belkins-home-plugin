@@ -231,12 +231,13 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   calendar connect --sender <id> [--key <Cal.com API key> [--event-type <id>]]
                                          the sender's Cal.com; without a key, a URL to open: sign in to
                                          Cal.com (or sign up, connecting Google or Outlook) and allow us
-  calendar connect --sender <id> --freebusy <address> | --hours-only <address>
+  calendar connect --sender <id> --freebusy <address> | --hours-only <address> | --ics <feed url> --address <address>
                   [--timezone <iana>] [--hours "mon-fri 09:00-17:00; sat 10:00-12:00"] [--minutes <n>]
                   [--buffer <min>] [--notice <min>] [--cap <per day>] [--window <days>]
                                          a calendar of our own, booked through our organizer (docs/decisions/
                                          booking.md): a Google calendar that shares its free/busy with the
-                                         organizer, or working hours alone; the address gets the invitations
+                                         organizer, a published calendar's feed (Outlook's ICS link), or
+                                         working hours alone; the address gets the invitations
   calendar invite --sender <id>          a link for the sender's owner to connect their Cal.com without
                                          access to the tool (7 days, once; a new link replaces the last)
   calendar add-external --url <booking link> [--sender <id>] [--name <t>] [--minutes <n>] [--timezone <iana>]
@@ -947,6 +948,7 @@ async function main(argv: string[]): Promise<void> {
       through: { type: 'string' },
       minutes: { type: 'string' },
       freebusy: { type: 'string' },
+      ics: { type: 'string' },
       'hours-only': { type: 'string' },
       buffer: { type: 'string' },
       notice: { type: 'string' },
@@ -2221,13 +2223,18 @@ async function main(argv: string[]): Promise<void> {
         ...(o.cap !== undefined ? { dailyCap: o.cap === 'none' ? null : Number(o.cap) } : {}),
         ...(o.window ? { windowDays: Number(o.window) } : {}),
       }
-      if (sub === 'connect' && (o.freebusy || o['hours-only']))
+      if (sub === 'connect' && (o.freebusy || o['hours-only'] || o.ics))
         return out(
           await call(
             config,
             'POST',
-            `/projects/${p()}/calendars/${o.freebusy ? 'freebusy' : 'hours'}`,
-            { senderId: o.sender, address: o.freebusy ?? o['hours-only'], ...rules },
+            `/projects/${p()}/calendars/${o.freebusy ? 'freebusy' : o.ics ? 'ics' : 'hours'}`,
+            {
+              senderId: o.sender,
+              address: o.freebusy ?? o['hours-only'] ?? o.address,
+              ...(o.ics ? { url: o.ics } : {}),
+              ...rules,
+            },
           ),
         )
       if (sub === 'connect' && !o.key)
