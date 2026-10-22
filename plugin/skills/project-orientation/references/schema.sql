@@ -507,7 +507,8 @@ CREATE TABLE public.agent_runs (
     reply_id uuid,
     thread_id uuid,
     review_id uuid,
-    CONSTRAINT agent_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'rewrite'::text, 'draft'::text, 'review'::text]))),
+    meeting_id uuid,
+    CONSTRAINT agent_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'rewrite'::text, 'draft'::text, 'review'::text, 'summary'::text]))),
     CONSTRAINT agent_runs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text])))
 );
 
@@ -1720,7 +1721,12 @@ CREATE TABLE public.meeting_records (
     recording_file text,
     complete boolean DEFAULT false NOT NULL,
     read_at timestamp with time zone DEFAULT now() NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    summary text,
+    summary_run_id uuid,
+    summary_posted_at timestamp with time zone,
+    proposed_outcome text,
+    CONSTRAINT meeting_records_proposed_outcome_check CHECK ((proposed_outcome = ANY (ARRAY['qualified'::text, 'not_qualified'::text, 'opportunity'::text])))
 );
 
 
@@ -5845,6 +5851,14 @@ ALTER TABLE ONLY public.address_replacements
 
 
 --
+-- Name: agent_runs agent_runs_meeting_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_runs
+    ADD CONSTRAINT agent_runs_meeting_id_fkey FOREIGN KEY (meeting_id) REFERENCES public.meetings(id) ON DELETE CASCADE;
+
+
+--
 -- Name: agent_runs agent_runs_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8595,4 +8609,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022214321'),
     ('20261022225005'),
     ('20261022230024'),
-    ('20261022231119');
+    ('20261022231119'),
+    ('20261022232416');
