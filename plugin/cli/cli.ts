@@ -525,6 +525,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   slack channel <#channel|id|none> --client [--team <workspace>]   the channel the project's client
                                          is in: their messages there reach the platform, no nudge goes
                                          there; the app must be in it (/invite @Belkins Home)
+  slack client-channel create [--name <channel>] [--invite <email,...>]   Home makes the project's
+                                         client channel (private, ours) unless it has one, adds the
+                                         project's team, and asks the client in through Slack Connect:
+                                         these addresses and every client granted the project
   slack disconnect [--team <workspace>]  takes the bot out of one workspace (an admin only)
   slack post (--body <text> | --body-file <path|->) [--to <#channel|email>] [--thread <link|ts>]
              [--mention <email|name|member id, ...>] [--team <workspace>]
@@ -923,6 +927,7 @@ async function main(argv: string[]): Promise<void> {
       ours: { type: 'boolean' },
       as: { type: 'string' },
       ref: { type: 'string' },
+      invite: { type: 'string' },
       at: { type: 'string' },
       through: { type: 'string' },
       minutes: { type: 'string' },
@@ -3130,6 +3135,13 @@ async function main(argv: string[]): Promise<void> {
           current
             ? await call(config, 'POST', `/projects/${p()}/slack/connect`, {})
             : await call(config, 'POST', '/slack/connect', {}),
+        )
+      if (sub === 'client-channel' && arg === 'create')
+        return out(
+          await call(config, 'POST', `/projects/${p()}/slack/client-channel/create`, {
+            ...(o.name ? { name: o.name } : {}),
+            ...(o.invite ? { invite: list(o.invite) } : {}),
+          }),
         )
       if (sub === 'channel' && o.client)
         return out(

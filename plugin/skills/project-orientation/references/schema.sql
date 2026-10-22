@@ -2524,6 +2524,31 @@ CREATE TABLE public.sessions (
 
 
 --
+-- Name: slack_client_invites; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.slack_client_invites (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    channel_id text NOT NULL,
+    kind text NOT NULL,
+    user_id uuid,
+    email text,
+    slack_user_id text,
+    invite_id text,
+    invited_at timestamp with time zone,
+    error text,
+    attempts integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    created_via public.actor_via NOT NULL,
+    CONSTRAINT slack_client_invites_check CHECK (((user_id IS NOT NULL) OR (email IS NOT NULL))),
+    CONSTRAINT slack_client_invites_check1 CHECK (((invited_at IS NULL) OR (error IS NULL))),
+    CONSTRAINT slack_client_invites_kind_check CHECK ((kind = ANY (ARRAY['team'::text, 'client'::text])))
+);
+
+
+--
 -- Name: slack_messages; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3994,6 +4019,14 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: slack_client_invites slack_client_invites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_client_invites
+    ADD CONSTRAINT slack_client_invites_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: slack_messages slack_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5347,6 +5380,20 @@ CREATE UNIQUE INDEX ux_sending_companies__main_domain ON public.sending_companie
 --
 
 CREATE UNIQUE INDEX ux_sending_companies__name ON public.sending_companies USING btree (organisation_id, lower(name));
+
+
+--
+-- Name: ux_slack_client_invites__email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_slack_client_invites__email ON public.slack_client_invites USING btree (project_id, channel_id, lower(email)) WHERE (user_id IS NULL);
+
+
+--
+-- Name: ux_slack_client_invites__user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_slack_client_invites__user ON public.slack_client_invites USING btree (project_id, channel_id, user_id) WHERE (user_id IS NOT NULL);
 
 
 --
@@ -7597,6 +7644,30 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: slack_client_invites slack_client_invites_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_client_invites
+    ADD CONSTRAINT slack_client_invites_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: slack_client_invites slack_client_invites_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_client_invites
+    ADD CONSTRAINT slack_client_invites_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+
+--
+-- Name: slack_client_invites slack_client_invites_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_client_invites
+    ADD CONSTRAINT slack_client_invites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: slack_messages slack_messages_author_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8404,4 +8475,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022180904'),
     ('20261022185536'),
     ('20261022191301'),
-    ('20261022194729');
+    ('20261022194729'),
+    ('20261022200511');
