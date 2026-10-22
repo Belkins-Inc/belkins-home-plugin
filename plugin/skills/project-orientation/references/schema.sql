@@ -676,6 +676,7 @@ CREATE TABLE public.call_list_contacts (
     outcome_at timestamp with time zone,
     outcome_by uuid,
     outcome_via public.actor_via,
+    phone_id uuid,
     CONSTRAINT call_list_contacts_outcome_check CHECK ((outcome = ANY (ARRAY['no_answer'::text, 'voicemail'::text, 'wrong_number'::text, 'not_interested'::text, 'call_back'::text, 'meeting'::text, 'other'::text]))),
     CONSTRAINT call_list_contacts_outcome_recorded CHECK ((((outcome IS NULL) = (outcome_at IS NULL)) AND ((outcome IS NULL) = (outcome_via IS NULL)))),
     CONSTRAINT call_list_contacts_position_check CHECK (("position" >= 1))
@@ -821,6 +822,40 @@ WITH (autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.
 
 
 --
+-- Name: contact_phones; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.contact_phones (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    contact_id uuid NOT NULL,
+    e164 text NOT NULL,
+    extension text,
+    kind text NOT NULL,
+    source text NOT NULL,
+    confidence text,
+    state text DEFAULT 'active'::text NOT NULL,
+    invalid_reason text,
+    rank integer DEFAULT 1 NOT NULL,
+    details jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    created_via public.actor_via NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by uuid,
+    updated_via public.actor_via,
+    CONSTRAINT contact_phones_check CHECK (((state = 'invalid'::text) = (invalid_reason IS NOT NULL))),
+    CONSTRAINT contact_phones_confidence_check CHECK ((confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text]))),
+    CONSTRAINT contact_phones_e164_check CHECK ((e164 ~ '^\+[1-9][0-9]{6,14}$'::text)),
+    CONSTRAINT contact_phones_extension_check CHECK ((extension ~ '^[0-9]{1,8}$'::text)),
+    CONSTRAINT contact_phones_kind_check CHECK ((kind = ANY (ARRAY['mobile'::text, 'direct'::text, 'company'::text, 'other'::text]))),
+    CONSTRAINT contact_phones_rank_check CHECK ((rank >= 1)),
+    CONSTRAINT contact_phones_source_check CHECK (((length(source) >= 1) AND (length(source) <= 60))),
+    CONSTRAINT contact_phones_state_check CHECK ((state = ANY (ARRAY['active'::text, 'invalid'::text])))
+);
+
+
+--
 -- Name: contacts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -905,8 +940,8 @@ CREATE TABLE public.dnc (
     created_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     removed_at timestamp with time zone,
-    CONSTRAINT dnc_kind_check CHECK ((kind = ANY (ARRAY['email'::text, 'domain'::text]))),
-    CONSTRAINT dnc_reason_check CHECK ((reason = ANY (ARRAY['unsubscribed'::text, 'complaint'::text, 'bounced'::text, 'competitor'::text, 'existing_customer'::text, 'client_request'::text, 'other'::text])))
+    CONSTRAINT dnc_kind_check CHECK ((kind = ANY (ARRAY['email'::text, 'domain'::text, 'phone'::text]))),
+    CONSTRAINT dnc_reason_check CHECK ((reason = ANY (ARRAY['unsubscribed'::text, 'complaint'::text, 'bounced'::text, 'competitor'::text, 'existing_customer'::text, 'client_request'::text, 'registry'::text, 'other'::text])))
 );
 
 
@@ -3335,6 +3370,14 @@ ALTER TABLE ONLY public.companies
 
 
 --
+-- Name: contact_phones contact_phones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_phones
+    ADD CONSTRAINT contact_phones_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: contacts contacts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4383,6 +4426,13 @@ CREATE INDEX ix_companies__project ON public.companies USING btree (project_id, 
 
 
 --
+-- Name: ix_contact_phones__contact; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_contact_phones__contact ON public.contact_phones USING btree (contact_id, rank);
+
+
+--
 -- Name: ix_contacts__company; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5111,6 +5161,13 @@ CREATE UNIQUE INDEX ux_channel_invites__token ON public.channel_invites USING bt
 
 
 --
+-- Name: ux_contact_phones__number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_contact_phones__number ON public.contact_phones USING btree (project_id, e164, extension) NULLS NOT DISTINCT;
+
+
+--
 -- Name: ux_contacts__email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5756,6 +5813,14 @@ ALTER TABLE ONLY public.call_list_contacts
 
 
 --
+-- Name: call_list_contacts call_list_contacts_phone_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_list_contacts
+    ADD CONSTRAINT call_list_contacts_phone_id_fkey FOREIGN KEY (phone_id) REFERENCES public.contact_phones(id) ON DELETE SET NULL;
+
+
+--
 -- Name: call_lists call_lists_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5881,6 +5946,38 @@ ALTER TABLE ONLY public.client_reports
 
 ALTER TABLE ONLY public.companies
     ADD CONSTRAINT companies_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: contact_phones contact_phones_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_phones
+    ADD CONSTRAINT contact_phones_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: contact_phones contact_phones_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_phones
+    ADD CONSTRAINT contact_phones_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: contact_phones contact_phones_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_phones
+    ADD CONSTRAINT contact_phones_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: contact_phones contact_phones_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_phones
+    ADD CONSTRAINT contact_phones_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
 
 
 --
@@ -8306,4 +8403,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022151206'),
     ('20261022180904'),
     ('20261022185536'),
-    ('20261022191301');
+    ('20261022191301'),
+    ('20261022194729');

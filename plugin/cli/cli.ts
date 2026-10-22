@@ -119,22 +119,33 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          confirmed and rejected carry --verdict
   calls                                 the project's call lists: who was handed to callers, and how far they got
   calls create --name <n> --file <json|jsonl|-> [--note <t>] [--allow-repeat]   (a person only)
-                                         [{"contactId","phone","reason"}] in call order; all or nothing: a contact
-                                         on dnc, outside the project or already on a list is refused (--allow-repeat lets the last through)
+                                         [{"contactId","phone","reason"}] in call order; phone is optional: without it
+                                         the contact's first live number not on do-not-call, with it one of theirs (bh phones);
+                                         all or nothing: a contact on dnc, outside the project, with no such number or
+                                         already on a list is refused (--allow-repeat lets the last through)
   calls show <list-id> [--out <file.csv>]   its people in call order; --out writes the caller's CSV
   calls outcome <list-id> --contact <contact-id> --outcome no_answer|voicemail|wrong_number|not_interested|call_back|meeting|other|none [--note <t>]
   goals | goal set <YYYY-MM> --target <meetings> [--counts qualified|held] | goal done <YYYY-MM> --done <n>   (a person only)
   contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts"}]
+                                         a phone number is not a fact: facts.phone is refused, numbers go in with bh phones add
   contacts [--q <text>]
+  phones <contact-id>                    a contact's numbers in dial order: kind, source, confidence, state, on do-not-call
+  phones add --file <json|jsonl|->       [{"contactId","number","kind":"mobile|direct|company|other","source","confidence":"high|medium|low","dnc"}]
+  phones add <contact-id> --number <n> --source <s> [--kind <k>] [--confidence <c>] [--dnc]
+                                         each after the contact's last number, read as E.164 (+ country code; a national
+                                         number reads with the contact's country); --dnc: on a do-not-call registry, so
+                                         it also goes on dnc. Apollo's delivered numbers go in by themselves
+  phones set <phone-id> [--state active|invalid --reason <why>] [--rank <n>] [--kind <k>]
+                                         a dead number (a caller's wrong number marks it by itself), the dial order
   esp                                    how many companies and contacts are on each email provider (MX:
                                          google, microsoft, proofpoint, mimecast…; pending = not looked up yet)
-  dnc add --kind email|domain --value <v> --reason <r> [--note <t>] [--every-project] | dnc remove <id>
+  dnc add --kind email|domain|phone --value <v> --reason <r> [--note <t>] [--every-project] | dnc remove <id>
                                          --every-project blocks it for every project, not only this one
   dnc import <file.csv|-> [--reason <r>] [--note <t>] [--every-project]
                                          a column email and/or domain, or value (kind from "@", or a kind column);
                                          reason and note columns win over the flags; no header: one value a line.
                                          answers {added, already, refused, invalid}; a refused row exits 1
-  dnc check <address|domain>… | dnc check --file <csv>
+  dnc check <address|domain|number>… | dnc check --file <csv>
                                          which of them the list blocks (a domain blocks its subdomains) —
                                          before paying a provider to enrich or find anyone there
   enroll <strategy-id> --file <json|jsonl|-> [--dry-run]    [{"contactId","segmentId","personaId"}]
@@ -932,6 +943,9 @@ async function main(argv: string[]): Promise<void> {
       meaning: { type: 'string' },
       confidence: { type: 'string' },
       moved: { type: 'boolean' },
+      number: { type: 'string' },
+      rank: { type: 'string' },
+      dnc: { type: 'boolean' },
     },
   })
   const config = await loadConfig()
@@ -942,8 +956,8 @@ async function main(argv: string[]): Promise<void> {
     return encodeURIComponent(current.slug)
   }
   /** A file of rows, sent in chunks; a row the engine refused makes the exit non-zero. */
-  const batch = async (path: string): Promise<void> => {
-    const answer = await sendRows(config, path, await readRows(need(o.file)))
+  const batch = async (path: string, rows?: unknown[]): Promise<void> => {
+    const answer = await sendRows(config, path, rows ?? (await readRows(need(o.file))))
     out(answer)
     const refused = refusedIn(answer)
     if (refused) {
@@ -1608,6 +1622,40 @@ async function main(argv: string[]): Promise<void> {
           `/projects/${p()}/contacts?${new URLSearchParams(o.q ? { q: o.q } : {})}`,
         ),
       )
+    case 'phones': {
+      if (sub === 'add') {
+        if (o.file) return batch(`/projects/${p()}/phones`)
+        if (!arg || !o.number || !o.source)
+          throw new BhError(
+            'Which contact, which number, found where?',
+            { hint: 'bh phones add <contact-id> --number +12015550100 --source apollo, or --file' },
+            2,
+          )
+        return batch(`/projects/${p()}/phones`, [
+          {
+            contactId: arg,
+            number: o.number,
+            source: o.source,
+            ...(o.kind ? { kind: o.kind } : {}),
+            ...(o.confidence ? { confidence: o.confidence } : {}),
+            ...(o.dnc ? { dnc: true } : {}),
+          },
+        ])
+      }
+      if (sub === 'set') {
+        if (!arg) throw new BhError('Which number?', { hint: 'bh phones <contact-id>' }, 2)
+        return out(
+          await call(config, 'PATCH', `/phones/${arg}`, {
+            ...(o.state ? { state: o.state } : {}),
+            ...(o.reason ? { reason: o.reason } : {}),
+            ...(o.rank ? { rank: Number(o.rank) } : {}),
+            ...(o.kind ? { kind: o.kind } : {}),
+          }),
+        )
+      }
+      if (!sub) throw new BhError('Whose numbers?', { hint: 'bh phones <contact-id>' }, 2)
+      return out(await call(config, 'GET', `/contacts/${sub}/phones`))
+    }
     case 'esp':
       return out(await call(config, 'GET', `/projects/${p()}/esp`))
     case 'dnc':

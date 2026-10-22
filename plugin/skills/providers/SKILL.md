@@ -151,6 +151,8 @@ Rules that cut across providers:
 - Ordering a Bright Data snapshot without `records_limit`.
 - Taking `email_not_unlocked@…`, a Generect address, or an Apollo address Bouncer has not called
   deliverable as a contact's address.
-- Passing a `webhook_url` to Apollo — the engine adds its own; phones are read with `bh call show`.
+- Passing a `webhook_url` to Apollo — the engine adds its own and puts the phones on the contacts
+  (`bh phones <contact-id>`).
+- Writing a phone number into `facts` — it is refused; numbers go in with `bh phones add`.
 - Using `--again` to "retry" a call that failed: a failed call is not guarded, so `--again` is only
   needed to repeat a call that succeeded.

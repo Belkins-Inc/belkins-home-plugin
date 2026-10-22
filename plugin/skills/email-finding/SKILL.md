@@ -164,13 +164,19 @@ new BetterContact search is a person's session.
 ## D. Phone numbers (when a person wants phones)
 
 1. **Apollo first**: the same `bulk_match` with `"reveal_phone_number": true` — the emails come at
-   once, the phones within seconds to the engine; read them with `bh call show <call-id>`
-   (`deliveries`, apollo.md). Five credits ($0.032) per person a number was found for.
+   once, the phones within seconds to the engine, **which puts them on the contacts itself** (by the
+   LinkedIn URL you asked with, else Apollo's address) and puts a number on the Do Not Call registry
+   on do-not-contact. Check with `bh phones <contact-id>`; a person who is not yet a contact keeps
+   their numbers only in `bh call show <call-id>` (`deliveries`, apollo.md) — upsert the contact,
+   then add them by hand (3). Five credits ($0.032) per person a number was found for.
 2. **BetterContact for whom Apollo found none** (`enrich_phone_number: true`, about $0.50 a number),
    and nothing after it (FullEnrich is off).
-3. **Write** the number to `facts.phone` (`value`, `source`, `seenAt`, `type`, `confidence`; apollo.md).
-   A contact with a different number already keeps it; the new one goes in `facts.phone_alt`.
-4. **Do Not Call**: Apollo's `dnc_status_cd: "found"` → `"dnc": true` on that number; nobody dials it.
+3. **Write** a number that did not come from Apollo with `bh phones add` (`contactId`, `number` with
+   its country code, `kind` mobile|direct|company|other, `source`, `confidence`, `dnc`). Each goes
+   after the contact's numbers already there, so the first found is dialled first; `bh phones set
+   <phone-id> --rank 1` reorders. A number is never a fact: `facts.phone` is refused.
+4. **Do Not Call**: a provider saying a number is on a registry → `"dnc": true` on the row; the
+   number goes on do-not-contact and no call list takes it.
 5. Record a miss — no delivery ten minutes on means Apollo found no number for anyone in the call:
    `"facts":{"phone_search":{"result":"not_found","source":"apollo,bettercontact","seenAt":"…"}}`.
 

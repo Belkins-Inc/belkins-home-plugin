@@ -60,8 +60,8 @@ bh call fullenrich GET /contact/enrich/bulk/<enrichment_id>
 ## After collecting
 
 An address from FullEnrich is unverified like any other: verify with Bouncer (email-finding
-skill). A phone number goes into the contact's `facts` (`{"phone": {"value": "+1…", "source":
-"fullenrich"}}`) — there is no phone column.
+skill). A phone number goes in with `bh phones add <contact-id> --number +1… --source fullenrich`
+(email-finding, section D) — never into `facts`.
 
 ## Errors
 

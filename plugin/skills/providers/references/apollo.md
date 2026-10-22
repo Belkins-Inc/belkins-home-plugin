@@ -48,34 +48,37 @@ bh call apollo POST /people/bulk_match --strategy <id> --body '{"details":[…],
 - Apollo reveals phones **only to a webhook**: the engine adds its own `webhook_url` (never pass one)
   and books the delivery as a call of its own. The answer itself carries the emails at once; the
   phones arrive within seconds.
-- Read them with `bh call show <call-id>`: `deliveries[].response.people[]` is
-  `{id, phone_numbers: [{sanitized_number, type_cd, confidence_cd, status_cd, dnc_status_cd}]}`.
-  Join `people[].id` to `matches[].id` of the answer; a person with empty `phone_numbers` has none.
+- **The engine puts them on the contacts** (`bh phones <contact-id>`): each person Apollo matched
+  is found among the project's contacts by the `linkedin_url` you asked with (or Apollo's), else by
+  Apollo's email — so upsert the contacts before the call. The raw delivery stays readable with
+  `bh call show <call-id>`: `deliveries[].response.people[]` is
+  `{id, phone_numbers: [{sanitized_number, type_cd, confidence_cd, status_cd, dnc_status_cd}]}`,
+  `people[].id` joined to `matches[].id` of the answer; a person with empty `phone_numbers` has none.
 - **When Apollo finds no number for anyone in the call, it sends nothing** — `deliveries` stays empty
   and no phone credits are charged. A delivery comes within seconds when there is one (production,
   2026-10-07: one in 2 s; none after 17 minutes for two people without numbers). So an empty
   `deliveries` ten minutes on means no numbers: record the miss (email-finding, section D).
 - **Five credits ($0.032) per person a number was found for**, nothing otherwise — so there is no
   need to check first whether a phone exists.
-- `type_cd`: `mobile`, `work_direct`, `home`, `other`. Take a mobile first, then `work_direct`.
-- `dnc_status_cd: "found"` — the number is on the US Do Not Call registry: store `"dnc": true` with it
-  and nobody dials it.
+- `type_cd`: `mobile`, `work_direct`, `home`, `other`. The engine ranks a mobile first, then
+  `work_direct` (kind `direct`), then the rest.
+- `dnc_status_cd: "found"` — the number is on the US Do Not Call registry: the engine puts it on
+  do-not-contact (reason `registry`) and no call list takes it.
 - Only the deployed engine can take a delivery (it needs an https `PUBLIC_URL`); a local one refuses
   the call with `no_callback_url` before anything is paid.
 - Measured 2026-10-07 on Fuel Me's 280 contacts that BetterContact and FullEnrich had searched for
   phones: Apollo found 255 (91%) against their 207 (74%), for about $10 against $103.40. Where both
   had one, the number was the same for 100 of 198; nobody knows yet which is right in the other 98.
 
-A number goes into the contact's `facts`, never a column:
+A number is a row of its own, never a fact (`facts.phone` is refused). One the engine could not
+place — the person was not a contact yet — goes in by hand once the contact exists:
 
-```json
-{"linkedinUrl": "https://www.linkedin.com/in/anna-berg",
- "facts": {"phone": {"value": "+12015550100", "source": "apollo", "seenAt": "2026-10-07T00:00:00Z",
-                     "type": "mobile", "confidence": "high"}}}
+```sh
+bh phones add <contact-id> --number +12015550100 --kind mobile --source apollo --confidence high
 ```
 
-A contact that already has a different number keeps it: Apollo's goes in `phone_alt` with the same
-shape. Apollo's number agreeing with the one there adds `"confirmedBy": "apollo"` to `phone`.
+A contact keeps every number it was given, in the order found; the same number twice is counted,
+not added again.
 
 ## Which LinkedIn profile is this named person — `people/match`
 
