@@ -102,7 +102,10 @@ Mark it handled with `bh triage` and say why in `--note`.
   starts, soonest first, with each calendar's zone and the local time. Offer only those, two or
   three, in the lead's time zone (`contacts.timezone`, else `companies.timezone`, else where the
   company sits, else the project's). Never a booking link, never "send me your availability", never
-  a time you made up.
+  a time you made up — with one exception: a lead who asks for a link, or for other times than the
+  ones offered, may get their own booking page, `bh slots link <thread-id>` (calendars of our own
+  only). It answers the page's link and the soonest three times as links that open it with that time
+  chosen; put the page's link in the body, and the lead books there themselves.
 - **The body names times as the lead's own, with no zone label**: "Monday at 11:30 am or 1 pm",
   not "11:30 am ET". The zone, the UTC time and the calendar they were read from go in `--note`.
   Never the approver's own time zone: the meeting is between the client and the lead, and nobody
@@ -119,8 +122,14 @@ Mark it handled with `bh triage` and say why in `--note`.
   within that hold, and say in `--note` which slots are offered.
 - Book when the lead plainly confirms one of the slots offered to them ("Tuesday 15:00 works"):
   `bh meeting book --thread <id> --calendar <id> --at <iso>`. The engine asks the calendar again
-  and writes the event with the lead invited from the salesperson's calendar; the draft then
-  confirms the time in one line and says the invite is on its way. You may book only a slot that
+  and writes the event.
+  - **A calendar of our own** (`provider` `freebusy`, `ics` or `hours` in `bh calendars`): the
+    meeting is our organizer's event with a Google Meet, and the engine itself answers in the thread
+    — the time in the lead's zone, the Meet link, the invitation attached — and reminds the lead a
+    day and an hour before (`bh behaviour meetings`). Draft nothing about the booking: a second
+    confirmation would be noise.
+  - **A Cal.com calendar**: the lead is invited from the salesperson's calendar; the draft then
+    confirms the time in one line and says the invite is on its way. You may book only a slot that
   was offered to this lead and is still held (the engine refuses anything else). Any other time —
   the lead names their own, the hold ran out, "sometime next week" — offer slots again, or open a
   task for a person; a person may book any free time.

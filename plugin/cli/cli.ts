@@ -251,6 +251,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   calendar archive <id>                  out of booking for good; connecting again writes a new row
   slots [--days <n>] [--calendar <id>] [--limit <n>]   free slots, soonest first (not yet offered to anyone)
   slots offer <thread-id> --slots <iso,iso> [--calendar <id>]
+  slots link <thread-id> [--calendar <id>]   a page for the lead to book a time themselves (a week, one
+                                         meeting; calendars of our own): its link and the soonest three
+                                         times as links that open it with that time chosen
                                          holds them for this lead for 72 h; a newer offer replaces an older one
   meetings [--upcoming]
   meeting book --thread <id> | --contact <id> --calendar <id> --at <iso>
@@ -2284,6 +2287,12 @@ async function main(argv: string[]): Promise<void> {
       break
     }
     case 'slots': {
+      if (sub === 'link')
+        return out(
+          await call(config, 'POST', `/threads/${arg}/booking-link`, {
+            ...(o.calendar ? { calendarId: o.calendar } : {}),
+          }),
+        )
       if (sub === 'offer')
         return out(
           await call(config, 'POST', `/threads/${arg}/slots`, {

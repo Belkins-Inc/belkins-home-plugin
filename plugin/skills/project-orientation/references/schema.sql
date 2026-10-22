@@ -534,6 +534,26 @@ CREATE TABLE public.api_tokens (
 
 
 --
+-- Name: booking_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.booking_links (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    thread_id uuid NOT NULL,
+    calendar_id uuid,
+    token_hash bytea NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    revoked_at timestamp with time zone,
+    meeting_id uuid,
+    booked_at timestamp with time zone,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: calendar_offers; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3362,6 +3382,22 @@ ALTER TABLE ONLY public.api_tokens
 
 
 --
+-- Name: booking_links booking_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.booking_links
+    ADD CONSTRAINT booking_links_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: booking_links booking_links_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.booking_links
+    ADD CONSTRAINT booking_links_token_hash_key UNIQUE (token_hash);
+
+
+--
 -- Name: calendar_offers calendar_offers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4524,6 +4560,13 @@ CREATE INDEX ix_agent_runs__project_created ON public.agent_runs USING btree (pr
 --
 
 CREATE INDEX ix_agent_runs__review ON public.agent_runs USING btree (review_id) WHERE (review_id IS NOT NULL);
+
+
+--
+-- Name: ix_booking_links__thread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_booking_links__thread ON public.booking_links USING btree (thread_id);
 
 
 --
@@ -5912,6 +5955,46 @@ ALTER TABLE ONLY public.api_tokens
 
 ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: booking_links booking_links_calendar_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.booking_links
+    ADD CONSTRAINT booking_links_calendar_id_fkey FOREIGN KEY (calendar_id) REFERENCES public.calendars(id);
+
+
+--
+-- Name: booking_links booking_links_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.booking_links
+    ADD CONSTRAINT booking_links_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: booking_links booking_links_meeting_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.booking_links
+    ADD CONSTRAINT booking_links_meeting_id_fkey FOREIGN KEY (meeting_id) REFERENCES public.meetings(id) ON DELETE SET NULL;
+
+
+--
+-- Name: booking_links booking_links_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.booking_links
+    ADD CONSTRAINT booking_links_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: booking_links booking_links_thread_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.booking_links
+    ADD CONSTRAINT booking_links_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads(id) ON DELETE CASCADE;
 
 
 --
@@ -8610,4 +8693,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022225005'),
     ('20261022230024'),
     ('20261022231119'),
-    ('20261022232416');
+    ('20261022232416'),
+    ('20261022233319');
