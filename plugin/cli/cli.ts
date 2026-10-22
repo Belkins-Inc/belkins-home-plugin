@@ -38,7 +38,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   whoami | health
   projects [--org <slug>] | project create <slug> --name <name> [--timezone <tz>] [--org <slug>] [--owner <user-id>]
   project members | project member <user-id> [--role owner|member] | project member remove <user-id>
-  orgs | org create <slug> --name <name>   organisations you belong to (the platform admin: all)
+  orgs | org create <slug> --name <name> [--billing external|stripe]   organisations you belong to (the platform admin: all)
+  org billing <slug> external|stripe   stripe: Dylan's clients; external: billed outside the platform (platform admin)
   org members <org> | org add <org> --email <e> [--name <n>] [--role admin|member] | org role <org> <user-id> --role admin|member | org remove <org> <user-id>
   project update [--name <n>] [--timezone <tz>] [--domain-cap <n>] [--brief <text> | --brief-file <path>]   (a person only)
   brief [--project <slug>]              read this first, every session
@@ -764,6 +765,7 @@ async function main(argv: string[]): Promise<void> {
       remove: { type: 'boolean' },
       project: { type: 'string' },
       name: { type: 'string' },
+      billing: { type: 'string' },
       timezone: { type: 'string' },
       limit: { type: 'string' },
       hours: { type: 'string' },
@@ -1452,7 +1454,15 @@ async function main(argv: string[]): Promise<void> {
       return out(await call(config, 'GET', '/orgs'))
     case 'org':
       if (sub === 'create')
-        return out(await call(config, 'POST', '/orgs', { slug: arg, name: o.name }))
+        return out(
+          await call(config, 'POST', '/orgs', {
+            slug: arg,
+            name: o.name,
+            ...(o.billing ? { billing: o.billing } : {}),
+          }),
+        )
+      if (sub === 'billing')
+        return out(await call(config, 'PATCH', `/orgs/${arg}`, { billing: pos[3] }))
       if (sub === 'members') return out(await call(config, 'GET', `/orgs/${arg}/members`))
       if (sub === 'add')
         return out(

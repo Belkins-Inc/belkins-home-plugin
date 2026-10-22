@@ -1765,6 +1765,10 @@ CREATE TABLE public.organisations (
     slug text NOT NULL,
     name text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    billing text DEFAULT 'external'::text NOT NULL,
+    billing_set_by uuid,
+    billing_set_via public.actor_via,
+    CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text]))),
     CONSTRAINT organisations_slug_check CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{1,48}$'::text))
 );
 
@@ -6744,6 +6748,14 @@ ALTER TABLE ONLY public.organisation_members
 
 
 --
+-- Name: organisations organisations_billing_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisations
+    ADD CONSTRAINT organisations_billing_set_by_fkey FOREIGN KEY (billing_set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: personas personas_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8293,4 +8305,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022150120'),
     ('20261022151206'),
     ('20261022180904'),
-    ('20261022185536');
+    ('20261022185536'),
+    ('20261022191301');
