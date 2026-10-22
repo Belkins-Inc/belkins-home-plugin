@@ -172,3 +172,65 @@ export async function consoleLogin(config: BhConfig, tenantId: string) {
     tunnel.close()
   }
 }
+
+/**
+ * `bh meetbot login`: a person signs the organizer in once, through the host bot's own static IP,
+ * and the session goes to the engine for the bot to work with (docs/decisions/booking.md). Signed in
+ * from anywhere else, Google would end the session the first time the bot used it.
+ */
+export async function meetbotLogin(config: BhConfig) {
+  const log = (line: string) => process.stderr.write(`${line}\n`)
+  const login = (await call(config, 'GET', '/meetbot/login')) as {
+    organizer: string
+    proxy: string
+  }
+  const { chromium } = await playwright(log)
+  const tunnel = await startTunnel(login.proxy)
+  let browser: Browser
+  try {
+    browser = await chromium.launch({
+      channel: 'chrome',
+      headless: false,
+      ignoreDefaultArgs: ['--enable-automation'],
+      args: ['--disable-blink-features=AutomationControlled'],
+      proxy: { server: tunnel.url },
+    })
+  } catch (error) {
+    tunnel.close()
+    throw new BhError(
+      'Google Chrome could not be started',
+      { hint: 'Install Google Chrome, then run this again', detail: String(error) },
+      2,
+    )
+  }
+  const meet = 'https://meet.google.com/landing?hl=en'
+  const context = await browser.newContext({ viewport: null })
+  const page = await context.newPage()
+  await page
+    .goto(
+      `https://accounts.google.com/ServiceLogin?Email=${encodeURIComponent(login.organizer)}&continue=${encodeURIComponent(meet)}`,
+      { waitUntil: 'commit', timeout: 120_000 },
+    )
+    .catch(() => {})
+  log(`Sign in as ${login.organizer} in the window that opened.`)
+  const deadline = Date.now() + 15 * 60_000
+  try {
+    while (Date.now() < deadline) {
+      const url = page.url()
+      const signedIn = (await context.cookies()).some((c) => c.name === 'SID')
+      if (signedIn && url.startsWith('https://meet.google.com/')) {
+        await page.waitForTimeout(3000)
+        const session = await context.storageState()
+        return await call(config, 'PUT', '/meetbot/session', { session })
+      }
+      // Signed in, but the way back went through www.google.com and stopped: go straight on.
+      if (signedIn && !url.startsWith('https://accounts.google.com/'))
+        await page.goto(meet, { waitUntil: 'commit', timeout: 120_000 }).catch(() => {})
+      await page.waitForTimeout(2000)
+    }
+    throw new BhError('Nobody signed in within 15 minutes', { hint: 'Run it again' }, 2)
+  } finally {
+    await browser.close()
+    tunnel.close()
+  }
+}

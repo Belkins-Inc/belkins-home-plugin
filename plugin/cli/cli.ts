@@ -5,7 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 
 import { merge, refusedIn, sendRows } from './batch.ts'
-import { consoleLogin } from './console-login.ts'
+import { consoleLogin, meetbotLogin } from './console-login.ts'
 import { BhError, call, callText } from './client.ts'
 import { readDncCsv } from './csv.ts'
 import {
@@ -350,6 +350,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          --totp the authenticator secret) hidden, or reads them from stdin, one a
                                          line. --remove forgets it (an admin)
   tenant console-retry <id>              sign in with the stored login on the next pass, not hours after a failed try
+  meetbot                                the meeting host bot: signed in or not, last seen, what went wrong (an admin)
+  meetbot login                          sign the organizer in through the bot's own IP (a window opens; an admin)
+  meetbot credentials --email <organizer> [--totp]   the login the bot signs in with by itself when Google
+                                         drops its session (asks the password, and the authenticator secret)
+  meetbot retry                          sign in with the stored login on the next pass, not hours after a failed try
   agent runs [--limit <n>]               the server agent's runs: what was waiting, outcome, cost, summary
   agent show <run-id>                    one run with its prompt and transcript
   agent run                              queue a run for the waiting work now (a person only)
@@ -2286,6 +2291,27 @@ async function main(argv: string[]): Promise<void> {
         ...(o.limit ? { limit: o.limit } : {}),
       })
       return out(await call(config, 'GET', `/projects/${p()}/slots${q.size ? `?${q}` : ''}`))
+    }
+    case 'meetbot': {
+      if (!sub) return out(await call(config, 'GET', '/meetbot'))
+      if (sub === 'login') return out(await meetbotLogin(config))
+      if (sub === 'retry') return out(await call(config, 'POST', '/meetbot/retry', {}))
+      if (sub === 'credentials') {
+        if (!o.email) throw new BhError('Sign in as whom?', { hint: '--email <the organizer>' }, 2)
+        const [password, totpSecret] = await readSecrets([
+          `Password for ${o.email}: `,
+          ...(o.totp ? ['Authenticator secret (the key under "Can\'t scan it?"): '] : []),
+        ])
+        if (!password) throw new BhError('No password given', {}, 2)
+        return out(
+          await call(config, 'PUT', '/meetbot/credentials', {
+            email: o.email,
+            password,
+            ...(totpSecret ? { totpSecret } : {}),
+          }),
+        )
+      }
+      break
     }
     case 'meetings':
       return out(

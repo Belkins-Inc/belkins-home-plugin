@@ -642,6 +642,10 @@ CREATE TABLE public.meetings (
     sender_id uuid,
     booked_through text,
     meet_code text,
+    bot_joined_at timestamp with time zone,
+    bot_left_at timestamp with time zone,
+    bot_left_reason text,
+    bot_error text,
     CONSTRAINT meetings_check CHECK (((outcome IS NULL) OR (status = 'held'::text))),
     CONSTRAINT meetings_outcome_check CHECK ((outcome = ANY (ARRAY['qualified'::text, 'not_qualified'::text, 'opportunity'::text, 'won'::text, 'lost'::text]))),
     CONSTRAINT meetings_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'held'::text, 'no_show'::text, 'cancelled'::text, 'rescheduled'::text])))
@@ -1812,6 +1816,26 @@ CREATE TABLE public.organisations (
     billing_set_via public.actor_via,
     CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text]))),
     CONSTRAINT organisations_slug_check CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{1,48}$'::text))
+);
+
+
+--
+-- Name: organizer_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.organizer_sessions (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    address public.citext NOT NULL,
+    session bytea,
+    login bytea,
+    state text DEFAULT 'none'::text NOT NULL,
+    signed_in_at timestamp with time zone,
+    seen_at timestamp with time zone,
+    error text,
+    alerted_at timestamp with time zone,
+    login_failed_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT organizer_sessions_state_check CHECK ((state = ANY (ARRAY['none'::text, 'live'::text, 'expired'::text])))
 );
 
 
@@ -3719,6 +3743,22 @@ ALTER TABLE ONLY public.organisations
 
 ALTER TABLE ONLY public.organisations
     ADD CONSTRAINT organisations_slug_key UNIQUE (slug);
+
+
+--
+-- Name: organizer_sessions organizer_sessions_address_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizer_sessions
+    ADD CONSTRAINT organizer_sessions_address_key UNIQUE (address);
+
+
+--
+-- Name: organizer_sessions organizer_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizer_sessions
+    ADD CONSTRAINT organizer_sessions_pkey PRIMARY KEY (id);
 
 
 --
@@ -8484,4 +8524,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022191301'),
     ('20261022194729'),
     ('20261022200511'),
-    ('20261022211247');
+    ('20261022211247'),
+    ('20261022212820');
