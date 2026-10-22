@@ -1340,7 +1340,7 @@ CREATE TABLE public.linkedin_accounts (
     id uuid DEFAULT uuidv7() NOT NULL,
     project_id uuid,
     sender_id uuid NOT NULL,
-    unipile_account_id text NOT NULL,
+    unipile_account_id text,
     profile_url text,
     premium boolean DEFAULT false NOT NULL,
     status text DEFAULT 'active'::text NOT NULL,
@@ -1361,8 +1361,30 @@ CREATE TABLE public.linkedin_accounts (
     limited_until timestamp with time zone,
     limited_reason text,
     invite_ramp_from timestamp with time zone,
+    proxy_id uuid,
+    credentials bytea,
+    has_authenticator boolean DEFAULT false NOT NULL,
+    checkpoint text,
+    sign_in_at timestamp with time zone,
+    sign_in_error text,
+    sign_in_intent text,
+    public_identifier text,
+    display_name text,
+    owner_id uuid,
+    verified_at timestamp with time zone,
+    verified_by uuid,
+    verified_via public.actor_via,
+    first_name text,
+    last_name text,
+    mailbox public.citext,
+    linkedin_created_at timestamp with time zone,
+    archive_at timestamp with time zone,
+    archive_by uuid,
+    archive_via public.actor_via,
+    connected_via public.actor_via,
+    CONSTRAINT linkedin_accounts_managed_check CHECK (((proxy_id IS NOT NULL) OR ((credentials IS NULL) AND (sign_in_intent IS NULL)))),
     CONSTRAINT linkedin_accounts_proxy_country_check CHECK ((proxy_country ~ '^[A-Z]{2}$'::text)),
-    CONSTRAINT linkedin_accounts_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
+    CONSTRAINT linkedin_accounts_status_check CHECK ((status = ANY (ARRAY['new'::text, 'connecting'::text, 'checkpoint'::text, 'active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 );
 
 
@@ -1384,6 +1406,24 @@ CREATE TABLE public.linkedin_companies (
     data jsonb NOT NULL,
     fetched_at timestamp with time zone NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: linkedin_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_events (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    at timestamp with time zone DEFAULT now() NOT NULL,
+    linkedin_account_id uuid,
+    proxy_id uuid,
+    type text NOT NULL,
+    actor_via public.actor_via NOT NULL,
+    actor_user_id uuid,
+    summary text,
+    data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT linkedin_events_check CHECK (((linkedin_account_id IS NOT NULL) OR (proxy_id IS NOT NULL)))
 );
 
 
@@ -1444,6 +1484,30 @@ CREATE TABLE public.linkedin_posts (
     CONSTRAINT linkedin_posts_first_comment_check CHECK (((length(first_comment) >= 1) AND (length(first_comment) <= 1250))),
     CONSTRAINT linkedin_posts_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'publishing'::text, 'published'::text, 'failed'::text, 'cancelled'::text]))),
     CONSTRAINT linkedin_posts_text_check CHECK (((length(text) >= 1) AND (length(text) <= 3000)))
+);
+
+
+--
+-- Name: linkedin_proxies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_proxies (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    ip inet NOT NULL,
+    country text NOT NULL,
+    host text NOT NULL,
+    port integer NOT NULL,
+    credentials bytea NOT NULL,
+    provider text NOT NULL,
+    paid_until date,
+    checked_at timestamp with time zone DEFAULT now() NOT NULL,
+    check_error text,
+    retired_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    CONSTRAINT linkedin_proxies_country_check CHECK ((country ~ '^[A-Z]{2}$'::text)),
+    CONSTRAINT linkedin_proxies_port_check CHECK (((port >= 1) AND (port <= 65535)))
 );
 
 
@@ -2254,6 +2318,8 @@ CREATE TABLE public.sending_companies (
     updated_by uuid,
     updated_via public.actor_via,
     updated_at timestamp with time zone,
+    country text,
+    CONSTRAINT sending_companies_country_check CHECK ((country ~ '^[A-Z]{2}$'::text)),
     CONSTRAINT sending_companies_name_check CHECK (((length(name) >= 1) AND (length(name) <= 200))),
     CONSTRAINT sending_companies_pod_check CHECK (((pod >= 1) AND (pod <= 1000))),
     CONSTRAINT sending_companies_status_check CHECK ((status = ANY (ARRAY['building'::text, 'active'::text, 'retired'::text])))
@@ -3225,6 +3291,14 @@ ALTER TABLE ONLY public.linkedin_companies
 
 
 --
+-- Name: linkedin_events linkedin_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_events
+    ADD CONSTRAINT linkedin_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: linkedin_people linkedin_people_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3238,6 +3312,22 @@ ALTER TABLE ONLY public.linkedin_people
 
 ALTER TABLE ONLY public.linkedin_posts
     ADD CONSTRAINT linkedin_posts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: linkedin_proxies linkedin_proxies_ip_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_proxies
+    ADD CONSTRAINT linkedin_proxies_ip_key UNIQUE (ip);
+
+
+--
+-- Name: linkedin_proxies linkedin_proxies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_proxies
+    ADD CONSTRAINT linkedin_proxies_pkey PRIMARY KEY (id);
 
 
 --
@@ -4169,6 +4259,20 @@ CREATE INDEX ix_hypotheses__project ON public.hypotheses USING btree (project_id
 
 
 --
+-- Name: ix_linkedin_events__account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_linkedin_events__account ON public.linkedin_events USING btree (linkedin_account_id, at DESC);
+
+
+--
+-- Name: ix_linkedin_events__proxy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_linkedin_events__proxy ON public.linkedin_events USING btree (proxy_id, at DESC);
+
+
+--
 -- Name: ix_linkedin_posts__account; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4708,10 +4812,24 @@ CREATE UNIQUE INDEX ux_linkedin_accounts__id_sender ON public.linkedin_accounts 
 
 
 --
+-- Name: ux_linkedin_accounts__proxy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_linkedin_accounts__proxy ON public.linkedin_accounts USING btree (proxy_id) WHERE (proxy_id IS NOT NULL);
+
+
+--
 -- Name: ux_linkedin_posts__once; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX ux_linkedin_posts__once ON public.linkedin_posts USING btree (linkedin_account_id, COALESCE(page_id, ''::text), md5(text)) WHERE (status = ANY (ARRAY['scheduled'::text, 'publishing'::text, 'published'::text]));
+
+
+--
+-- Name: ux_linkedin_proxies__endpoint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_linkedin_proxies__endpoint ON public.linkedin_proxies USING btree (host, port);
 
 
 --
@@ -5739,11 +5857,27 @@ ALTER TABLE ONLY public.hypotheses
 
 
 --
+-- Name: linkedin_accounts linkedin_accounts_archive_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_accounts
+    ADD CONSTRAINT linkedin_accounts_archive_by_fkey FOREIGN KEY (archive_by) REFERENCES public.users(id);
+
+
+--
 -- Name: linkedin_accounts linkedin_accounts_connected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.linkedin_accounts
     ADD CONSTRAINT linkedin_accounts_connected_by_fkey FOREIGN KEY (connected_by) REFERENCES public.users(id);
+
+
+--
+-- Name: linkedin_accounts linkedin_accounts_owner_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_accounts
+    ADD CONSTRAINT linkedin_accounts_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id);
 
 
 --
@@ -5755,11 +5889,59 @@ ALTER TABLE ONLY public.linkedin_accounts
 
 
 --
+-- Name: linkedin_accounts linkedin_accounts_proxy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_accounts
+    ADD CONSTRAINT linkedin_accounts_proxy_id_fkey FOREIGN KEY (proxy_id) REFERENCES public.linkedin_proxies(id);
+
+
+--
 -- Name: linkedin_accounts linkedin_accounts_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.linkedin_accounts
     ADD CONSTRAINT linkedin_accounts_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id);
+
+
+--
+-- Name: linkedin_accounts linkedin_accounts_verified_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_accounts
+    ADD CONSTRAINT linkedin_accounts_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.users(id);
+
+
+--
+-- Name: linkedin_events linkedin_events_actor_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_events
+    ADD CONSTRAINT linkedin_events_actor_user_id_fkey FOREIGN KEY (actor_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: linkedin_events linkedin_events_linkedin_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_events
+    ADD CONSTRAINT linkedin_events_linkedin_account_id_fkey FOREIGN KEY (linkedin_account_id) REFERENCES public.linkedin_accounts(id);
+
+
+--
+-- Name: linkedin_events linkedin_events_proxy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_events
+    ADD CONSTRAINT linkedin_events_proxy_id_fkey FOREIGN KEY (proxy_id) REFERENCES public.linkedin_proxies(id);
+
+
+--
+-- Name: linkedin_events linkedin_events_type_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_events
+    ADD CONSTRAINT linkedin_events_type_fkey FOREIGN KEY (type) REFERENCES public.event_types(type);
 
 
 --
@@ -5792,6 +5974,14 @@ ALTER TABLE ONLY public.linkedin_posts
 
 ALTER TABLE ONLY public.linkedin_posts
     ADD CONSTRAINT linkedin_posts_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+
+--
+-- Name: linkedin_proxies linkedin_proxies_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_proxies
+    ADD CONSTRAINT linkedin_proxies_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
 
 
 --
@@ -7565,4 +7755,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261021112137'),
     ('20261021143431'),
     ('20261022111701'),
-    ('20261022114415');
+    ('20261022114415'),
+    ('20261022122147');

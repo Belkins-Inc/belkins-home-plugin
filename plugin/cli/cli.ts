@@ -192,9 +192,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   company show <org> <company>           one company: its people with their mailboxes and LinkedIn, its domains,
                                          orders under way, tenants, egress, site and who it writes for
   company add <org> --name <n> --domain <main domain> [--site <url>] [--linkedin <url>] [--address <postal>]
-       [--pod <n>] [--google-tenant <name|id>] [--microsoft-tenant <name|id>] [--egress <host name>]
+       [--country <US>] [--pod <n>] [--google-tenant <name|id>] [--microsoft-tenant <name|id>] [--egress <host name>]
                                          (its admin only) a company of a pod takes the pod's tenants unless named
-  company update <org> <company> [--name] [--domain] [--site] [--linkedin] [--address] [--pod] [--google-tenant]
+  company update <org> <company> [--name] [--domain] [--site] [--linkedin] [--address] [--country] [--pod] [--google-tenant]
        [--microsoft-tenant] [--egress <host name|none>] [--status building|active|retired]   none clears a field
   company add-person <org> <company> <sender id> | company remove-person <org> <company> <sender id>
   company domains <org> <company> <domain>…   domains the agency holds, put under the company
@@ -395,6 +395,26 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          publishAt names its offset (2026-10-22T09:00:00-04:00); without pageId the
                                          post is the owner's own; an @ before a name in the text is a mention
   linkedin post cancel <post-id>         a scheduled post is not published
+  linkedin accounts <org>                the organisation's LinkedIn accounts: managed ones with their IP, login,
+                                         sign-in and owner, and hosted-link ones
+  linkedin create <org> --sender <id> [--country <US>] [--owner <user id>] [--invite-limit <n>]
+       [--sign-up [--first <n>] [--last <n>] [--email <address>]]
+                                         (an organisation admin) a managed account: an IP of its own in the sender's
+                                         company's country, for good; --sign-up: still to be made on LinkedIn, with a
+                                         password the engine makes and, for a company's person, their workplace mailbox
+  linkedin show|history <id>             one account; what was done to it
+  linkedin login <id> [--username <address>] [--totp]   stores its LinkedIn login, sealed (password and key hidden)
+  linkedin sign-in <id>                  signs it in to Unipile on its own IP now (the engine also does, every 6 h)
+  linkedin checkpoint <id> [--code <c>]  the code LinkedIn asked for; no code waits for an approval in the app
+  linkedin code|password <id>            its authenticator code now, or its password (both recorded)
+  linkedin created|verified <id> [--owner <user id|none>] [--undo]   marks it made on LinkedIn, or through its checks
+  linkedin owner <id> <user id|none>     who works in its browser
+  linkedin archive <id> [--undo]         after the undo window: signed out of Unipile, its IP never given again
+  proxy list                             the LinkedIn IP pool: free, in use, failing, retired (the platform admin's)
+  proxy add --country <US> --host <h> --port <n> --username <u> --provider <name> [--paid-until <YYYY-MM-DD>]
+                                         checked through itself first; the password is asked hidden
+  proxy update <id> [--paid-until <date|none>] [--username <u>]   a new login is checked before it is kept
+  proxy check|retire|unretire <id>
   inbox                                  replies waiting for triage, with the engine's classification
   inbox test-send --from <our address> --to <our address> [--subject <t>] [--body <t>] [--reply]
                                          a test of the round trip: sends through the provider; the
@@ -559,6 +579,7 @@ async function company(
     set('site', 'siteUrl')
     set('linkedin', 'linkedinUrl')
     set('address', 'postalAddress')
+    set('country', 'country')
     set('google-tenant', 'workspaceTenant')
     set('microsoft-tenant', 'microsoftTenant')
     const pod = text('pod')
@@ -704,6 +725,13 @@ async function main(argv: string[]): Promise<void> {
       wait: { type: 'boolean' },
       'no-browser': { type: 'boolean' },
       totp: { type: 'boolean' },
+      'sign-up': { type: 'boolean' },
+      first: { type: 'string' },
+      last: { type: 'string' },
+      country: { type: 'string' },
+      undo: { type: 'boolean' },
+      port: { type: 'string' },
+      'paid-until': { type: 'string' },
       remove: { type: 'boolean' },
       project: { type: 'string' },
       name: { type: 'string' },
@@ -2672,6 +2700,85 @@ async function main(argv: string[]): Promise<void> {
             dryRun: Boolean(o['dry-run']),
           }),
         )
+      // Managed accounts (docs/decisions/linkedin-hub.md): made here on an agency sender, on an IP of
+      // their own, signed in only through it.
+      const account = () => {
+        if (!arg) throw new BhError('Which account?', { hint: 'bh linkedin accounts <org>' }, 2)
+        return `/linkedin-accounts/${arg}`
+      }
+      if (sub === 'accounts') {
+        if (!arg)
+          throw new BhError('Which organisation?', { hint: 'bh linkedin accounts belkins' }, 2)
+        return out(await call(config, 'GET', `/orgs/${encodeURIComponent(arg)}/linkedin-accounts`))
+      }
+      if (sub === 'create') {
+        if (!arg)
+          throw new BhError(
+            'Which organisation?',
+            { hint: 'bh linkedin create belkins --sender <id>' },
+            2,
+          )
+        if (!o.sender)
+          throw new BhError('Whose account?', { hint: '--sender <id>: bh agency senders' }, 2)
+        const signUp = o['sign-up']
+          ? {
+              signUp: {
+                ...(o.first ? { firstName: o.first } : {}),
+                ...(o.last ? { lastName: o.last } : {}),
+                ...(o.email ? { email: o.email } : {}),
+              },
+            }
+          : {}
+        return out(
+          await call(config, 'POST', `/orgs/${encodeURIComponent(arg)}/linkedin-accounts/managed`, {
+            senderId: o.sender,
+            ...(o.country ? { country: o.country } : {}),
+            ...(o.owner ? { ownerId: o.owner } : {}),
+            ...(o['invite-limit'] ? { dailyInviteLimit: Number(o['invite-limit']) } : {}),
+            ...signUp,
+          }),
+        )
+      }
+      if (sub === 'show') return out(await call(config, 'GET', account()))
+      if (sub === 'history') return out(await call(config, 'GET', `${account()}/events`))
+      if (sub === 'login') {
+        const path = account()
+        const [password, totpSecret] = await readSecrets([
+          'LinkedIn password (empty keeps the stored one): ',
+          ...(o.totp ? ['Authenticator key (the one under "Can\'t scan the QR code"): '] : []),
+        ])
+        return out(
+          await call(config, 'PUT', `${path}/credentials`, {
+            ...(o.username ? { username: o.username } : {}),
+            ...(password ? { password } : {}),
+            ...(totpSecret ? { totpSecret } : {}),
+          }),
+        )
+      }
+      if (sub === 'sign-in') return out(await call(config, 'POST', `${account()}/sign-in`, {}))
+      if (sub === 'checkpoint')
+        return out(
+          await call(config, 'POST', `${account()}/checkpoint`, {
+            code: o.code ? String(o.code) : '',
+          }),
+        )
+      if (sub === 'code') return out(await call(config, 'GET', `${account()}/code`))
+      if (sub === 'password') return out(await call(config, 'GET', `${account()}/password`))
+      if (sub === 'created' || sub === 'verified') {
+        const path = `${account()}/${sub}`
+        if (o.undo) return out(await call(config, 'DELETE', path))
+        return out(
+          await call(config, 'PUT', path, o.owner ? { ownerId: orNone(String(o.owner)) } : {}),
+        )
+      }
+      if (sub === 'owner') {
+        const who = pos[3]
+        if (!who)
+          throw new BhError('Given to whom?', { hint: 'bh linkedin owner <id> <user id|none>' }, 2)
+        return out(await call(config, 'PUT', `${account()}/owner`, { ownerId: orNone(who) }))
+      }
+      if (sub === 'archive')
+        return out(await call(config, 'POST', `${account()}/archive${o.undo ? '/undo' : ''}`, {}))
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/linkedin-accounts/${arg}`, {
@@ -2682,6 +2789,49 @@ async function main(argv: string[]): Promise<void> {
             ...yesNo('ramp', o.ramp),
           }),
         )
+      break
+    }
+    case 'proxy':
+    case 'proxies': {
+      // The pool of static ISP IPs managed LinkedIn accounts sign in from: the platform admin's.
+      if (cmd === 'proxies' || !sub || sub === 'list')
+        return out(await call(config, 'GET', '/linkedin-proxies'))
+      if (sub === 'add') {
+        for (const flag of ['country', 'host', 'port', 'username', 'provider'] as const)
+          if (!o[flag])
+            throw new BhError(
+              `--${flag} is missing`,
+              {
+                hint: 'bh proxy add --country US --host <h> --port <n> --username <u> --provider <name>',
+              },
+              2,
+            )
+        const [password] = await readSecrets(['Proxy password: '])
+        if (!password) throw new BhError('No password given', {}, 2)
+        return out(
+          await call(config, 'POST', '/linkedin-proxies', {
+            country: o.country,
+            host: o.host,
+            port: Number(o.port),
+            username: o.username,
+            password,
+            provider: o.provider,
+            ...(o['paid-until'] ? { paidUntil: orNone(String(o['paid-until'])) } : {}),
+          }),
+        )
+      }
+      if (!arg) throw new BhError('Which proxy?', { hint: 'bh proxy list' }, 2)
+      if (sub === 'update') {
+        const login = o.username ? await readSecrets(['Proxy password: ']) : []
+        return out(
+          await call(config, 'PATCH', `/linkedin-proxies/${arg}`, {
+            ...(o['paid-until'] ? { paidUntil: orNone(String(o['paid-until'])) } : {}),
+            ...(o.username ? { username: o.username, password: login[0] } : {}),
+          }),
+        )
+      }
+      if (sub === 'check' || sub === 'retire' || sub === 'unretire')
+        return out(await call(config, 'POST', `/linkedin-proxies/${arg}/${sub}`, {}))
       break
     }
     case 'token':
