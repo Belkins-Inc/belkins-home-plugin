@@ -74,6 +74,22 @@ Other reads: `bh note list [--kind k] [--all]`, `bh questions --status all`,
 `bh strategies`, `bh strategy show <id>`, `bh segments`, `bh sources`, `bh personas`, `bh inbox`,
 `bh spend`.
 
+## Questions about how the system behaves
+
+Before answering any "what happens when …" question about the system — a teammate's or your own
+(a lead already connected on LinkedIn, a reply mid-plan, a mailbox at its limit, a paused
+strategy) — read `bh behaviour`: the topics, `bh behaviour <topic>` for one, `bh behaviour --search
+"<words>"` across all. Answer from the entry, saying which one. If no entry covers it, say so
+plainly — "the behaviour docs do not cover this" — rather than guessing from names or from how
+other tools work, and open an issue so it gets written:
+
+```
+gh issue create --repo Belkins-Inc/belkins-home-plugin --label "behaviour question" \
+  --title "<the question, as asked>" --body "<who asked, the situation, what you found in bh behaviour>"
+```
+
+Name the issue in your answer and in the hand-over.
+
 ## Keeping project memory
 
 Write down, as you go, anything the next session would need. Free text in chat is lost.
@@ -179,4 +195,6 @@ of the hypotheses they bear on.
 - Sourcing, enrolling or building a strategy for a hypothesis still `proposed`.
 - Writing who did something into a note — attribution comes from the token automatically.
 - A tooling defect left in chat or in a project note, where nobody who fixes the tooling reads it.
+- Answering "what happens when …" from a guess instead of `bh behaviour`, or guessing when it has
+  no entry instead of saying so and opening a `behaviour question` issue.
 - A session summary like "worked on sourcing" — say what, how many, what is left.

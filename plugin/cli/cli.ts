@@ -42,6 +42,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   org members <org> | org add <org> --email <e> [--name <n>] [--role admin|member] | org role <org> <user-id> --role admin|member | org remove <org> <user-id>
   project update [--name <n>] [--timezone <tz>] [--domain-cap <n>] [--brief <text> | --brief-file <path>]   (a person only)
   brief [--project <slug>]              read this first, every session
+  behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
+                                         the topics, one topic's entries, or the entries with every word;
+                                         read it before answering "what happens when …"
   sql "<select …>" [--limit <n>]        read anything, read-only; @project stands for the current project's id
   note add --kind <decision|insight|client_feedback|rule|todo> --title <t> [--body <b>] [--supersedes <id,id>]
        [--strategy <id>] [--segment <id>]
@@ -978,6 +981,14 @@ async function main(argv: string[]): Promise<void> {
       break
     case 'brief':
       return out(await call(config, 'GET', `/projects/${p()}/brief`))
+    case 'behaviour':
+      if (o.search)
+        return out(
+          await call(config, 'GET', `/behaviour?${new URLSearchParams({ search: o.search })}`),
+        )
+      return out(
+        await call(config, 'GET', sub ? `/behaviour/${encodeURIComponent(sub)}` : '/behaviour'),
+      )
     case 'sql': {
       let query = sub ?? ''
       // @project stands for the current project's id: no shell expands it, and SQL has no use for it.

@@ -53,6 +53,9 @@ written as they should be sent.
 
 A lead whose invite is never accepted skips the LinkedIn message after `maxWaitDays` and continues
 with the next step. A fallback step for that case carries `"condition": "invite_not_accepted"`.
+A lead already connected to the sending account gets no invite: the step is skipped as
+`already_connected` and counts as accepted that moment, so `invite_accepted` messages go on their
+delays from then and an `invite_not_accepted` fallback is skipped (`bh behaviour linkedin`).
 
 Invitations go without a note by default. Only when the person asks for notes does the invite
 step carry `"withoutNote": false` and a guidance such as "Connection note, under 300 characters.
