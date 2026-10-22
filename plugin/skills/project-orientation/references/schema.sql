@@ -812,7 +812,8 @@ CREATE TABLE public.companies (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     esp text
-);
+)
+WITH (autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
 
 --
@@ -850,7 +851,8 @@ CREATE TABLE public.contacts (
     CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL))),
     CONSTRAINT contacts_deal_stage_check CHECK ((deal_stage = ANY (ARRAY['opportunity'::text, 'proposal'::text, 'won'::text, 'lost'::text]))),
     CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text])))
-);
+)
+WITH (autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
 
 --
@@ -1154,10 +1156,13 @@ CREATE VIEW public.enrollment_outcomes AS
            FROM (public.threads t
              JOIN public.thread_messages tm ON ((tm.thread_id = t.id)))
           WHERE ((t.enrollment_id = e.id) AND (tm.direction = 'in'::text) AND (tm.kind = 'reply'::text) AND (tm.classification = ANY (ARRAY['interested'::text, 'meeting'::text, 'question'::text, 'referral'::text]))))) AS positive,
-    (EXISTS ( SELECT 1
+    (((contact_id, strategy_id) IN ( SELECT mt.contact_id,
+            mt.strategy_id
+           FROM public.meetings mt
+          WHERE ((mt.strategy_id IS NOT NULL) AND (mt.status = ANY (ARRAY['scheduled'::text, 'held'::text]))))) AND (EXISTS ( SELECT 1
            FROM (public.meetings mt
              LEFT JOIN public.threads t ON ((t.id = mt.thread_id)))
-          WHERE ((mt.contact_id = e.contact_id) AND (mt.strategy_id = e.strategy_id) AND (mt.status = ANY (ARRAY['scheduled'::text, 'held'::text])) AND ((t.enrollment_id IS NULL) OR (t.enrollment_id = e.id))))) AS meeting
+          WHERE ((mt.contact_id = e.contact_id) AND (mt.strategy_id = e.strategy_id) AND (mt.status = ANY (ARRAY['scheduled'::text, 'held'::text])) AND ((t.enrollment_id IS NULL) OR (t.enrollment_id = e.id)))))) AS meeting
    FROM public.enrollments e;
 
 
@@ -2202,7 +2207,8 @@ CREATE TABLE public.segment_companies (
     CONSTRAINT segment_companies_qualified_reason_check CHECK (((status <> 'qualified'::text) OR (reason IS NOT NULL))),
     CONSTRAINT segment_companies_question_check CHECK (((question_id IS NULL) OR (status = 'new'::text))),
     CONSTRAINT segment_companies_status_check CHECK ((status = ANY (ARRAY['new'::text, 'qualified'::text, 'disqualified'::text])))
-);
+)
+WITH (autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
 
 --
@@ -4621,6 +4627,13 @@ CREATE INDEX ix_searches__segment ON public.searches USING btree (segment_id, ra
 --
 
 CREATE INDEX ix_searches__source ON public.searches USING btree (source_id, ran_at) WHERE (source_id IS NOT NULL);
+
+
+--
+-- Name: ix_segment_companies__qualified; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_segment_companies__qualified ON public.segment_companies USING btree (segment_id, company_id) WHERE (status = 'qualified'::text);
 
 
 --
@@ -7935,4 +7948,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022124129'),
     ('20261022124223'),
     ('20261022124928'),
-    ('20261022131816');
+    ('20261022131816'),
+    ('20261022133824');
