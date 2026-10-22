@@ -4133,6 +4133,13 @@ CREATE INDEX ix_companies__esp_unknown ON public.companies USING btree (domain) 
 
 
 --
+-- Name: ix_companies__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_companies__project ON public.companies USING btree (project_id, id) INCLUDE (industry, employee_count, country, esp);
+
+
+--
 -- Name: ix_contacts__company; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4364,6 +4371,20 @@ CREATE INDEX ix_messages__needs_copy ON public.messages USING btree (enrollment_
 
 
 --
+-- Name: ix_messages__sent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_messages__sent ON public.messages USING btree (sent_at) WHERE (status = 'sent'::text);
+
+
+--
+-- Name: ix_messages__sent_enrollment; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_messages__sent_enrollment ON public.messages USING btree (enrollment_id) WHERE (status = 'sent'::text);
+
+
+--
 -- Name: ix_model_calls__project_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4585,6 +4606,20 @@ CREATE INDEX ix_system_mail_messages__domain ON public.system_mail_messages USIN
 --
 
 CREATE INDEX ix_tasks__open ON public.tasks USING btree (project_id, due_at) WHERE (status = 'open'::text);
+
+
+--
+-- Name: ix_thread_messages__replies; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_thread_messages__replies ON public.thread_messages USING btree (thread_id, classification) WHERE ((direction = 'in'::text) AND (kind = 'reply'::text));
+
+
+--
+-- Name: ix_thread_messages__reply_to; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_thread_messages__reply_to ON public.thread_messages USING btree (reply_to_message_id) WHERE (reply_to_message_id IS NOT NULL);
 
 
 --
@@ -7756,4 +7791,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261021143431'),
     ('20261022111701'),
     ('20261022114415'),
-    ('20261022122147');
+    ('20261022122147'),
+    ('20261022124129');
