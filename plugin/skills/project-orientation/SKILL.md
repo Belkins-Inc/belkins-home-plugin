@@ -39,6 +39,7 @@ previous session did or did not do something — read it.
 | `todos` | Notes of kind `todo` | Loose ends a session left. A todo that needs a person by a date belongs in a task instead. |
 | `insights` | `insight` and `client_feedback` notes | What worked, what the client said. Read before copy, segments, triage. |
 | `openQuestions` | Client questions `open` (not sent yet) or `asked` (waiting) | Anything blocked on the client. An `open` one nobody sent is a gap: make sure a person sends it. |
+| `clientMessages` | What the client wrote in the project's Slack channel that nobody has handled, oldest first, with a link to it in Slack | Read before anything else the client might change. Handle each one (below): nothing the client said is left only in Slack. |
 | `openHypotheses` | Ideas worth testing, `testing` first, then `proposed`: the claim, what tests it (segment, persona, strategy), how it is judged (`metric`, `threshold`), who started the test and when | A `testing` one: read its results against the threshold before changing what tests it. A `proposed` one is not approved — nothing is bought, sourced or enrolled for it until a person moves it to `testing`. |
 | `openTasks` | Tasks for people, by due date | Check each: if its `done_when` is now true, close it (`bh task close <id> --note …`). Do not duplicate one. |
 | `queues.untriaged`, `oldestUntriagedAt` | Replies waiting for triage | Anything older than a few hours goes first: lost replies are the costliest failure seen. |
@@ -113,6 +114,14 @@ yes/no on a market, meeting availability): `bh question add --body "<question>" 
 depends on it>"`, plus `--asked` if it has already gone to the client. Later `bh question asked
 <id>`, `bh question answer <id> --body "<their answer, verbatim>"`, or `bh question drop <id>`. An
 answer that changes how we work also becomes a `decision`, `rule` or exclusion.
+
+**What the client said in Slack** — the client writes in their project's Slack channel, and each of
+their messages waits in `bh brief` (`clientMessages`) and Home until someone says what became of it:
+`bh client handle <id> --as note` keeps it as `client_feedback` (add `--title` for a better one than
+their first line), `--as answer --ref <question-id>` answers an open client question with their
+words, `--as task --ref <task-id>` ties it to the task you opened for it, `--as nothing` closes a
+"thanks!". `bh client messages --all` shows the whole channel, the team's messages too; a message
+counted as the client's that was a teammate's: `bh client message <id> --ours`.
 
 **Hypotheses** — an idea worth testing that is not yet how we work: a buyer we think is someone
 other than the brief says, a vertical we have not tried, a strategy drafted but not launched.

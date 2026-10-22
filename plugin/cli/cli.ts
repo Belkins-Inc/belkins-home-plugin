@@ -100,6 +100,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          a company search names its sourceId, a contact search its strategyId
   exclusions | exclusion add --kind country|country_outside|industry|business_model|employees_below|employees_above|rating_above|other --value <v> [--note <why>]
   exclusion remove <id>
+  client messages [--all] [--limit <n>] what the client wrote in the project's Slack channel and nobody
+                                         has handled; --all for the whole channel, the team's included
+  client handle <id> --as note|answer|task|nothing [--ref <note|question|task id>] [--title <t>]
+                                         what became of it: client feedback (a note, made unless --ref),
+                                         the answer to an open question (--ref), a task (--ref), nothing
+  client message <id> --client|--ours    the engine counted whose it is wrongly: say whose it is
   questions [--status open|asked|answered|dropped|all] | question add --body <question> [--note <context>] [--asked]
   question asked <id> | question answer <id> --body <answer, verbatim> | question drop <id>
   hypothesis list [--status open|proposed|testing|confirmed|rejected|parked|all]   open: proposed and testing
@@ -502,6 +508,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          joins the app to it (a private channel included)
   slack channel <#channel|id|none> [--team <workspace>]   the project's fallback for people without Slack
                                          linked, in its workspace (or the one named); "none" leaves it quiet
+  slack channel <#channel|id|none> --client [--team <workspace>]   the channel the project's client
+                                         is in: their messages there reach the platform, no nudge goes
+                                         there; the app must be in it (/invite @Belkins Home)
   slack disconnect [--team <workspace>]  takes the bot out of one workspace (an admin only)
   slack post (--body <text> | --body-file <path|->) [--to <#channel|email>] [--thread <link|ts>]
              [--mention <email|name|member id, ...>] [--team <workspace>]
@@ -895,6 +904,10 @@ async function main(argv: string[]): Promise<void> {
       thread: { type: 'string' },
       mention: { type: 'string' },
       team: { type: 'string' },
+      client: { type: 'boolean' },
+      ours: { type: 'boolean' },
+      as: { type: 'string' },
+      ref: { type: 'string' },
       at: { type: 'string' },
       through: { type: 'string' },
       minutes: { type: 'string' },
@@ -1309,6 +1322,36 @@ async function main(argv: string[]): Promise<void> {
           `/projects/${p()}/questions?${new URLSearchParams(o.status ? { status: o.status } : {})}`,
         ),
       )
+    case 'client': {
+      if (sub === 'messages') {
+        const q = new URLSearchParams({
+          ...(o.all ? { all: '1' } : {}),
+          ...(o.limit ? { limit: o.limit } : {}),
+        })
+        return out(await call(config, 'GET', `/projects/${p()}/client-messages?${q}`))
+      }
+      if ((sub === 'handle' || sub === 'message') && !arg)
+        throw new BhError('Which message?', { hint: 'its id, from bh client messages' }, 2)
+      if (sub === 'handle') {
+        if (!o.as)
+          throw new BhError('What became of it?', { hint: '--as note|answer|task|nothing' }, 2)
+        return out(
+          await call(config, 'POST', `/client-messages/${arg}/handle`, {
+            as: o.as,
+            ...(o.ref ? { ref: o.ref } : {}),
+            ...(o.title ? { title: o.title } : {}),
+          }),
+        )
+      }
+      if (sub === 'message') {
+        if (Boolean(o.client) === Boolean(o.ours))
+          throw new BhError('Whose is it?', { hint: '--client or --ours' }, 2)
+        return out(
+          await call(config, 'PATCH', `/client-messages/${arg}`, { fromClient: Boolean(o.client) }),
+        )
+      }
+      break
+    }
     case 'question':
       if (sub === 'add')
         return out(
@@ -3019,6 +3062,13 @@ async function main(argv: string[]): Promise<void> {
           current
             ? await call(config, 'POST', `/projects/${p()}/slack/connect`, {})
             : await call(config, 'POST', '/slack/connect', {}),
+        )
+      if (sub === 'channel' && o.client)
+        return out(
+          await call(config, 'POST', `/projects/${p()}/slack/client-channel`, {
+            channel: arg === 'none' ? null : arg,
+            ...(o.team ? { team: o.team } : {}),
+          }),
         )
       if (sub === 'channel')
         return out(

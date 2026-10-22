@@ -2043,9 +2043,16 @@ CREATE TABLE public.projects (
     warmup_enabled_via public.actor_via,
     egress_id uuid,
     slack_workspace_id uuid,
+    slack_client_channel_id text,
+    slack_client_channel text,
+    slack_client_workspace_id uuid,
+    slack_client_channel_set_by uuid,
+    slack_client_channel_set_via public.actor_via,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
+    CONSTRAINT projects_slack_client_channel_check CHECK ((((slack_client_channel_id IS NULL) = (slack_client_channel IS NULL)) AND ((slack_client_channel_id IS NULL) = (slack_client_workspace_id IS NULL)))),
+    CONSTRAINT projects_slack_client_not_team_check CHECK (((slack_client_channel_id IS NULL) OR (slack_channel_id IS NULL) OR (slack_client_channel_id <> slack_channel_id))),
     CONSTRAINT projects_slack_workspace_check CHECK (((slack_channel_id IS NULL) = (slack_workspace_id IS NULL))),
     CONSTRAINT projects_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'archived'::text])))
 );
@@ -2474,6 +2481,46 @@ CREATE TABLE public.sessions (
     revoked_via public.actor_via,
     last_seen_at timestamp with time zone,
     CONSTRAINT sessions_audience_check CHECK ((audience = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text])))
+);
+
+
+--
+-- Name: slack_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.slack_messages (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    workspace_id uuid NOT NULL,
+    channel_id text NOT NULL,
+    ts text NOT NULL,
+    thread_ts text,
+    slack_user_id text NOT NULL,
+    author_team_id text,
+    author_name text,
+    author_email text,
+    author_user_id uuid,
+    from_client boolean,
+    resolved_at timestamp with time zone,
+    resolve_attempts integer DEFAULT 0 NOT NULL,
+    text text NOT NULL,
+    files jsonb DEFAULT '[]'::jsonb NOT NULL,
+    posted_at timestamp with time zone NOT NULL,
+    edited_at timestamp with time zone,
+    deleted_at timestamp with time zone,
+    received_at timestamp with time zone DEFAULT now() NOT NULL,
+    received_via public.actor_via DEFAULT 'engine'::public.actor_via NOT NULL,
+    corrected_by uuid,
+    corrected_via public.actor_via,
+    handled_at timestamp with time zone,
+    handled_by uuid,
+    handled_via public.actor_via,
+    handled_as text,
+    handled_ref uuid,
+    CONSTRAINT slack_messages_check CHECK ((((handled_at IS NULL) = (handled_as IS NULL)) AND ((handled_at IS NULL) = (handled_via IS NULL)))),
+    CONSTRAINT slack_messages_check1 CHECK (((corrected_by IS NULL) = (corrected_via IS NULL))),
+    CONSTRAINT slack_messages_check2 CHECK (((resolved_at IS NULL) = (from_client IS NULL))),
+    CONSTRAINT slack_messages_handled_as_check CHECK ((handled_as = ANY (ARRAY['note'::text, 'answer'::text, 'task'::text, 'nothing'::text])))
 );
 
 
@@ -3900,6 +3947,22 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: slack_messages slack_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_messages
+    ADD CONSTRAINT slack_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: slack_messages slack_messages_workspace_id_channel_id_ts_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_messages
+    ADD CONSTRAINT slack_messages_workspace_id_channel_id_ts_key UNIQUE (workspace_id, channel_id, ts);
+
+
+--
 -- Name: slack_posts slack_posts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4785,6 +4848,27 @@ CREATE INDEX ix_sending_companies__egress ON public.sending_companies USING btre
 
 
 --
+-- Name: ix_slack_messages__open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_slack_messages__open ON public.slack_messages USING btree (project_id, posted_at) WHERE (from_client AND (handled_at IS NULL) AND (deleted_at IS NULL));
+
+
+--
+-- Name: ix_slack_messages__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_slack_messages__project ON public.slack_messages USING btree (project_id, posted_at DESC);
+
+
+--
+-- Name: ix_slack_messages__unresolved; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_slack_messages__unresolved ON public.slack_messages USING btree (received_at) WHERE (from_client IS NULL);
+
+
+--
 -- Name: ix_slack_posts__posted_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5160,6 +5244,13 @@ CREATE UNIQUE INDEX ux_placement_tests__confirms ON public.placement_tests USING
 --
 
 CREATE UNIQUE INDEX ux_project_members__one_owner ON public.project_members USING btree (project_id) WHERE (role = 'owner'::text);
+
+
+--
+-- Name: ux_projects__slack_client_channel; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_projects__slack_client_channel ON public.projects USING btree (slack_client_workspace_id, slack_client_channel_id) WHERE (slack_client_channel_id IS NOT NULL);
 
 
 --
@@ -6893,6 +6984,22 @@ ALTER TABLE ONLY public.projects
 
 
 --
+-- Name: projects projects_slack_client_channel_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.projects
+    ADD CONSTRAINT projects_slack_client_channel_set_by_fkey FOREIGN KEY (slack_client_channel_set_by) REFERENCES public.users(id);
+
+
+--
+-- Name: projects projects_slack_client_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.projects
+    ADD CONSTRAINT projects_slack_client_workspace_id_fkey FOREIGN KEY (slack_client_workspace_id) REFERENCES public.slack_workspaces(id);
+
+
+--
 -- Name: projects projects_slack_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7378,6 +7485,46 @@ ALTER TABLE ONLY public.sessions
 
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: slack_messages slack_messages_author_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_messages
+    ADD CONSTRAINT slack_messages_author_user_id_fkey FOREIGN KEY (author_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: slack_messages slack_messages_corrected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_messages
+    ADD CONSTRAINT slack_messages_corrected_by_fkey FOREIGN KEY (corrected_by) REFERENCES public.users(id);
+
+
+--
+-- Name: slack_messages slack_messages_handled_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_messages
+    ADD CONSTRAINT slack_messages_handled_by_fkey FOREIGN KEY (handled_by) REFERENCES public.users(id);
+
+
+--
+-- Name: slack_messages slack_messages_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_messages
+    ADD CONSTRAINT slack_messages_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+
+--
+-- Name: slack_messages slack_messages_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slack_messages
+    ADD CONSTRAINT slack_messages_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.slack_workspaces(id);
 
 
 --
@@ -8145,4 +8292,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022144533'),
     ('20261022150120'),
     ('20261022151206'),
-    ('20261022180904');
+    ('20261022180904'),
+    ('20261022185536');
