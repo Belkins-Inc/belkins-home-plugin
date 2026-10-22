@@ -166,7 +166,7 @@ real limits:
   test batch in its first two weeks and its full share from its fifth. Buy domains about four weeks before a client needs volume (`sending-domains`).
 - **A young domain** — under 60 days old, a mailbox sends at most 30 a day in all (22 outreach once
   warmed) and the domain at most 40 outreach emails a day across all its mailboxes; a mailbox
-  marked warmed on a domain under 14 days old sends none. More volume early is more domains, not more mailboxes on one.
+  marked warmed on a domain under 14 days old sends only a trickle, 1–3 a day. More volume early is more domains, not more mailboxes on one.
 - **The engine's protection** — when a domain's seed notes slip into spam, its ladder stops
   climbing; when they fall below 70% in the inbox, the engine holds the domain's outreach, opens an
   urgent task for the project's owner and lets outreach go again once the notes are back for three
