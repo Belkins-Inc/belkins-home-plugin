@@ -372,6 +372,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   placement show <test-id>               a test's notes: verdict, folders, filter scores
   placement look <seed address> --message-id <id>   where one message sits in a seed, e.g. a step sent
                                          there with bh copy test: verdict, folders, filter scores
+  placement look <seed address> --from <address> [--days <n>]   the same for everything that sender sent
+                                         the seed in the last days (3), e.g. a calendar invitation (an admin)
   placement digests <seed address> [--days <n>] [--all]   the quarantine digests a seed received (2 days),
                                          as text; --all lists every envelope instead, each marked digest or not
                                          (an admin: a seed's mail is every organisation's)
@@ -2552,10 +2554,18 @@ async function main(argv: string[]): Promise<void> {
       }
       if (sub === 'look') {
         if (!arg) throw new BhError('Which seed?', { hint: 'bh placement seeds lists them' }, 2)
+        if (o.from) {
+          const q = new URLSearchParams({
+            seed: arg,
+            from: String(o.from),
+            ...(o.days ? { days: String(Number(o.days)) } : {}),
+          })
+          return out(await call(config, 'GET', `/placement/look?${q}`))
+        }
         if (!o['message-id'])
           throw new BhError(
             'Which message?',
-            { hint: '--message-id <Message-ID>; bh copy test prints it' },
+            { hint: '--message-id <Message-ID>; bh copy test prints it; or --from <address>' },
             2,
           )
         const q = new URLSearchParams({ seed: arg, messageId: String(o['message-id']) })
