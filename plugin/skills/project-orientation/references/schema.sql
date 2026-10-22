@@ -646,7 +646,9 @@ CREATE TABLE public.meetings (
     bot_left_at timestamp with time zone,
     bot_left_reason text,
     bot_error text,
+    no_show_by text,
     CONSTRAINT meetings_check CHECK (((outcome IS NULL) OR (status = 'held'::text))),
+    CONSTRAINT meetings_no_show_by_check CHECK ((no_show_by = ANY (ARRAY['lead'::text, 'rep'::text, 'both'::text]))),
     CONSTRAINT meetings_outcome_check CHECK ((outcome = ANY (ARRAY['qualified'::text, 'not_qualified'::text, 'opportunity'::text, 'won'::text, 'lost'::text]))),
     CONSTRAINT meetings_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'held'::text, 'no_show'::text, 'cancelled'::text, 'rescheduled'::text])))
 );
@@ -1693,6 +1695,28 @@ CREATE TABLE public.mailboxes (
     CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
+
+
+--
+-- Name: meeting_records; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.meeting_records (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    meeting_id uuid NOT NULL,
+    conference text,
+    started_at timestamp with time zone,
+    ended_at timestamp with time zone,
+    attendance jsonb DEFAULT '[]'::jsonb NOT NULL,
+    transcript jsonb,
+    transcript_language text,
+    transcript_doc text,
+    notes_doc text,
+    recording_file text,
+    complete boolean DEFAULT false NOT NULL,
+    read_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
 
 --
@@ -3647,6 +3671,22 @@ ALTER TABLE ONLY public.mailboxes
 
 ALTER TABLE ONLY public.mailboxes
     ADD CONSTRAINT mailboxes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: meeting_records meeting_records_meeting_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meeting_records
+    ADD CONSTRAINT meeting_records_meeting_id_key UNIQUE (meeting_id);
+
+
+--
+-- Name: meeting_records meeting_records_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meeting_records
+    ADD CONSTRAINT meeting_records_pkey PRIMARY KEY (id);
 
 
 --
@@ -6651,6 +6691,14 @@ ALTER TABLE ONLY public.mailboxes
 
 
 --
+-- Name: meeting_records meeting_records_meeting_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meeting_records
+    ADD CONSTRAINT meeting_records_meeting_id_fkey FOREIGN KEY (meeting_id) REFERENCES public.meetings(id) ON DELETE CASCADE;
+
+
+--
 -- Name: meeting_slots meeting_slots_calendar_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8525,4 +8573,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022194729'),
     ('20261022200511'),
     ('20261022211247'),
-    ('20261022212820');
+    ('20261022212820'),
+    ('20261022214321');

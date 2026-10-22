@@ -265,6 +265,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   meeting cancel <id> [--reason <t>]     after 60 s, on the calendar too; the lead is told (a person only)
   meeting uncancel <id>                  keep it: within the 60 s after cancel
   meeting retry <id>                     write the event again after a calendar error (found, not doubled)
+  meeting transcript <id>                what a meeting through the organizer left: who came and how long, the
+                                         host bot's comings and goings, the transcript, Meet's Docs
   meeting update <id> [--status held|no_show] [--outcome qualified|not_qualified|opportunity|won|lost]
                   [--feedback <client's words>] [--notes <t>]      (a person only)
   mailboxes
@@ -2320,6 +2322,7 @@ async function main(argv: string[]): Promise<void> {
     case 'meeting':
       if (sub === 'uncancel')
         return out(await call(config, 'POST', `/meetings/${arg}/uncancel`, {}))
+      if (sub === 'transcript') return out(await call(config, 'GET', `/meetings/${arg}/record`))
       if (sub === 'book')
         return out(
           await call(config, 'POST', `/projects/${p()}/meetings`, {
