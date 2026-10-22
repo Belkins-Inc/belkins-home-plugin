@@ -39,6 +39,7 @@ CREATE TYPE public.actor_via AS ENUM (
     'scheduled_agent',
     'engine',
     'client',
+    'slack',
     'member',
     'link'
 );
@@ -8134,4 +8135,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022124928'),
     ('20261022131816'),
     ('20261022133824'),
-    ('20261022144533');
+    ('20261022144533'),
+    ('20261022150120');
