@@ -647,7 +647,10 @@ CREATE TABLE public.meetings (
     bot_left_reason text,
     bot_error text,
     no_show_by text,
+    lead_response text,
+    lead_responded_at timestamp with time zone,
     CONSTRAINT meetings_check CHECK (((outcome IS NULL) OR (status = 'held'::text))),
+    CONSTRAINT meetings_lead_response_check CHECK ((lead_response = ANY (ARRAY['accepted'::text, 'declined'::text, 'tentative'::text]))),
     CONSTRAINT meetings_no_show_by_check CHECK ((no_show_by = ANY (ARRAY['lead'::text, 'rep'::text, 'both'::text]))),
     CONSTRAINT meetings_outcome_check CHECK ((outcome = ANY (ARRAY['qualified'::text, 'not_qualified'::text, 'opportunity'::text, 'won'::text, 'lost'::text]))),
     CONSTRAINT meetings_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'held'::text, 'no_show'::text, 'cancelled'::text, 'rescheduled'::text])))
@@ -2231,7 +2234,12 @@ CREATE TABLE public.replies (
     template_id uuid,
     cc text[] DEFAULT '{}'::text[] NOT NULL,
     bcc text[] DEFAULT '{}'::text[] NOT NULL,
+    meeting_id uuid,
+    notice text,
+    calendar_ics text,
     CONSTRAINT replies_check CHECK (((status <> ALL (ARRAY['approved'::text, 'sending'::text, 'sent'::text])) OR (approved_at IS NOT NULL))),
+    CONSTRAINT replies_meeting_notice_check CHECK (((notice IS NULL) = (meeting_id IS NULL))),
+    CONSTRAINT replies_notice_check CHECK ((notice = ANY (ARRAY['confirmation'::text, 'reminder_day'::text, 'reminder_hour'::text, 'moved'::text, 'cancelled'::text]))),
     CONSTRAINT replies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'approved'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'discarded'::text, 'superseded'::text])))
 );
 
@@ -7355,6 +7363,14 @@ ALTER TABLE ONLY public.replies
 
 
 --
+-- Name: replies replies_meeting_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.replies
+    ADD CONSTRAINT replies_meeting_id_fkey FOREIGN KEY (meeting_id) REFERENCES public.meetings(id) ON DELETE CASCADE;
+
+
+--
 -- Name: replies replies_previous_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8574,4 +8590,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022200511'),
     ('20261022211247'),
     ('20261022212820'),
-    ('20261022214321');
+    ('20261022214321'),
+    ('20261022225005');
