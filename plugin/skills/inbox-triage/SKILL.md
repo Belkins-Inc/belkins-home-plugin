@@ -1,6 +1,6 @@
 ---
 name: inbox-triage
-description: Works a project's inbox — confirms or corrects the engine's classification of each reply, drafts answers for a person to approve, and turns "not now" and referrals into follow-ups. Use when replies are waiting (`bh brief` shows untriaged replies or drafts to approve), when asked to check or work the inbox, and in every server-agent run that has replies waiting.
+description: Works a project's inbox — confirms or corrects the engine's classification of each reply, drafts answers for a person to approve, turns "not now" and referrals into follow-ups, and books meetings on a client's external calendar (a Calendly or HubSpot link) through the browser, recording them in Home. Use when replies are waiting (`bh brief` shows untriaged replies or drafts to approve), when asked to check or work the inbox, when a meeting is to be booked or recorded on a client's own booking page, and in every server-agent run that has replies waiting.
 ---
 
 # Inbox triage
@@ -26,6 +26,8 @@ simulation four confirmed meetings were lost to a week of untriaged replies.
 5. Before drafting: [references/answers.md](references/answers.md), the project's rules and client
    feedback (`bh note list --kind rule`, `--kind client_feedback`), and the strategy
    (`bh strategy show <id>`).
+6. When times or a booking are involved and the project's calendar is an external one (`bh calendars`,
+   `provider: external`): [references/external-calendars.md](references/external-calendars.md).
 
 ## What each class sets in motion
 
@@ -142,7 +144,8 @@ A scheduled agent may: classify and re-classify, mark handled, draft replies, ad
 tasks, hypotheses and their evidence, check and replace bounced addresses, offer slots (`bh slots offer`), and book or move a
 meeting to a slot that was offered to this lead and is still held (references/answers.md,
 Meetings). It may not: start a hypothesis's test or change how a running one is judged, approve or send, `bh reengage`, `bh refer`, `bh lead resume`, remove dnc,
-enroll, book any other time, or cancel a meeting. Where one of those is due, open a task for the
+enroll, book any other time, cancel a meeting, or read or book an external calendar (it has no
+browser: references/external-calendars.md, The server agent). Where one of those is due, open a task for the
 person who launched the strategy:
 
 - their email: `bh sql "select u.email from threads t join enrollments e on e.id = t.enrollment_id join strategies s on s.id = e.strategy_id join users u on u.id = s.launched_by where t.id = '<threadId>'"`;

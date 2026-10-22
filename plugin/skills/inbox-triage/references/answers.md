@@ -107,13 +107,12 @@ Mark it handled with `bh triage` and say why in `--note`.
   not "11:30 am ET". The zone, the UTC time and the calendar they were read from go in `--note`.
   Never the approver's own time zone: the meeting is between the client and the lead, and nobody
   else's clock matters.
-- **When the client books through their own page** (the project's rules say so, for example a
-  HubSpot meetings link, and `bh slots` is empty because the project's calendars are archived):
-  read the free times on that page, convert them to the lead's zone, and offer two in the body. Once
-  the lead picks one, a person books it on that page in the lead's name, with whoever the project's
-  rules say to copy; the confirming draft says the invite was sent ("Great, I just sent over the
-  invite for 1 pm. See you Monday!"). Such a meeting is not in `bh meetings`; record it in a
-  decision note.
+- **When the client books through their own page** — an external calendar in `bh calendars`
+  (`provider: external`, a Calendly or HubSpot link) and nothing of it in `bh slots`: read its free
+  times in a browser, offer two in the body, book the one the lead confirms on that page in the
+  lead's name, and record it with `bh meeting record --calendar <id>`.
+  [external-calendars.md](external-calendars.md) is the whole procedure; a server agent, which has no
+  browser, opens a task for a person instead.
 - Hold what you offer: with the draft, run `bh slots offer <thread-id> --slots <iso>,<iso>
   [--calendar <id>]`. The slots are then kept for this lead — nobody else is offered them — for 72
   hours; a newer offer to the same thread replaces the older one. Set `--approve-by` on the draft to
@@ -127,9 +126,10 @@ Mark it handled with `bh triage` and say why in `--note`.
   task for a person; a person may book any free time.
 - Moving to another offered slot is `bh meeting move <id> --at <iso>`. Cancelling is a person's:
   draft the answer and open a task.
-- A project with no calendar connected books through the client's own link, by a person. Once it
-  is booked there, a person records it so the goal counts it: `bh meeting record --thread <id> --at
-  <iso> --through <where it was booked> [--minutes <n>]`. Nothing is written to any calendar.
+- A meeting booked anywhere outside Home is recorded by a person so the goal counts it:
+  `bh meeting record --thread <id> --at <iso> --calendar <external calendar id>` when the page is one
+  of the project's external calendars, else `--through <where it was booked> [--minutes <n>]`.
+  Nothing is written to any calendar.
 - Booking pauses the lead's colleagues at the same company until a week after the meeting; nothing
   to do about it, but do not write to them in the meantime.
 - Where a meeting is already booked, state its day and time exactly as recorded; that is the one

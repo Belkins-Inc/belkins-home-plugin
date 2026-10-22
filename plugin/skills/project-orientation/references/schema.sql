@@ -555,7 +555,7 @@ CREATE TABLE public.calendars (
     external_id text NOT NULL,
     name text NOT NULL,
     owner_name text,
-    owner_email public.citext NOT NULL,
+    owner_email public.citext,
     credential bytea,
     event_type text,
     timezone text NOT NULL,
@@ -569,10 +569,12 @@ CREATE TABLE public.calendars (
     connected_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     sender_id uuid,
+    booking_url text,
     CONSTRAINT calendars_calcom_check CHECK (((provider <> 'calcom'::text) OR ((event_type IS NOT NULL) AND (sender_id IS NOT NULL)))),
     CONSTRAINT calendars_check2 CHECK (((disconnected_at IS NULL) = (disconnected_reason IS NULL))),
+    CONSTRAINT calendars_external_check CHECK ((((provider = 'external'::text) = (booking_url IS NOT NULL)) AND ((provider = 'external'::text) OR (owner_email IS NOT NULL)))),
     CONSTRAINT calendars_meeting_minutes_check CHECK (((meeting_minutes >= 10) AND (meeting_minutes <= 180))),
-    CONSTRAINT calendars_provider_check CHECK (((provider = 'calcom'::text) OR ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'calendly'::text])) AND (archived_at IS NOT NULL))))
+    CONSTRAINT calendars_provider_check CHECK (((provider = ANY (ARRAY['calcom'::text, 'external'::text])) OR ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'calendly'::text])) AND (archived_at IS NOT NULL))))
 );
 
 
@@ -8142,4 +8144,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022133824'),
     ('20261022144533'),
     ('20261022150120'),
-    ('20261022151206');
+    ('20261022151206'),
+    ('20261022180904');

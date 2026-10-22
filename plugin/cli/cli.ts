@@ -209,13 +209,18 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          a person's mailboxes across the company's domains, or the whole company's, in
                                          one call (a person only): one a domain each, all ordered or none
   company warmup <org> <company> on|off  its mailboxes warm without a client (a person only; docs/decisions/warmup.md)
-  calendars                              the project's calendars: state, event type, last sync
+  calendars                              the project's calendars: state, event type or booking link, last sync
   calendar connect --sender <id> [--key <Cal.com API key> [--event-type <id>]]
                                          the sender's Cal.com; without a key, a URL to open: sign in to
                                          Cal.com (or sign up, connecting Google or Outlook) and allow us
   calendar invite --sender <id>          a link for the sender's owner to connect their Cal.com without
                                          access to the tool (7 days, once; a new link replaces the last)
+  calendar add-external --url <booking link> [--sender <id>] [--name <t>] [--minutes <n>] [--timezone <iana>]
+                                         a booking page Home has no integration with (a client's Calendly): Claude
+                                         reads its free times and books it in a browser, then records the meeting
+                                         with --calendar (a person only)
   calendar update <id> [--event-type <id>] [--priority <n>] [--timezone <iana>] [--owner <name>] [--sender <id>]
+                  [--name <t>] [--minutes <n>]   (name and minutes: an external calendar's)
   calendar archive <id>                  out of booking for good; connecting again writes a new row
   slots [--days <n>] [--calendar <id>] [--limit <n>]   free slots, soonest first (not yet offered to anyone)
   slots offer <thread-id> --slots <iso,iso> [--calendar <id>]
@@ -224,10 +229,13 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   meeting book --thread <id> | --contact <id> --calendar <id> --at <iso>
                                          asks the calendar again, then writes the event with the lead invited;
                                          a scheduled agent books only a slot offered to this lead
-  meeting record --thread <id> | --contact <id> --at <iso> --through <where> [--minutes <n>] [--sender <id>] [--notes <t>]
-                                         a meeting booked outside Home (the client's own link): counted, written
-                                         to no calendar; the sender defaults to the thread's (a person only)
-  meeting move <id> --at <iso>           on the calendar too (an agent: only to an offered slot)
+  meeting record --thread <id> | --contact <id> --at <iso> --calendar <external id> | --through <where>
+                 [--minutes <n>] [--sender <id>] [--notes <t>]
+                                         a meeting booked outside Home (an external calendar, the client's own
+                                         link): counted, written to no calendar; the sender defaults to the
+                                         calendar's, then the thread's (a person only)
+  meeting move <id> --at <iso>           on the calendar too (an agent: only to an offered slot); one booked
+                                         outside Home moves in our books only, after it was moved there
   meeting cancel <id> [--reason <t>]     after 60 s, on the calendar too; the lead is told (a person only)
   meeting uncancel <id>                  keep it: within the 60 s after cancel
   meeting retry <id>                     write the event again after a calendar error (found, not doubled)
@@ -880,6 +888,7 @@ async function main(argv: string[]): Promise<void> {
       key: { type: 'string' },
       'event-type': { type: 'string' },
       owner: { type: 'string' },
+      url: { type: 'string' },
       days: { type: 'string' },
       calendar: { type: 'string' },
       slots: { type: 'string' },
@@ -2087,6 +2096,16 @@ async function main(argv: string[]): Promise<void> {
             ...(o['event-type'] ? { eventType: o['event-type'] } : {}),
           }),
         )
+      if (sub === 'add-external')
+        return out(
+          await call(config, 'POST', `/projects/${p()}/calendars/external`, {
+            url: o.url,
+            ...(o.sender ? { senderId: o.sender } : {}),
+            ...(o.name ? { name: o.name } : {}),
+            ...(o.minutes ? { meetingMinutes: Number(o.minutes) } : {}),
+            ...(o.timezone ? { timezone: o.timezone } : {}),
+          }),
+        )
       if (sub === 'invite')
         return out(
           await call(config, 'POST', `/projects/${p()}/invites`, {
@@ -2102,6 +2121,8 @@ async function main(argv: string[]): Promise<void> {
             ...(o.owner ? { ownerName: o.owner } : {}),
             ...(o['event-type'] ? { eventType: o['event-type'] } : {}),
             ...(o.sender ? { senderId: o.sender } : {}),
+            ...(o.name ? { name: o.name } : {}),
+            ...(o.minutes ? { meetingMinutes: Number(o.minutes) } : {}),
           }),
         )
       if (sub === 'archive') return out(await call(config, 'POST', `/calendars/${arg}/archive`, {}))
@@ -2146,10 +2167,11 @@ async function main(argv: string[]): Promise<void> {
             ...(o.thread ? { threadId: o.thread } : {}),
             ...(o.contact ? { contactId: o.contact } : {}),
             ...(o.sender ? { senderId: o.sender } : {}),
+            ...(o.calendar ? { calendarId: o.calendar } : {}),
+            ...(o.through ? { bookedThrough: o.through } : {}),
             ...(o.minutes ? { minutes: Number(o.minutes) } : {}),
             ...(o.notes ? { notes: o.notes } : {}),
             at: o.at,
-            bookedThrough: o.through,
           }),
         )
       if (sub === 'move')
