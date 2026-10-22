@@ -2851,6 +2851,10 @@ CREATE TABLE public.warmup_sends (
     engage_error text,
     copy_message_id uuid,
     reply_skipped text,
+    answer_placement text,
+    answer_at timestamp with time zone,
+    answer_rescued_at timestamp with time zone,
+    CONSTRAINT warmup_sends_answer_placement_check CHECK ((answer_placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_placement_check CHECK ((placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_status_check CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text])))
 );
@@ -7396,4 +7400,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261020124530'),
     ('20261020133247'),
     ('20261021112137'),
-    ('20261021143431');
+    ('20261021143431'),
+    ('20261022111701');
