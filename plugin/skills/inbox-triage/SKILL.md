@@ -133,6 +133,11 @@ there are many:
 
 ## The server agent
 
+The engine's drafter reads most email replies first, with one call: it leaves a draft waiting for a
+person, or marks a reply that needs no answer as handled. A run is told which replies are its own
+(the ones the drafter handed over: free times, a booking, a lookup); leave every other reply in
+`bh inbox` as it is, a draft waiting there included.
+
 A scheduled agent may: classify and re-classify, mark handled, draft replies, add notes, questions,
 tasks, hypotheses and their evidence, check and replace bounced addresses, offer slots (`bh slots offer`), and book or move a
 meeting to a slot that was offered to this lead and is still held (references/answers.md,

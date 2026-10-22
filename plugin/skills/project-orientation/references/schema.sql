@@ -1104,8 +1104,13 @@ CREATE TABLE public.thread_messages (
     last_alerted_at timestamp with time zone,
     alerts integer DEFAULT 0 NOT NULL,
     cc_addresses text[],
+    draft_verdict text,
+    draft_why text,
+    drafted_at timestamp with time zone,
+    verdict_posted_at timestamp with time zone,
     CONSTRAINT thread_messages_classification_check CHECK ((classification = ANY (ARRAY['interested'::text, 'meeting'::text, 'question'::text, 'not_now'::text, 'referral'::text, 'not_interested'::text, 'unsubscribe'::text, 'wrong_person'::text, 'acknowledgement'::text, 'out_of_office'::text, 'other'::text]))),
     CONSTRAINT thread_messages_direction_check CHECK ((direction = ANY (ARRAY['in'::text, 'out'::text]))),
+    CONSTRAINT thread_messages_draft_verdict_check CHECK ((draft_verdict = ANY (ARRAY['draft'::text, 'none'::text, 'agent'::text]))),
     CONSTRAINT thread_messages_kind_check CHECK ((kind = ANY (ARRAY['reply'::text, 'auto_reply'::text, 'bounce'::text, 'outreach'::text, 'manual'::text])))
 );
 
@@ -1707,7 +1712,7 @@ CREATE TABLE public.model_calls (
     cost_usd numeric(12,6),
     duration_ms bigint,
     error text,
-    CONSTRAINT model_calls_purpose_check CHECK ((purpose = 'reply_classification'::text))
+    CONSTRAINT model_calls_purpose_check CHECK ((purpose = ANY (ARRAY['reply_classification'::text, 'reply_draft'::text])))
 );
 
 
@@ -8136,4 +8141,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022131816'),
     ('20261022133824'),
     ('20261022144533'),
-    ('20261022150120');
+    ('20261022150120'),
+    ('20261022151206');
