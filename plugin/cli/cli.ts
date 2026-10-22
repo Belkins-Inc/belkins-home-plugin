@@ -404,7 +404,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          password the engine makes and, for a company's person, their workplace mailbox
   linkedin show|history <id>             one account; what was done to it
   linkedin login <id> [--username <address>] [--totp]   stores its LinkedIn login, sealed (password and key hidden)
-  linkedin sign-in <id>                  signs it in to Unipile on its own IP now (the engine also does, every 6 h)
+  linkedin sign-in <id> [--browser]      signs it in to Unipile on its own IP now (the engine also does, every 6 h);
+                                         --browser: with the session its remote browser holds
   linkedin checkpoint <id> [--code <c>]  the code LinkedIn asked for; no code waits for an approval in the app
   linkedin code|password <id>            its authenticator code now, or its password (both recorded)
   linkedin created|verified <id> [--owner <user id|none>] [--undo]   marks it made on LinkedIn, or through its checks
@@ -726,6 +727,7 @@ async function main(argv: string[]): Promise<void> {
       'no-browser': { type: 'boolean' },
       totp: { type: 'boolean' },
       'sign-up': { type: 'boolean' },
+      browser: { type: 'boolean' },
       first: { type: 'string' },
       last: { type: 'string' },
       country: { type: 'string' },
@@ -2755,7 +2757,10 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       }
-      if (sub === 'sign-in') return out(await call(config, 'POST', `${account()}/sign-in`, {}))
+      if (sub === 'sign-in')
+        return out(
+          await call(config, 'POST', `${account()}/sign-in`, o.browser ? { using: 'browser' } : {}),
+        )
       if (sub === 'checkpoint')
         return out(
           await call(config, 'POST', `${account()}/checkpoint`, {

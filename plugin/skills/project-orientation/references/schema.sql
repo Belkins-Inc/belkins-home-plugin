@@ -1382,6 +1382,11 @@ CREATE TABLE public.linkedin_accounts (
     archive_by uuid,
     archive_via public.actor_via,
     connected_via public.actor_via,
+    browser_state bytea,
+    browser_signed_in boolean DEFAULT false NOT NULL,
+    browser_user_agent text,
+    browser_session text,
+    browser_opened_at timestamp with time zone,
     CONSTRAINT linkedin_accounts_managed_check CHECK (((proxy_id IS NOT NULL) OR ((credentials IS NULL) AND (sign_in_intent IS NULL)))),
     CONSTRAINT linkedin_accounts_proxy_country_check CHECK ((proxy_country ~ '^[A-Z]{2}$'::text)),
     CONSTRAINT linkedin_accounts_status_check CHECK ((status = ANY (ARRAY['new'::text, 'connecting'::text, 'checkpoint'::text, 'active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
@@ -7792,4 +7797,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022111701'),
     ('20261022114415'),
     ('20261022122147'),
-    ('20261022124129');
+    ('20261022124129'),
+    ('20261022124928');
