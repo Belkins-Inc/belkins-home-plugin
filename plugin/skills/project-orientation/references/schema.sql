@@ -1097,6 +1097,7 @@ CREATE TABLE public.thread_messages (
     alerted_at timestamp with time zone,
     last_alerted_at timestamp with time zone,
     alerts integer DEFAULT 0 NOT NULL,
+    cc_addresses text[],
     CONSTRAINT thread_messages_classification_check CHECK ((classification = ANY (ARRAY['interested'::text, 'meeting'::text, 'question'::text, 'not_now'::text, 'referral'::text, 'not_interested'::text, 'unsubscribe'::text, 'wrong_person'::text, 'acknowledgement'::text, 'out_of_office'::text, 'other'::text]))),
     CONSTRAINT thread_messages_direction_check CHECK ((direction = ANY (ARRAY['in'::text, 'out'::text]))),
     CONSTRAINT thread_messages_kind_check CHECK ((kind = ANY (ARRAY['reply'::text, 'auto_reply'::text, 'bounce'::text, 'outreach'::text, 'manual'::text])))
@@ -7798,4 +7799,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022114415'),
     ('20261022122147'),
     ('20261022124129'),
+    ('20261022124223'),
     ('20261022124928');

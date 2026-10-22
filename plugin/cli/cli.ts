@@ -433,7 +433,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          confirm or change what a reply means; no --class marks it handled
   reply draft <thread-id> --body <text> | --body-file <path> [--note <for the approver>] [--send-at <iso>]
        [--approve-by <iso>] [--sender <id>] [--cc a@x.com,b@y.com] [--bcc c@z.com]
-                                         --cc copies people in the open, --bcc without the lead seeing them
+                                         --cc copies people in the open (left out: whom the lead's message
+                                         copied, bh thread's replyCc; "" for none), --bcc without the lead seeing them
   replies [--status draft|approved|sent|failed|discarded]
   reply approve <id> [--body <final text>] [--cc …] [--bcc …] (a person only) | reply discard <id>
   reply revise <id> --body <text> | --body-file <path> [--note <for the approver>] [--cc …] [--bcc …]
