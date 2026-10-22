@@ -231,6 +231,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   calendar connect --sender <id> [--key <Cal.com API key> [--event-type <id>]]
                                          the sender's Cal.com; without a key, a URL to open: sign in to
                                          Cal.com (or sign up, connecting Google or Outlook) and allow us
+  calendar connect --sender <id> --freebusy <address> | --hours-only <address>
+                  [--timezone <iana>] [--hours "mon-fri 09:00-17:00; sat 10:00-12:00"] [--minutes <n>]
+                  [--buffer <min>] [--notice <min>] [--cap <per day>] [--window <days>]
+                                         a calendar of our own, booked through our organizer (docs/decisions/
+                                         booking.md): a Google calendar that shares its free/busy with the
+                                         organizer, or working hours alone; the address gets the invitations
   calendar invite --sender <id>          a link for the sender's owner to connect their Cal.com without
                                          access to the tool (7 days, once; a new link replaces the last)
   calendar add-external --url <booking link> [--sender <id>] [--name <t>] [--minutes <n>] [--timezone <iana>]
@@ -238,7 +244,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          reads its free times and books it in a browser, then records the meeting
                                          with --calendar (a person only)
   calendar update <id> [--event-type <id>] [--priority <n>] [--timezone <iana>] [--owner <name>] [--sender <id>]
-                  [--name <t>] [--minutes <n>]   (name and minutes: an external calendar's)
+                  [--name <t>] [--minutes <n>]   (name and minutes: an external calendar's or one of our own)
+                  [--hours <spec>] [--buffer <min>] [--notice <min>] [--cap <n>|none] [--window <days>]
+                                         (one of our own's rules)
   calendar archive <id>                  out of booking for good; connecting again writes a new row
   slots [--days <n>] [--calendar <id>] [--limit <n>]   free slots, soonest first (not yet offered to anyone)
   slots offer <thread-id> --slots <iso,iso> [--calendar <id>]
@@ -931,6 +939,12 @@ async function main(argv: string[]): Promise<void> {
       at: { type: 'string' },
       through: { type: 'string' },
       minutes: { type: 'string' },
+      freebusy: { type: 'string' },
+      'hours-only': { type: 'string' },
+      buffer: { type: 'string' },
+      notice: { type: 'string' },
+      cap: { type: 'string' },
+      window: { type: 'string' },
       outcome: { type: 'string' },
       'allow-repeat': { type: 'boolean' },
       feedback: { type: 'string' },
@@ -2189,7 +2203,26 @@ async function main(argv: string[]): Promise<void> {
       break
     case 'calendars':
       return out(await call(config, 'GET', `/projects/${p()}/calendars`))
-    case 'calendar':
+    case 'calendar': {
+      /** The rules of a calendar of our own, as flags. */
+      const rules = {
+        ...(o.timezone ? { timezone: o.timezone } : {}),
+        ...(o.hours ? { hours: o.hours } : {}),
+        ...(o.minutes ? { meetingMinutes: Number(o.minutes) } : {}),
+        ...(o.buffer !== undefined ? { bufferMinutes: Number(o.buffer) } : {}),
+        ...(o.notice !== undefined ? { noticeMinutes: Number(o.notice) } : {}),
+        ...(o.cap !== undefined ? { dailyCap: o.cap === 'none' ? null : Number(o.cap) } : {}),
+        ...(o.window ? { windowDays: Number(o.window) } : {}),
+      }
+      if (sub === 'connect' && (o.freebusy || o['hours-only']))
+        return out(
+          await call(
+            config,
+            'POST',
+            `/projects/${p()}/calendars/${o.freebusy ? 'freebusy' : 'hours'}`,
+            { senderId: o.sender, address: o.freebusy ?? o['hours-only'], ...rules },
+          ),
+        )
       if (sub === 'connect' && !o.key)
         return out(
           await call(config, 'POST', `/projects/${p()}/calendars/calcom/authorize`, {
@@ -2230,11 +2263,12 @@ async function main(argv: string[]): Promise<void> {
             ...(o['event-type'] ? { eventType: o['event-type'] } : {}),
             ...(o.sender ? { senderId: o.sender } : {}),
             ...(o.name ? { name: o.name } : {}),
-            ...(o.minutes ? { meetingMinutes: Number(o.minutes) } : {}),
+            ...rules,
           }),
         )
       if (sub === 'archive') return out(await call(config, 'POST', `/calendars/${arg}/archive`, {}))
       break
+    }
     case 'slots': {
       if (sub === 'offer')
         return out(

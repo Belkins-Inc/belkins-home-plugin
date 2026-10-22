@@ -570,11 +570,17 @@ CREATE TABLE public.calendars (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     sender_id uuid,
     booking_url text,
+    working_hours jsonb,
+    buffer_minutes integer DEFAULT 0 NOT NULL,
+    notice_minutes integer DEFAULT 240 NOT NULL,
+    daily_cap integer,
+    window_days integer DEFAULT 14 NOT NULL,
     CONSTRAINT calendars_calcom_check CHECK (((provider <> 'calcom'::text) OR ((event_type IS NOT NULL) AND (sender_id IS NOT NULL)))),
     CONSTRAINT calendars_check2 CHECK (((disconnected_at IS NULL) = (disconnected_reason IS NULL))),
     CONSTRAINT calendars_external_check CHECK ((((provider = 'external'::text) = (booking_url IS NOT NULL)) AND ((provider = 'external'::text) OR (owner_email IS NOT NULL)))),
     CONSTRAINT calendars_meeting_minutes_check CHECK (((meeting_minutes >= 10) AND (meeting_minutes <= 180))),
-    CONSTRAINT calendars_provider_check CHECK (((provider = ANY (ARRAY['calcom'::text, 'external'::text])) OR ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'calendly'::text])) AND (archived_at IS NOT NULL))))
+    CONSTRAINT calendars_provider_check CHECK (((provider = ANY (ARRAY['calcom'::text, 'external'::text, 'freebusy'::text, 'hours'::text])) OR ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'calendly'::text])) AND (archived_at IS NOT NULL)))),
+    CONSTRAINT calendars_rules_check CHECK ((((buffer_minutes >= 0) AND (buffer_minutes <= 120)) AND ((notice_minutes >= 0) AND (notice_minutes <= 10080)) AND ((daily_cap IS NULL) OR ((daily_cap >= 1) AND (daily_cap <= 50))) AND ((window_days >= 1) AND (window_days <= 60))))
 );
 
 
@@ -635,6 +641,7 @@ CREATE TABLE public.meetings (
     cancel_via public.actor_via,
     sender_id uuid,
     booked_through text,
+    meet_code text,
     CONSTRAINT meetings_check CHECK (((outcome IS NULL) OR (status = 'held'::text))),
     CONSTRAINT meetings_outcome_check CHECK ((outcome = ANY (ARRAY['qualified'::text, 'not_qualified'::text, 'opportunity'::text, 'won'::text, 'lost'::text]))),
     CONSTRAINT meetings_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'held'::text, 'no_show'::text, 'cancelled'::text, 'rescheduled'::text])))
@@ -8476,4 +8483,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022185536'),
     ('20261022191301'),
     ('20261022194729'),
-    ('20261022200511');
+    ('20261022200511'),
+    ('20261022211247');
