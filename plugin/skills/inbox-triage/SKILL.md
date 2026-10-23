@@ -166,8 +166,9 @@ it. Draft the answer so the task's owner only has to approve.
   (`strategy-and-plans`, Health). An idea the replies suggest that nobody is testing yet:
   `bh hypothesis add` (it stays `proposed` until a person starts it).
 - What the replies teach beyond one lead (a recurring objection, an angle that draws "not now",
-  a question the brief cannot answer): `bh note add --kind insight`; a fact we need from the client:
-  `bh question add --body "<question>" --note "<which lead asked>"`.
+  a question the brief cannot answer): `bh note add --kind insight`; a fact we need from the client
+  to answer a lead: `bh question add --thread <thread-id> --body "<question>"`
+  (references/answers.md says how to word it).
 - `bh session end --summary "<triaged N: classes; drafts waiting for approval and what they
 offer; re-engagements and referrals made or handed to whom; what to watch>"`.
 

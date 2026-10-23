@@ -798,6 +798,21 @@ CREATE TABLE public.client_project_grants (
 
 
 --
+-- Name: client_question_threads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.client_question_threads (
+    question_id uuid NOT NULL,
+    thread_id uuid NOT NULL,
+    reply_id uuid,
+    redrafted_at timestamp with time zone,
+    added_by uuid,
+    added_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: client_questions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -813,6 +828,13 @@ CREATE TABLE public.client_questions (
     created_by uuid,
     created_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    asked_by uuid,
+    asked_via public.actor_via,
+    slack_channel_id text,
+    slack_ts text,
+    slack_ref text,
+    reminded_at timestamp with time zone,
+    answer_updated_at timestamp with time zone,
     CONSTRAINT client_questions_check CHECK (((status <> 'answered'::text) OR (answer IS NOT NULL))),
     CONSTRAINT client_questions_status_check CHECK ((status = ANY (ARRAY['open'::text, 'asked'::text, 'answered'::text, 'dropped'::text])))
 );
@@ -3470,6 +3492,14 @@ ALTER TABLE ONLY public.client_project_grants
 
 
 --
+-- Name: client_question_threads client_question_threads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_question_threads
+    ADD CONSTRAINT client_question_threads_pkey PRIMARY KEY (question_id, thread_id);
+
+
+--
 -- Name: client_questions client_questions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4591,6 +4621,20 @@ CREATE INDEX ix_channel_invites__sender ON public.channel_invites USING btree (s
 
 
 --
+-- Name: ix_client_question_threads__reply; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_client_question_threads__reply ON public.client_question_threads USING btree (reply_id);
+
+
+--
+-- Name: ix_client_question_threads__thread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_client_question_threads__thread ON public.client_question_threads USING btree (thread_id);
+
+
+--
 -- Name: ix_companies__esp_unknown; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5337,6 +5381,13 @@ CREATE UNIQUE INDEX ux_calendars__live ON public.calendars USING btree (project_
 --
 
 CREATE UNIQUE INDEX ux_channel_invites__token ON public.channel_invites USING btree (token_hash);
+
+
+--
+-- Name: ux_client_questions__slack; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_client_questions__slack ON public.client_questions USING btree (slack_channel_id, slack_ts);
 
 
 --
@@ -6147,6 +6198,46 @@ ALTER TABLE ONLY public.client_project_grants
 
 ALTER TABLE ONLY public.client_project_grants
     ADD CONSTRAINT client_project_grants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: client_question_threads client_question_threads_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_question_threads
+    ADD CONSTRAINT client_question_threads_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id);
+
+
+--
+-- Name: client_question_threads client_question_threads_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_question_threads
+    ADD CONSTRAINT client_question_threads_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.client_questions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: client_question_threads client_question_threads_reply_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_question_threads
+    ADD CONSTRAINT client_question_threads_reply_id_fkey FOREIGN KEY (reply_id) REFERENCES public.replies(id) ON DELETE SET NULL;
+
+
+--
+-- Name: client_question_threads client_question_threads_thread_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_question_threads
+    ADD CONSTRAINT client_question_threads_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads(id) ON DELETE CASCADE;
+
+
+--
+-- Name: client_questions client_questions_asked_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_questions
+    ADD CONSTRAINT client_questions_asked_by_fkey FOREIGN KEY (asked_by) REFERENCES public.users(id);
 
 
 --
@@ -8694,4 +8785,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022230024'),
     ('20261022231119'),
     ('20261022232416'),
-    ('20261022233319');
+    ('20261022233319'),
+    ('20261023140016');

@@ -108,6 +108,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          the answer to an open question (--ref), a task (--ref), nothing
   client message <id> --client|--ours    the engine counted whose it is wrongly: say whose it is
   questions [--status open|asked|answered|dropped|all] | question add --body <question> [--note <context>] [--asked]
+                                         [--thread <thread-id>]: the lead's thread whose answer waits for it
+  question ask <id>                      post it in the project's client Slack channel; the client's reply
+                                         in that thread is the answer, and the lead's answer is drafted again
   question asked <id> | question answer <id> --body <answer, verbatim> | question drop <id>
   hypothesis list [--status open|proposed|testing|confirmed|rejected|parked|all]   open: proposed and testing
   hypothesis add --claim <t> [--evidence <why>] [--segment <id>] [--persona <id>] [--strategy <id>]
@@ -1408,8 +1411,10 @@ async function main(argv: string[]): Promise<void> {
             question: o.body,
             ...(o.note ? { context: o.note } : {}),
             ...(o.asked ? { asked: true } : {}),
+            ...(o.thread ? { threadId: o.thread } : {}),
           }),
         )
+      if (sub === 'ask') return out(await call(config, 'POST', `/questions/${arg}/ask`, {}))
       if (sub === 'asked')
         return out(await call(config, 'PATCH', `/questions/${arg}`, { status: 'asked' }))
       if (sub === 'answer')

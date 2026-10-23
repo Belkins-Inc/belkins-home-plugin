@@ -16,10 +16,16 @@ stands.
 ## Rules
 
 - **Answer what they actually asked.** Do not restate the pitch they already read.
-- **Only the client's own material.** If the project brief, notes or strategy do not say it, do not
-  write it: no prices, no customer names, no dates, no guarantees, no features, no integrations.
-  Where the answer needs a fact we do not have, say in the draft's `--note` what is missing and
-  open a client question (`bh question add`) instead of guessing.
+- **Only the client's own material.** If the project brief, notes, strategy or the client's answers
+  to earlier questions (`bh questions --status answered`) do not say it, do not write it: no prices,
+  no customer names, no dates, no guarantees, no features, no integrations. Where the answer needs a
+  fact we do not have, write the best answer you can without it, say in the draft's `--note` what is
+  missing, and open a client question tied to the thread instead of guessing:
+  `bh question add --thread <thread-id> --body "<question>"`. Check `bh questions` first: when one
+  already asks it, tie the thread to it rather than asking twice. Write the question for the client
+  to answer in a minute: concrete, the parts numbered ("1. A ballpark price per gallon for bulk, and
+  the volume it applies at"), never "tell us about pricing". A person asks it (`bh question ask
+  <id>`, or the draft's "Ask the client" in Slack); the client's reply comes back as a new draft.
 - **Length is earned by what they wrote.** A one-line message gets a one-line answer. "Sure thing,
   here is my number" wants "Got it, thanks, I'll call you there" and nothing else. Only a long
   message with several questions earns several short paragraphs.
