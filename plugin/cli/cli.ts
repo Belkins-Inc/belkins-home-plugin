@@ -42,6 +42,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   org billing <slug> external|stripe   stripe: Dylan's clients; external: billed outside the platform (platform admin)
   billing [--project <slug>]           the project's Stripe subscription, as Stripe last said it
   billing link <cus_…>                 link the project to its Stripe customer (a stripe organisation's project only)
+  client-access | client-access add <email> | client-access remove <user-id>   who watches the project in the
+                                         client app; add needs a paid subscription (a person only)
   org members <org> | org add <org> --email <e> [--name <n>] [--role admin|member] | org role <org> <user-id> --role admin|member | org remove <org> <user-id>
   project update [--name <n>] [--timezone <tz>] [--domain-cap <n>] [--brief <text> | --brief-file <path>]   (a person only)
   brief [--project <slug>]              read this first, every session
@@ -1506,6 +1508,12 @@ async function main(argv: string[]): Promise<void> {
       return out(await call(config, 'GET', `/projects/${p()}/goals`))
     case 'orgs':
       return out(await call(config, 'GET', '/orgs'))
+    case 'client-access':
+      if (sub === 'add')
+        return out(await call(config, 'POST', `/projects/${p()}/client-access`, { email: arg }))
+      if (sub === 'remove')
+        return out(await call(config, 'DELETE', `/projects/${p()}/client-access/${arg}`))
+      return out(await call(config, 'GET', `/projects/${p()}/client-access`))
     case 'billing':
       if (sub === 'link')
         return out(await call(config, 'PUT', `/projects/${p()}/subscription`, { customerId: arg }))
