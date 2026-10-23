@@ -860,6 +860,23 @@ CREATE TABLE public.client_reports (
 
 
 --
+-- Name: client_sign_in_challenges; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.client_sign_in_challenges (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    email public.citext NOT NULL,
+    user_id uuid,
+    code_hash bytea NOT NULL,
+    link_hash bytea NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    consumed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: companies; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3551,6 +3568,14 @@ ALTER TABLE ONLY public.client_reports
 
 
 --
+-- Name: client_sign_in_challenges client_sign_in_challenges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_sign_in_challenges
+    ADD CONSTRAINT client_sign_in_challenges_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: companies companies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4699,6 +4724,20 @@ CREATE INDEX ix_client_question_threads__reply ON public.client_question_threads
 --
 
 CREATE INDEX ix_client_question_threads__thread ON public.client_question_threads USING btree (thread_id);
+
+
+--
+-- Name: ix_client_sign_in_challenges__email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_client_sign_in_challenges__email ON public.client_sign_in_challenges USING btree (email, created_at DESC);
+
+
+--
+-- Name: ix_client_sign_in_challenges__user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_client_sign_in_challenges__user ON public.client_sign_in_challenges USING btree (user_id) WHERE (user_id IS NOT NULL);
 
 
 --
@@ -6344,6 +6383,14 @@ ALTER TABLE ONLY public.client_reports
 
 ALTER TABLE ONLY public.client_reports
     ADD CONSTRAINT client_reports_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: client_sign_in_challenges client_sign_in_challenges_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_sign_in_challenges
+    ADD CONSTRAINT client_sign_in_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -8886,4 +8933,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022233319'),
     ('20261023140016'),
     ('20261023143657'),
-    ('20261023145708');
+    ('20261023145708'),
+    ('20261023151149');
