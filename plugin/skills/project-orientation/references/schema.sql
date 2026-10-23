@@ -600,7 +600,7 @@ CREATE TABLE public.calendars (
     CONSTRAINT calendars_check2 CHECK (((disconnected_at IS NULL) = (disconnected_reason IS NULL))),
     CONSTRAINT calendars_external_check CHECK ((((provider = 'external'::text) = (booking_url IS NOT NULL)) AND ((provider = 'external'::text) OR (owner_email IS NOT NULL)))),
     CONSTRAINT calendars_meeting_minutes_check CHECK (((meeting_minutes >= 10) AND (meeting_minutes <= 180))),
-    CONSTRAINT calendars_provider_check CHECK (((provider = ANY (ARRAY['calcom'::text, 'external'::text, 'freebusy'::text, 'hours'::text, 'ics'::text])) OR ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'calendly'::text])) AND (archived_at IS NOT NULL)))),
+    CONSTRAINT calendars_provider_check CHECK (((provider = ANY (ARRAY['calcom'::text, 'external'::text, 'freebusy'::text, 'hours'::text, 'ics'::text, 'gcal'::text, 'outlook'::text])) OR ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'calendly'::text])) AND (archived_at IS NOT NULL)))),
     CONSTRAINT calendars_rules_check CHECK ((((buffer_minutes >= 0) AND (buffer_minutes <= 120)) AND ((notice_minutes >= 0) AND (notice_minutes <= 10080)) AND ((daily_cap IS NULL) OR ((daily_cap >= 1) AND (daily_cap <= 50))) AND ((window_days >= 1) AND (window_days <= 60))))
 );
 
@@ -8786,4 +8786,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022231119'),
     ('20261022232416'),
     ('20261022233319'),
-    ('20261023140016');
+    ('20261023140016'),
+    ('20261023143657');
