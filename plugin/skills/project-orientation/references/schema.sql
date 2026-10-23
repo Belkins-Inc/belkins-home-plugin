@@ -792,7 +792,7 @@ CREATE TABLE public.client_project_grants (
     ended_at timestamp with time zone,
     ended_by uuid,
     ended_via public.actor_via,
-    CONSTRAINT client_project_grants_check CHECK ((((ended_at IS NULL) = (ended_by IS NULL)) AND ((ended_at IS NULL) = (ended_via IS NULL)))),
+    CONSTRAINT client_project_grants_check CHECK ((((ended_at IS NULL) = (ended_via IS NULL)) AND ((ended_at IS NOT NULL) OR (ended_by IS NULL)) AND ((ended_at IS NULL) OR (ended_by IS NOT NULL) OR (ended_via = 'engine'::public.actor_via)))),
     CONSTRAINT client_project_grants_role_check CHECK ((role = ANY (ARRAY['owner'::text, 'member'::text])))
 );
 
@@ -2163,6 +2163,28 @@ CREATE TABLE public.project_senders (
 
 
 --
+-- Name: project_subscriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.project_subscriptions (
+    project_id uuid NOT NULL,
+    stripe_customer_id text NOT NULL,
+    stripe_subscription_id text,
+    status text,
+    current_period_end timestamp with time zone,
+    plan_name text,
+    amount_cents bigint,
+    currency text,
+    last_event_id text,
+    last_event_at timestamp with time zone,
+    linked_by uuid NOT NULL,
+    linked_via public.actor_via NOT NULL,
+    linked_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: projects; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3000,6 +3022,19 @@ CREATE TABLE public.strategy_steps (
     CONSTRAINT strategy_steps_delay_days_check CHECK ((delay_days >= 0)),
     CONSTRAINT strategy_steps_position_check CHECK (("position" >= 1)),
     CONSTRAINT strategy_steps_without_note_check CHECK (((NOT without_note) OR (channel = 'linkedin_invite'::text)))
+);
+
+
+--
+-- Name: stripe_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stripe_events (
+    id text NOT NULL,
+    type text NOT NULL,
+    received_at timestamp with time zone DEFAULT now() NOT NULL,
+    project_id uuid,
+    note text
 );
 
 
@@ -3980,6 +4015,30 @@ ALTER TABLE ONLY public.project_senders
 
 
 --
+-- Name: project_subscriptions project_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_subscriptions
+    ADD CONSTRAINT project_subscriptions_pkey PRIMARY KEY (project_id);
+
+
+--
+-- Name: project_subscriptions project_subscriptions_stripe_customer_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_subscriptions
+    ADD CONSTRAINT project_subscriptions_stripe_customer_id_key UNIQUE (stripe_customer_id);
+
+
+--
+-- Name: project_subscriptions project_subscriptions_stripe_subscription_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_subscriptions
+    ADD CONSTRAINT project_subscriptions_stripe_subscription_id_key UNIQUE (stripe_subscription_id);
+
+
+--
 -- Name: projects projects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4337,6 +4396,14 @@ ALTER TABLE ONLY public.strategy_steps
 
 ALTER TABLE ONLY public.strategy_steps
     ADD CONSTRAINT strategy_steps_plan_id_position_condition_key UNIQUE (plan_id, "position", condition);
+
+
+--
+-- Name: stripe_events stripe_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stripe_events
+    ADD CONSTRAINT stripe_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -5164,6 +5231,13 @@ CREATE INDEX ix_spend__project_at ON public.spend USING btree (project_id, at);
 --
 
 CREATE INDEX ix_strategy_contacts__persona ON public.strategy_contacts USING btree (persona_id, status);
+
+
+--
+-- Name: ix_stripe_events__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_stripe_events__project ON public.stripe_events USING btree (project_id) WHERE (project_id IS NOT NULL);
 
 
 --
@@ -7393,6 +7467,22 @@ ALTER TABLE ONLY public.project_senders
 
 
 --
+-- Name: project_subscriptions project_subscriptions_linked_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_subscriptions
+    ADD CONSTRAINT project_subscriptions_linked_by_fkey FOREIGN KEY (linked_by) REFERENCES public.users(id);
+
+
+--
+-- Name: project_subscriptions project_subscriptions_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_subscriptions
+    ADD CONSTRAINT project_subscriptions_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
 -- Name: projects projects_agent_enabled_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8241,6 +8331,14 @@ ALTER TABLE ONLY public.strategy_steps
 
 
 --
+-- Name: stripe_events stripe_events_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stripe_events
+    ADD CONSTRAINT stripe_events_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE SET NULL;
+
+
+--
 -- Name: system_mail_domains system_mail_domains_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8787,4 +8885,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261022232416'),
     ('20261022233319'),
     ('20261023140016'),
-    ('20261023143657');
+    ('20261023143657'),
+    ('20261023145708');

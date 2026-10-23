@@ -40,6 +40,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   project members | project member <user-id> [--role owner|member] | project member remove <user-id>
   orgs | org create <slug> --name <name> [--billing external|stripe]   organisations you belong to (the platform admin: all)
   org billing <slug> external|stripe   stripe: Dylan's clients; external: billed outside the platform (platform admin)
+  billing [--project <slug>]           the project's Stripe subscription, as Stripe last said it
+  billing link <cus_…>                 link the project to its Stripe customer (a stripe organisation's project only)
   org members <org> | org add <org> --email <e> [--name <n>] [--role admin|member] | org role <org> <user-id> --role admin|member | org remove <org> <user-id>
   project update [--name <n>] [--timezone <tz>] [--domain-cap <n>] [--brief <text> | --brief-file <path>]   (a person only)
   brief [--project <slug>]              read this first, every session
@@ -1504,6 +1506,10 @@ async function main(argv: string[]): Promise<void> {
       return out(await call(config, 'GET', `/projects/${p()}/goals`))
     case 'orgs':
       return out(await call(config, 'GET', '/orgs'))
+    case 'billing':
+      if (sub === 'link')
+        return out(await call(config, 'PUT', `/projects/${p()}/subscription`, { customerId: arg }))
+      return out(await call(config, 'GET', `/projects/${p()}/subscription`))
     case 'org':
       if (sub === 'create')
         return out(
