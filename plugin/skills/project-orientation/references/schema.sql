@@ -1616,7 +1616,7 @@ CREATE TABLE public.linkedin_people (
 
 CREATE TABLE public.linkedin_posts (
     id uuid DEFAULT uuidv7() NOT NULL,
-    project_id uuid NOT NULL,
+    project_id uuid,
     linkedin_account_id uuid NOT NULL,
     page_id text,
     page_name text,
@@ -1637,8 +1637,10 @@ CREATE TABLE public.linkedin_posts (
     cancelled_by uuid,
     cancelled_via public.actor_via,
     cancelled_at timestamp with time zone,
+    company_id uuid,
     CONSTRAINT linkedin_posts_check CHECK (((page_id IS NULL) OR (page_name IS NOT NULL))),
     CONSTRAINT linkedin_posts_first_comment_check CHECK (((length(first_comment) >= 1) AND (length(first_comment) <= 1250))),
+    CONSTRAINT linkedin_posts_owner CHECK ((num_nonnulls(project_id, company_id) = 1)),
     CONSTRAINT linkedin_posts_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'publishing'::text, 'published'::text, 'failed'::text, 'cancelled'::text]))),
     CONSTRAINT linkedin_posts_text_check CHECK (((length(text) >= 1) AND (length(text) <= 3000)))
 );
@@ -4926,6 +4928,13 @@ CREATE INDEX ix_linkedin_posts__account ON public.linkedin_posts USING btree (li
 
 
 --
+-- Name: ix_linkedin_posts__company; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_linkedin_posts__company ON public.linkedin_posts USING btree (company_id, publish_at) WHERE (company_id IS NOT NULL);
+
+
+--
 -- Name: ix_linkedin_posts__due; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6889,6 +6898,14 @@ ALTER TABLE ONLY public.linkedin_events
 
 ALTER TABLE ONLY public.linkedin_posts
     ADD CONSTRAINT linkedin_posts_cancelled_by_fkey FOREIGN KEY (cancelled_by) REFERENCES public.users(id);
+
+
+--
+-- Name: linkedin_posts linkedin_posts_company_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_posts
+    ADD CONSTRAINT linkedin_posts_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.sending_companies(id);
 
 
 --
@@ -8954,4 +8971,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261023145708'),
     ('20261023151149'),
     ('20261024181054'),
-    ('20261024184033');
+    ('20261024184033'),
+    ('20261024191144');

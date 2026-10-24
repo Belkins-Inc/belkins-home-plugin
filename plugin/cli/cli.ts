@@ -243,6 +243,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          a person's mailboxes across the company's domains, or the whole company's, in
                                          one call (a person only): one a domain each, all ordered or none
   company warmup <org> <company> on|off  its mailboxes warm without a client (a person only; docs/decisions/warmup.md)
+  company posts <org> <company> [--status scheduled|publishing|published|failed|cancelled]   its page's posts, by time
+  company post <org> <company> --file <json|jsonl|-> [--dry-run]   schedules posts as its LinkedIn page, all or none,
+                                         with no client project (its admin only): each on an account of one of its
+                                         people who manages the page, as in linkedin post, pageId always given
+                                         (bh linkedin pages <account id>); cancel one with linkedin post cancel
   calendars                              the project's calendars: state, event type or booking link, last sync
   calendar connect --sender <id> [--key <Cal.com API key> [--event-type <id>]]
                                          the sender's Cal.com; without a key, a URL to open: sign in to
@@ -795,11 +800,34 @@ async function company(
         throw new BhError('On or off?', { hint: `bh company warmup ${org} <company> on` }, 2)
       return out(await call(config, 'POST', `${one()}/warmup/${to}`, {}))
     }
+    case 'posts':
+      return out(
+        await call(
+          config,
+          'GET',
+          `${one()}/linkedin-posts?${new URLSearchParams(text('status') ? { status: text('status')! } : {})}`,
+        ),
+      )
+    case 'post':
+      if (!text('file'))
+        throw new BhError(
+          'Which posts?',
+          {
+            hint: `bh company post ${org} <company> --file posts.json   [{"linkedinAccountId","pageId","publishAt","text","firstComment"}]`,
+          },
+          2,
+        )
+      return out(
+        await call(config, 'POST', `${one()}/linkedin-posts`, {
+          posts: await readRows(text('file')!),
+          dryRun: Boolean(o['dry-run']),
+        }),
+      )
   }
   throw new BhError(
     `bh company has no ${sub}`,
     {
-      hint: 'list, show, add, update, add-person, remove-person, domains, remove-domain, order or warmup',
+      hint: 'list, show, add, update, add-person, remove-person, domains, remove-domain, order, warmup, posts or post',
     },
     2,
   )
