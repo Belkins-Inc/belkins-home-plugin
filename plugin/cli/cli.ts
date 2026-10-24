@@ -488,6 +488,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   linkedin code|password <id>            its authenticator code now, or its password (both recorded)
   linkedin created|verified <id> [--owner <user id|none>] [--undo]   marks it made on LinkedIn, or through its checks
   linkedin owner <id> <user id|none>     who works in its browser
+  linkedin email-link <id>               opens LinkedIn's latest link to confirm an added address (last 30 minutes,
+                                         from its mailbox) in its open browser, on its own IP
+  linkedin mailbox <id> --workplace      its LinkedIn codes read from its person's workplace mailbox (an account
+                                         that was theirs before they joined a company; refused until it is
+                                         connected); the address on LinkedIn itself is changed in its browser
   linkedin archive <id> [--undo]         after the undo window: signed out of Unipile, its IP never given again
   linkedin link <id>                     a link to its browser for its owner: opened within 15 minutes, on one
                                          device, which then works in it for an hour; a newer link stops it
@@ -879,6 +884,7 @@ async function main(argv: string[]): Promise<void> {
       wait: { type: 'boolean' },
       'no-browser': { type: 'boolean' },
       totp: { type: 'boolean' },
+      workplace: { type: 'boolean' },
       'sign-up': { type: 'boolean' },
       browser: { type: 'boolean' },
       first: { type: 'string' },
@@ -3158,6 +3164,19 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'PUT', path, o.owner ? { ownerId: orNone(String(o.owner)) } : {}),
         )
+      }
+      if (sub === 'email-link')
+        return out(await call(config, 'POST', `${account()}/browser/email-link`, {}))
+      if (sub === 'mailbox') {
+        if (!o.workplace)
+          throw new BhError(
+            'Which mailbox?',
+            {
+              hint: 'bh linkedin mailbox <id> --workplace: the codes come from its person’s workplace mailbox',
+            },
+            2,
+          )
+        return out(await call(config, 'PUT', `${account()}/mailbox`, { workplace: true }))
       }
       if (sub === 'owner') {
         const who = pos[3]
