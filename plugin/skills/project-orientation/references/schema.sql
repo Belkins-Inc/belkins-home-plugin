@@ -1059,10 +1059,13 @@ CREATE TABLE public.domains (
     moved_by uuid,
     moved_via public.actor_via,
     company_id uuid,
+    purchase text DEFAULT 'new'::text NOT NULL,
+    claimed_at timestamp with time zone,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
     CONSTRAINT domains_company_check CHECK (((company_id IS NULL) OR (organisation_id IS NOT NULL))),
     CONSTRAINT domains_one_owner CHECK ((num_nonnulls(project_id, organisation_id) <= 1)),
     CONSTRAINT domains_one_tenant CHECK (((tenant_id IS NULL) OR (microsoft_tenant_id IS NULL))),
+    CONSTRAINT domains_purchase_check CHECK ((purchase = ANY (ARRAY['new'::text, 'closeout'::text]))),
     CONSTRAINT domains_registrar_check CHECK (((registrar IS NULL) OR (registrar = ANY (ARRAY['porkbun'::text])))),
     CONSTRAINT domains_status_check CHECK ((status = ANY (ARRAY['external'::text, 'approved'::text, 'buying'::text, 'registered'::text, 'attaching'::text, 'ready'::text, 'failed'::text, 'released'::text]))),
     CONSTRAINT domains_supplier_check CHECK (((supplier IS NULL) OR (supplier = ANY (ARRAY['zapmail'::text, 'workspace'::text, 'microsoft'::text]))))
@@ -8934,4 +8937,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261023140016'),
     ('20261023143657'),
     ('20261023145708'),
-    ('20261023151149');
+    ('20261023151149'),
+    ('20261024181054');

@@ -204,8 +204,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          --ramp: invitations climb from 5 a day, 5 more a week, to the limit
                                          (default yes for a person of an agency company)
   agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
+  agency closeouts <org> [--query <word>] [--age-min <years>] [--price-max-cents <n>] [--tld <tld>] [--limit <n>]
+                                         aged expired domains at a fixed price, as domain closeouts
   agency approve <org> <name>… --max-cents <n> [--redirect <url>] [--platform google|microsoft] [--tenant <name|id>]
-       [--company <name|id>]
+       [--company <name|id>] [--closeout]
                                          buy them for the agency (its admin only); --platform picks where the
                                          mailboxes on them live (default google), --tenant which of that platform's
                                          tenants (default: the oldest in the default pool with room); --company: they
@@ -305,8 +307,13 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          Leads already enrolled keep theirs until strategy repick-mailboxes
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
   domain quote <name> [<name>…]          availability and price at the registrar (free)
+  domain closeouts [--query <word>] [--age-min <years, 5>] [--price-max-cents <n>] [--tld <com>] [--limit <n, 20>]
+                                         aged expired domains at a fixed price, oldest first, without the ones on a
+                                         domain blocklist or with a Spamhaus abuse history (refused says why);
+                                         priceCents is the closeout alone, the first year comes on top
   domain approve <name> [<name>…] --max-cents <n> [--redirect <client site url>] [--platform google|microsoft]
-                 [--tenant <name|id>]    buy them (a person only):
+                 [--tenant <name|id>] [--closeout]   buy them (a person only); --closeout buys
+                                         closeouts: claimed, in our account days later, then as below:
                                          the engine buys, dresses DNS and puts each in a Workspace tenant
                                          (--tenant names it; default: the oldest in the default pool with room)
   domain dkim <name> --record <TXT value> [--selector google]   publish the DKIM record minted in the
@@ -608,6 +615,20 @@ function defaultPool(value: string | undefined): { defaultPool?: boolean } {
   throw new BhError(`--default-pool takes yes or no, not ${value}`, {}, 2)
 }
 
+/** A closeout search's filters as a query string; what is not given is left to the engine. */
+function closeoutQuery(o: Record<string, string | boolean | undefined>): URLSearchParams {
+  const q = new URLSearchParams()
+  const pairs: [string, string | boolean | undefined][] = [
+    ['query', o.query],
+    ['ageMin', o['age-min']],
+    ['priceMaxCents', o['price-max-cents']],
+    ['tld', o.tld],
+    ['limit', o.limit],
+  ]
+  for (const [k, v] of pairs) if (typeof v === 'string' && v) q.set(k, v)
+  return q
+}
+
 /** `--<name> yes|no` as a boolean field of the same name; absent when not given. */
 function yesNo(name: string, value: string | undefined): Record<string, boolean> {
   if (value === undefined) return {}
@@ -856,6 +877,10 @@ async function main(argv: string[]): Promise<void> {
       'client-id': { type: 'string' },
       cert: { type: 'string' },
       'max-cents': { type: 'string' },
+      closeout: { type: 'boolean' },
+      'age-min': { type: 'string' },
+      'price-max-cents': { type: 'string' },
+      tld: { type: 'string' },
       redirect: { type: 'string' },
       record: { type: 'string' },
       type: { type: 'string' },
@@ -1586,11 +1611,14 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'POST', `/orgs/${arg}/domains/quote`, { domains: pos.slice(3) }),
         )
+      if (sub === 'closeouts')
+        return out(await call(config, 'GET', `/orgs/${arg}/domains/closeouts?${closeoutQuery(o)}`))
       if (sub === 'approve')
         return out(
           await call(config, 'POST', `/orgs/${arg}/domains`, {
             domains: pos.slice(3),
             maxCents: Number(o['max-cents']),
+            ...(o.closeout ? { closeout: true } : {}),
             ...(o.redirect ? { redirectTo: o.redirect } : {}),
             ...(o.platform ? { platform: o.platform } : {}),
             ...(o.tenant ? { tenant: o.tenant } : {}),
@@ -2410,11 +2438,16 @@ async function main(argv: string[]): Promise<void> {
       const names = pos.slice(2)
       if (sub === 'quote')
         return out(await call(config, 'POST', `/projects/${p()}/domains/quote`, { domains: names }))
+      if (sub === 'closeouts')
+        return out(
+          await call(config, 'GET', `/projects/${p()}/domains/closeouts?${closeoutQuery(o)}`),
+        )
       if (sub === 'approve')
         return out(
           await call(config, 'POST', `/projects/${p()}/domains`, {
             domains: names,
             maxCents: Number(o['max-cents']),
+            ...(o.closeout ? { closeout: true } : {}),
             ...(o.redirect ? { redirectTo: o.redirect } : {}),
             ...(o.platform ? { platform: o.platform } : {}),
             ...(o.tenant ? { tenant: o.tenant } : {}),

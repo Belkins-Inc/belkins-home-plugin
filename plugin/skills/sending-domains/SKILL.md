@@ -67,6 +67,30 @@ bh domain approve getacme.com tryacme.com --max-cents 1500 --redirect https://ac
 Nothing is bought by the command itself: the row is the approval, and the engine buys on its next
 pass.
 
+### Aged domains (closeouts)
+
+An expired domain several years old, sold at a fixed price, starts with a much better domain
+reputation than a new one. Spamhaus scores a new domain about −1.9 on age alone, and a 15–20 year
+old one +8 to +12. It does not carry the client's brand, so it suits a company of the agency's own
+(a generic company-like name) better than a lookalike. Use it only when the person asks for aged
+domains.
+
+```sh
+bh domain closeouts --age-min 10 --price-max-cents 500 [--query <word>] [--limit 20]
+bh domain approve <name> --closeout --max-cents <total> --redirect <url>
+```
+
+- `closeouts` lists the oldest first and leaves out names on a domain blocklist, with a Spamhaus
+  abuse history, or that read as a typo of another site (`refused` says why). Read what is left
+  yourself: drop adult, gambling, pharma and other brands' names, then show the person the list.
+- `priceCents` is the closeout alone; the first year comes on top (about $11 for `.com`), so the
+  total is $16 for a $5 closeout. The approval refuses a `--max-cents` below the total and says
+  what it should be.
+- The engine claims it on its next pass (`buying`). It reaches our account days later; then the
+  engine points it at our name servers, removes the last owner's mail records and sets it up like
+  a new domain. Ten days without it arriving shows as its `failure` in `bh domains`. Ask the
+  person to raise it with Porkbun.
+
 ## 4. Order the mailboxes (a person)
 
 Mailboxes can be ordered right after the approval; each order waits until its domain is ready.
