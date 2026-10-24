@@ -228,7 +228,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          (its admin only) a company of a pod takes the pod's tenants unless named
   company update <org> <company> [--name] [--domain] [--site] [--linkedin] [--address] [--country] [--pod] [--google-tenant]
        [--microsoft-tenant] [--egress <host name|none>] [--status building|active|retired]   none clears a field
-  company add-person <org> <company> <sender id> | company remove-person <org> <company> <sender id>
+  company add-person <org> <company> --name <full name> [--title <t>] | <sender id>
+       [--username <u>] [--sending yes|no] [--domains <d1,d2>] [--linkedin yes|no] [--warmup yes|no]
+                                         onboards a person (a person only): an agency sender working there, their
+                                         workplace mailbox first@<main domain> and one sending mailbox on each domain of
+                                         the half their pair shares (--sending no: the workplace one only), the
+                                         company's warm-up on, and their LinkedIn account made by the engine once the
+                                         workplace mailbox is connected; bh company show says where each person stands
+  company remove-person <org> <company> <sender id>
   company domains <org> <company> <domain>…   domains the agency holds, put under the company
   company remove-domain <org> <company> <domain>
   company order <org> <company> --sender <id> --first-name <n> --last-name <n> --username <u> --domains <d1,d2,…>
@@ -714,16 +721,42 @@ async function company(
         : ((await call(config, 'GET', one())) as { id: string })
       return out({ ...changed, ...(await egress(changed.id)) })
     }
-    case 'add-person':
+    case 'add-person': {
+      // The whole onboarding: sender, mailboxes, warm-up and the LinkedIn account asked for.
+      const sender = more[0] ?? text('sender')
+      if (!sender && !text('name'))
+        throw new BhError(
+          'Who?',
+          {
+            hint: `bh company add-person ${org} <company> --name "Anna Reyes" [--title "…"], or a sender id`,
+          },
+          2,
+        )
+      const domains = text('domains')
+      return out(
+        await call(config, 'POST', `${one()}/onboard`, {
+          ...(sender ? { senderId: sender } : { name: text('name') }),
+          ...(text('title') ? { title: text('title') } : {}),
+          ...(text('username') ? { username: text('username') } : {}),
+          ...(domains
+            ? {
+                domains: domains
+                  .split(',')
+                  .map((d) => d.trim())
+                  .filter(Boolean),
+              }
+            : {}),
+          ...yesNo('sending', text('sending')),
+          ...yesNo('linkedin', text('linkedin')),
+          ...yesNo('warmup', text('warmup')),
+        }),
+      )
+    }
     case 'remove-person': {
       const sender = more[0]
       if (!sender)
         throw new BhError('Which person?', { hint: `bh agency senders ${org} lists their ids` }, 2)
-      return out(
-        sub === 'add-person'
-          ? await call(config, 'POST', `${one()}/people`, { senderId: sender })
-          : await call(config, 'DELETE', `${one()}/people/${encodeURIComponent(sender)}`),
-      )
+      return out(await call(config, 'DELETE', `${one()}/people/${encodeURIComponent(sender)}`))
     }
     case 'domains':
       if (!more.length)
@@ -864,6 +897,8 @@ async function main(argv: string[]): Promise<void> {
       pod: { type: 'string' },
       domains: { type: 'string' },
       ramp: { type: 'string' },
+      sending: { type: 'string' },
+      warmup: { type: 'string' },
       tenant: { type: 'string' },
       env: { type: 'string' },
       platform: { type: 'string' },

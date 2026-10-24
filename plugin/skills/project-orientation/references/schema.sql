@@ -2599,7 +2599,14 @@ CREATE TABLE public.senders (
     organisation_id uuid,
     signature_html text,
     company_id uuid,
+    linkedin_wanted_at timestamp with time zone,
+    linkedin_wanted_by uuid,
+    linkedin_wanted_via public.actor_via,
+    linkedin_waiting text,
+    linkedin_waiting_at timestamp with time zone,
     CONSTRAINT senders_company_check CHECK (((company_id IS NULL) OR (organisation_id IS NOT NULL))),
+    CONSTRAINT senders_linkedin_waiting_check CHECK ((((linkedin_waiting IS NULL) OR (linkedin_wanted_at IS NOT NULL)) AND ((linkedin_waiting IS NULL) = (linkedin_waiting_at IS NULL)))),
+    CONSTRAINT senders_linkedin_wanted_check CHECK ((num_nonnulls(linkedin_wanted_at, linkedin_wanted_by, linkedin_wanted_via) = ANY (ARRAY[0, 3]))),
     CONSTRAINT senders_owner_check CHECK ((num_nonnulls(project_id, organisation_id) = 1))
 );
 
@@ -7981,6 +7988,14 @@ ALTER TABLE ONLY public.senders
 
 
 --
+-- Name: senders senders_linkedin_wanted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.senders
+    ADD CONSTRAINT senders_linkedin_wanted_by_fkey FOREIGN KEY (linkedin_wanted_by) REFERENCES public.users(id);
+
+
+--
 -- Name: senders senders_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8938,4 +8953,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261023143657'),
     ('20261023145708'),
     ('20261023151149'),
-    ('20261024181054');
+    ('20261024181054'),
+    ('20261024184033');

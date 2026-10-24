@@ -157,6 +157,10 @@ and are an organisation admin's to buy.
 
 A domain of one of the agency's own companies (the sending network) is approved with `--company
 <name>`: it goes to that company's pod tenant and a sending one redirects to the company's site. A
-company's mailboxes are ordered in one call with `bh company order <org> <company> --file <rows>`
-(each person's mailboxes on different domains), and its egress is the company's (`bh egress assign
-<host> --company <name>`); `bh company show` and `bh network` show where it all stands.
+person is added to a company in one step with `bh company add-person <org> <company> --name "<full
+name>" [--title <t>] [--sending no]`: the engine makes them a sender there, orders their workplace
+mailbox and their sending ones on their pair's half of the company's domains, switches the company's
+warm-up on and makes their LinkedIn account once the workplace mailbox is connected (`bh behaviour
+sending-network`). `bh company order` stays for mailboxes beyond that. Its egress is the company's
+(`bh egress assign <host> --company <name>`); `bh company show` (each person's onboarding) and `bh
+network` show where it all stands.
