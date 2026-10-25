@@ -229,11 +229,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   company update <org> <company> [--name] [--domain] [--site] [--linkedin] [--address] [--country] [--pod] [--google-tenant]
        [--microsoft-tenant] [--egress <host name|none>] [--status building|active|retired]   none clears a field
   company add-person <org> <company> --name <full name> [--title <t>] | <sender id>
-       [--username <u>] [--sending yes|no] [--domains <d1,d2>] [--linkedin yes|no] [--warmup yes|no]
+       [--username <u>] [--sending yes|no] [--domains <d1,d2>] [--linkedin yes|no]
                                          onboards a person (a person only): an agency sender working there, their
                                          workplace mailbox first@<main domain> and one sending mailbox on each domain of
-                                         the half their pair shares (--sending no: the workplace one only), the
-                                         company's warm-up on, and their LinkedIn account made by the engine once the
+                                         the half their pair shares (--sending no: the workplace one only), warmed as
+                                         every mailbox is, and their LinkedIn account made by the engine once the
                                          workplace mailbox is connected; bh company show says where each person stands
   company remove-person <org> <company> <sender id>
   company domains <org> <company> <domain>…   domains the agency holds, put under the company
@@ -242,7 +242,6 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
        | company order <org> <company> --file <json|jsonl|->   [{"senderId","domain","firstName","lastName","username"}]
                                          a person's mailboxes across the company's domains, or the whole company's, in
                                          one call (a person only): one a domain each, all ordered or none
-  company warmup <org> <company> on|off  its mailboxes warm without a client (a person only; docs/decisions/warmup.md)
   company posts <org> <company> [--status scheduled|publishing|published|failed|cancelled]   its page's posts, by time
   company post <org> <company> --file <json|jsonl|-> [--dry-run]   schedules posts as its LinkedIn page, all or none,
                                          with no client project (its admin only): each on an account of one of its
@@ -392,13 +391,13 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   agent run                              queue a run for the waiting work now (a person only)
   agent cancel <run-id>                  stop a queued or running run (a person only)
   agent on | agent off                   the project's switch: whether the engine starts runs by itself
-  warmup status                          the switch, the seeds, and each mailbox's ladder, notes and placement
-  warmup on | warmup off                 (a person only) on puts every mailbox on the four-week ladder on our own
-                                         seeds: three days of warm-up alone, a trickle of 1–3 outreach a day to
-                                         day 14, then 3 a day to 15 beside 15 notes (every other one the project's
-                                         copy); warmed once its domain's notes are in the inbox, it keeps 8 notes a
-                                         day going. Notes in spam hold
-                                         the ladder; below 70% in the inbox the engine holds the domain's outreach
+  warmup status                          the seeds, and each mailbox's ladder, notes and placement. Warm-up is
+                                         always on: every mailbox climbs the four-week ladder on our own seeds —
+                                         three days of warm-up alone, a trickle of 1–3 outreach a day to day 14,
+                                         then 3 a day to 15 beside 15 notes (every other one the project's copy);
+                                         warmed once its domain's notes are in the inbox, it keeps 8 notes a day
+                                         going. Notes in spam hold the ladder; below 70% in the inbox the engine
+                                         holds the domain's outreach
   warmup seeds                           our own seed organisations, Google and Microsoft 365: seeds held and
                                          ready, today's notes, spam and tabs (an admin)
   warmup seeds <admin email> [--count <n>]   adds an organisation lent to us, or tends it again: the engine keeps
@@ -758,7 +757,6 @@ async function company(
             : {}),
           ...yesNo('sending', text('sending')),
           ...yesNo('linkedin', text('linkedin')),
-          ...yesNo('warmup', text('warmup')),
         }),
       )
     }
@@ -798,12 +796,6 @@ async function company(
           2,
         )
       return out(await call(config, 'POST', `${one()}/mailboxes`, { mailboxes: rows }))
-    }
-    case 'warmup': {
-      const to = more[0]
-      if (to !== 'on' && to !== 'off')
-        throw new BhError('On or off?', { hint: `bh company warmup ${org} <company> on` }, 2)
-      return out(await call(config, 'POST', `${one()}/warmup/${to}`, {}))
     }
     case 'posts':
       return out(
@@ -932,7 +924,6 @@ async function main(argv: string[]): Promise<void> {
       domains: { type: 'string' },
       ramp: { type: 'string' },
       sending: { type: 'string' },
-      warmup: { type: 'string' },
       tenant: { type: 'string' },
       env: { type: 'string' },
       platform: { type: 'string' },
@@ -3045,8 +3036,12 @@ async function main(argv: string[]): Promise<void> {
               })
             : await call(config, 'GET', '/warmup/seeds'),
         )
-      if (sub === 'on') return out(await call(config, 'POST', `/projects/${p()}/warmup/on`, {}))
-      if (sub === 'off') return out(await call(config, 'POST', `/projects/${p()}/warmup/off`, {}))
+      if (sub === 'on' || sub === 'off')
+        throw new BhError(
+          'Warm-up is always on for every project; there is nothing to switch',
+          { hint: 'bh warmup status shows each mailbox on the ladder' },
+          2,
+        )
       break
     case 'linkedin': {
       const limits = {

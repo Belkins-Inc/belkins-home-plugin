@@ -2226,7 +2226,7 @@ CREATE TABLE public.projects (
     slack_channel text,
     slack_channel_set_by uuid,
     slack_channel_set_via public.actor_via,
-    warmup_enabled boolean DEFAULT false NOT NULL,
+    warmup_enabled boolean DEFAULT true NOT NULL,
     warmup_enabled_by uuid,
     setup_skipped text[] DEFAULT '{}'::text[] NOT NULL,
     setup_skipped_by uuid,
@@ -2631,7 +2631,7 @@ CREATE TABLE public.sending_companies (
     egress_id uuid,
     status text DEFAULT 'building'::text NOT NULL,
     status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
-    warmup_enabled boolean DEFAULT false NOT NULL,
+    warmup_enabled boolean DEFAULT true NOT NULL,
     warmup_enabled_at timestamp with time zone,
     warmup_enabled_by uuid,
     warmup_enabled_via public.actor_via,
@@ -8973,4 +8973,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261024181054'),
     ('20261024184033'),
     ('20261024191144'),
-    ('20261024194956');
+    ('20261024194956'),
+    ('20261025111624');

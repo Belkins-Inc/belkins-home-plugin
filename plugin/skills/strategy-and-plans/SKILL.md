@@ -157,7 +157,7 @@ real limits:
   first touch; count a conditional step at the share expected to fire.
 - **Email** — each mailbox sends at most its `dailyLimit` a day (`bh mailboxes`; 40 by default, 60
   the most the engine allows), on the strategy's `sendDays` only (weekdays by default). Warm-up
-  notes draw on the same day: a warmed mailbox with warm-up on keeps 8 notes a day going, so it
+  notes draw on the same day: warm-up is always on, and a warmed mailbox keeps 8 notes a day going, so it
   carries 32 outreach emails of its 40.
 - **The ladder** — a mailbox not yet `warmed` climbs for four weeks of sending days: three days of
   warm-up alone, then a trickle of 1–3 outreach emails a day to the end of its second week (about

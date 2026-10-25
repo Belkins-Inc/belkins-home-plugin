@@ -121,8 +121,8 @@ mailbox: ordered → creating → created → connecting → connected   (a `bh 
 
 DKIM is minted in the tenant's console by our console service, and a task asks a person only when
 it cannot. A domain never sends before `ready`.
-Once mailboxes are connected: warm-up (`bh warmup status`, `bh warmup on` — a person's switch), then
-the strategy can use them.
+Once mailboxes are connected, warm-up starts by itself — it is always on (`bh warmup status` shows
+the ladder) — and the strategy can use them.
 
 When something stops:
 
@@ -159,8 +159,8 @@ A domain of one of the agency's own companies (the sending network) is approved 
 <name>`: it goes to that company's pod tenant and a sending one redirects to the company's site. A
 person is added to a company in one step with `bh company add-person <org> <company> --name "<full
 name>" [--title <t>] [--sending no]`: the engine makes them a sender there, orders their workplace
-mailbox and their sending ones on their pair's half of the company's domains, switches the company's
-warm-up on and makes their LinkedIn account once the workplace mailbox is connected (`bh behaviour
+mailbox and their sending ones on their pair's half of the company's domains, warms them as every
+mailbox is warmed and makes their LinkedIn account once the workplace mailbox is connected (`bh behaviour
 sending-network`). `bh company order` stays for mailboxes beyond that. Its egress is the company's
 (`bh egress assign <host> --company <name>`); `bh company show` (each person's onboarding) and `bh
 network` show where it all stands.
