@@ -2226,12 +2226,9 @@ CREATE TABLE public.projects (
     slack_channel text,
     slack_channel_set_by uuid,
     slack_channel_set_via public.actor_via,
-    warmup_enabled boolean DEFAULT true NOT NULL,
-    warmup_enabled_by uuid,
     setup_skipped text[] DEFAULT '{}'::text[] NOT NULL,
     setup_skipped_by uuid,
     setup_skipped_via public.actor_via,
-    warmup_enabled_via public.actor_via,
     egress_id uuid,
     slack_workspace_id uuid,
     slack_client_channel_id text,
@@ -2631,10 +2628,6 @@ CREATE TABLE public.sending_companies (
     egress_id uuid,
     status text DEFAULT 'building'::text NOT NULL,
     status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
-    warmup_enabled boolean DEFAULT true NOT NULL,
-    warmup_enabled_at timestamp with time zone,
-    warmup_enabled_by uuid,
-    warmup_enabled_via public.actor_via,
     created_by uuid NOT NULL,
     created_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -7621,14 +7614,6 @@ ALTER TABLE ONLY public.projects
 
 
 --
--- Name: projects projects_warmup_enabled_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.projects
-    ADD CONSTRAINT projects_warmup_enabled_by_fkey FOREIGN KEY (warmup_enabled_by) REFERENCES public.users(id);
-
-
---
 -- Name: provider_calls provider_calls_company_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8066,14 +8051,6 @@ ALTER TABLE ONLY public.sending_companies
 
 ALTER TABLE ONLY public.sending_companies
     ADD CONSTRAINT sending_companies_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
-
-
---
--- Name: sending_companies sending_companies_warmup_enabled_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.sending_companies
-    ADD CONSTRAINT sending_companies_warmup_enabled_by_fkey FOREIGN KEY (warmup_enabled_by) REFERENCES public.users(id);
 
 
 --
@@ -8974,4 +8951,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261024184033'),
     ('20261024191144'),
     ('20261024194956'),
-    ('20261025111624');
+    ('20261025111624'),
+    ('20261025121640');
