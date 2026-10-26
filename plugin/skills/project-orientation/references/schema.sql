@@ -1227,6 +1227,7 @@ CREATE TABLE public.thread_messages (
     draft_why text,
     drafted_at timestamp with time zone,
     verdict_posted_at timestamp with time zone,
+    attachments jsonb,
     CONSTRAINT thread_messages_classification_check CHECK ((classification = ANY (ARRAY['interested'::text, 'meeting'::text, 'question'::text, 'not_now'::text, 'referral'::text, 'not_interested'::text, 'unsubscribe'::text, 'wrong_person'::text, 'acknowledgement'::text, 'out_of_office'::text, 'other'::text]))),
     CONSTRAINT thread_messages_direction_check CHECK ((direction = ANY (ARRAY['in'::text, 'out'::text]))),
     CONSTRAINT thread_messages_draft_verdict_check CHECK ((draft_verdict = ANY (ARRAY['draft'::text, 'none'::text, 'agent'::text]))),
@@ -8990,4 +8991,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261025121640'),
     ('20261025230355'),
     ('20261026102429'),
-    ('20261026104719');
+    ('20261026104719'),
+    ('20261026111623');

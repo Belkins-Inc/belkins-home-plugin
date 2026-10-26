@@ -2,11 +2,12 @@
 // bh — the team's CLI for the engine's API (docs/decisions/tools.md). JSON out; errors verbatim.
 
 import { readFile, writeFile } from 'node:fs/promises'
+import { basename } from 'node:path'
 import { parseArgs } from 'node:util'
 
 import { merge, refusedIn, sendRows } from './batch.ts'
 import { consoleLogin, meetbotLogin } from './console-login.ts'
-import { BhError, call, callText } from './client.ts'
+import { BhError, call, callFile, callText } from './client.ts'
 import { readDncCsv } from './csv.ts'
 import {
   CONFIG_PATH,
@@ -514,6 +515,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          writes again; the note says why, for whoever reads the
                                          thread later (again on a closed thread: replaces the note)
   thread reopen <id>                     takes "no answer needed" back
+  thread attachments <message-id>        the files a message carried, read from its mailbox
+  thread attachment <message-id> <n> [--out <file>]   saves file n (from the list) here, under its own name or --out
   thread stage <id> opportunity|proposal|won|lost|none   where the deal with its lead stands after they answered
   triage <message-id> [--class <c>] [--note <t>] [--follow-up <yyyy-mm-dd>] [--return <yyyy-mm-dd>]
   triage undo <message-id>              take it back: an unsubscribe within 60 s, or back into the queue
@@ -2119,6 +2122,27 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'POST', `/threads/${arg}/close`, { note: o.note }))
       }
       if (sub === 'reopen') return out(await call(config, 'POST', `/threads/${arg}/reopen`, {}))
+      if (sub === 'attachments') {
+        if (!arg)
+          throw new BhError('Which message?', { hint: 'bh thread <thread-id> lists them' }, 2)
+        return out(await call(config, 'GET', `/thread-messages/${arg}/attachments`))
+      }
+      if (sub === 'attachment') {
+        const n = pos[3]
+        if (!arg || !n)
+          throw new BhError(
+            'Which message, and which of its files?',
+            {
+              hint: 'bh thread attachments <message-id> lists them; then bh thread attachment <message-id> 1',
+            },
+            2,
+          )
+        const file = await callFile(config, `/thread-messages/${arg}/attachments/${n}`)
+        // Its own name, kept to this directory: a name like ../x must not write elsewhere.
+        const saved = o.out ?? basename(file.name ?? `attachment-${n}`)
+        await writeFile(saved, file.content)
+        return out({ saved, type: file.type, bytes: file.content.length })
+      }
       if (sub === 'stage') {
         const stage = pos[3]
         if (!arg || !stage)

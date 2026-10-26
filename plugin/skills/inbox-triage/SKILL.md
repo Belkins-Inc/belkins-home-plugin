@@ -53,7 +53,10 @@ there are many:
 
 1. **Read the thread** when the class is not obvious from the reply alone, and always before
    drafting: `bh thread <threadId>`. It shows every message both ways and our replies in any state;
-   a draft may already exist.
+   a draft may already exist. A message's `attachments` are the files it carried (a PDF, a signed
+   form): `bh thread attachment <messageId> <n>` saves file `n` here to read it. `bh thread
+   attachments <messageId>` reads the list from the mailbox when `attachments` is null (stored
+   before files were kept).
 2. **Decide the class** against references/classes.md. Resolve dates against the reply's day in the
    lead's time zone: `--follow-up` for `not_now` (the first day of a named month or quarter, the next
    occurrence), `--return` for `out_of_office` (the first day back).

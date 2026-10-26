@@ -54,3 +54,29 @@ export async function callText(config: BhConfig, path: string): Promise<string> 
     )
   return text
 }
+
+/** A request whose answer is a file of any kind (a reply's attachment), with the name it was sent under. */
+export async function callFile(
+  config: BhConfig,
+  path: string,
+): Promise<{ name: string | null; type: string; content: Buffer }> {
+  const api = process.env.BH_API || config.api
+  if (!api) throw new BhError('No API set', { hint: 'bh login' }, 2)
+  const token = process.env.BH_TOKEN || config.token
+  const response = await fetch(`${api.replace(/\/+$/, '')}${path}`, {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  })
+  if (!response.ok) {
+    const text = await response.text()
+    throw new BhError(
+      `GET ${path} → ${response.status}`,
+      text ? (JSON.parse(text) as unknown) : null,
+    )
+  }
+  const named = /filename\*=UTF-8''([^;]+)/i.exec(response.headers.get('content-disposition') ?? '')
+  return {
+    name: named?.[1] ? decodeURIComponent(named[1]) : null,
+    type: response.headers.get('content-type') ?? 'application/octet-stream',
+    content: Buffer.from(await response.arrayBuffer()),
+  }
+}
