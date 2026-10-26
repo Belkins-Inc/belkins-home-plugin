@@ -872,7 +872,8 @@ CREATE TABLE public.client_sign_in_challenges (
     attempts integer DEFAULT 0 NOT NULL,
     expires_at timestamp with time zone NOT NULL,
     consumed_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    preview_project_id uuid
 );
 
 
@@ -2676,6 +2677,7 @@ CREATE TABLE public.sessions (
     revoked_by uuid,
     revoked_via public.actor_via,
     last_seen_at timestamp with time zone,
+    preview_project_id uuid,
     CONSTRAINT sessions_audience_check CHECK ((audience = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text])))
 );
 
@@ -3218,8 +3220,10 @@ CREATE TABLE public.users (
     disabled_at timestamp with time zone,
     kind text DEFAULT 'staff'::text NOT NULL,
     slack_workspace_id uuid,
+    preview_of uuid,
     CONSTRAINT users_client_not_admin CHECK (((kind = 'staff'::text) OR (NOT is_admin))),
     CONSTRAINT users_kind_check CHECK ((kind = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text]))),
+    CONSTRAINT users_preview_is_client CHECK (((preview_of IS NULL) OR (kind = 'client'::text))),
     CONSTRAINT users_slack_workspace_check CHECK (((slack_user_id IS NULL) = (slack_workspace_id IS NULL)))
 );
 
@@ -5747,6 +5751,13 @@ CREATE UNIQUE INDEX ux_threads__linkedin_chat ON public.threads USING btree (lin
 
 
 --
+-- Name: ux_users__preview_of; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_users__preview_of ON public.users USING btree (preview_of) WHERE (preview_of IS NOT NULL);
+
+
+--
 -- Name: ux_warmup_correspondents__live; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6395,6 +6406,14 @@ ALTER TABLE ONLY public.client_reports
 
 ALTER TABLE ONLY public.client_reports
     ADD CONSTRAINT client_reports_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: client_sign_in_challenges client_sign_in_challenges_preview_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_sign_in_challenges
+    ADD CONSTRAINT client_sign_in_challenges_preview_project_id_fkey FOREIGN KEY (preview_project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 
 
 --
@@ -8078,6 +8097,14 @@ ALTER TABLE ONLY public.sending_egresses
 
 
 --
+-- Name: sessions sessions_preview_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions
+    ADD CONSTRAINT sessions_preview_project_id_fkey FOREIGN KEY (preview_project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
 -- Name: sessions sessions_revoked_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8646,6 +8673,14 @@ ALTER TABLE ONLY public.triage_holds
 
 
 --
+-- Name: users users_preview_of_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_preview_of_fkey FOREIGN KEY (preview_of) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: users users_slack_workspace_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8954,4 +8989,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261025111624'),
     ('20261025121640'),
     ('20261025230355'),
-    ('20261026102429');
+    ('20261026102429'),
+    ('20261026104719');
