@@ -89,8 +89,10 @@ there are many:
    land in the lead's working hours (their time zone, not ours) or when they asked for a moment
    ("write me Monday"); leave it off otherwise and it goes as soon as it is approved. Set
    `--approve-by` when the draft goes stale (offered slots): approval is refused after it.
-   `--sender` signs it as another sender than the lead's. Only email
-   threads take replies for now; for a LinkedIn thread open a task for a person.
+   `--sender` signs it as another sender than the lead's. A LinkedIn thread takes replies the
+   same way: the approved answer goes into the same chat from the thread's LinkedIn account, as
+   plain text with no signature, so write it as a chat message (short, no greeting block, no
+   sign-off). Nobody pastes it into LinkedIn by hand.
 5. **Follow-ups** (a person's token; a server agent opens a task instead, below):
    - `not_now` with a date: `bh reengage <inbound message id> [--on <yyyy-mm-dd>]` makes a new
      enrollment in the same strategy starting that day, with the same plan. Its copy is written
