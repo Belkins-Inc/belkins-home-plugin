@@ -31,6 +31,10 @@ stands.
   message with several questions earns several short paragraphs.
 - **Add nothing they did not ask about.** No second offer, no audit, no attachment, no suggestion
   held in reserve. A turn that needs only an acknowledgement gets one.
+- **A file only when they asked for one** (a deck, a one-pager, a filled form): `bh reply draft
+  <threadId> --attach <file>`. A PDF is best; at most three files, 2 MB together, no macros,
+  scripts or passwords, and only in an email thread where they wrote to us (`bh reply draft` says
+  why it refuses one). Say in a few words what the file is; never a message that is only the file.
 - **Do not say back what the thread already says**: their dates, their number, the time already
   agreed, what you are about to do anyway. Repeating it is the clearest sign nobody is typing.
 - **Do not recite figures** (percentages, multiples) unless the message you answer asked for them.

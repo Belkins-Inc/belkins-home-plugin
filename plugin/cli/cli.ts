@@ -525,10 +525,15 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
        [--approve-by <iso>] [--sender <id>] [--cc a@x.com,b@y.com] [--bcc c@z.com]
                                          --cc copies people in the open (left out: whom the lead's message
                                          copied, bh thread's replyCc; "" for none), --bcc without the lead seeing them
+       [--attach <file>]…                 a file to send with it (repeat for more): only in an answer to a lead who
+                                         wrote in this email thread; PDF, PNG, JPEG, .docx, .xlsx or .pptx, at most
+                                         3 and 2 MB together, no macros, scripts or passwords
   replies [--status draft|approved|sent|failed|discarded]
   reply approve <id> [--body <final text>] [--cc …] [--bcc …] (a person only) | reply discard <id>
   reply revise <id> --body <text> | --body-file <path> [--note <for the approver>] [--cc …] [--bcc …]
-                                         a new version of a draft; --cc/--bcc replace its copies ("" for none)
+       [--attach <file>]… | [--no-attach]
+                                         a new version of a draft; --cc/--bcc replace its copies ("" for none),
+                                         --attach its files (left out: it keeps them), --no-attach takes them off
   reply rewrite <id> --ask <what to change>   the server agent rewrites it (a person only) | reply versions <id>
   reply agent <thread-id> [--ask <what to say>]  the server agent writes the first draft (a person only)
   reply-templates <strategy-id>          the fixed answers the engine sends on its own, by kind of reply
@@ -620,6 +625,20 @@ const addresses = (list: string) =>
     .filter(Boolean)
 
 /** --cc and --bcc as given: a flag left out keeps what is there, an empty one clears it. */
+/** `--attach <file>`…: the files to send with an answer, as the engine takes them; `--no-attach` none. */
+async function attached(o: { attach?: string[]; 'no-attach'?: boolean }) {
+  if (o['no-attach']) return { files: [] }
+  if (!o.attach?.length) return {}
+  return {
+    files: await Promise.all(
+      o.attach.map(async (path) => ({
+        name: basename(path),
+        content: (await readFile(path)).toString('base64'),
+      })),
+    ),
+  }
+}
+
 function copies(o: { cc?: string; bcc?: string }) {
   return {
     ...(o.cc !== undefined ? { cc: addresses(o.cc) } : {}),
@@ -636,9 +655,9 @@ function defaultPool(value: string | undefined): { defaultPool?: boolean } {
 }
 
 /** A closeout search's filters as a query string; what is not given is left to the engine. */
-function closeoutQuery(o: Record<string, string | boolean | undefined>): URLSearchParams {
+function closeoutQuery(o: Record<string, unknown>): URLSearchParams {
   const q = new URLSearchParams()
-  const pairs: [string, string | boolean | undefined][] = [
+  const pairs: [string, unknown][] = [
     ['query', o.query],
     ['ageMin', o['age-min']],
     ['priceMaxCents', o['price-max-cents']],
@@ -669,7 +688,7 @@ async function company(
   config: Awaited<ReturnType<typeof loadConfig>>,
   sub: string | undefined,
   rest: string[],
-  o: Record<string, string | boolean | undefined>,
+  o: Record<string, string | string[] | boolean | undefined>,
 ) {
   const [org, ref, ...more] = rest
   const text = (key: string) => (typeof o[key] === 'string' ? (o[key] as string) : undefined)
@@ -1018,6 +1037,8 @@ async function main(argv: string[]): Promise<void> {
       class: { type: 'string' },
       cc: { type: 'string' },
       bcc: { type: 'string' },
+      attach: { type: 'string', multiple: true },
+      'no-attach': { type: 'boolean' },
       'follow-up': { type: 'string' },
       return: { type: 'string' },
       'body-file': { type: 'string' },
@@ -2238,6 +2259,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o['approve-by'] ? { approveBy: o['approve-by'] } : {}),
             ...(o.sender ? { senderId: o.sender } : {}),
             ...copies(o),
+            ...(await attached(o)),
           }),
         )
       }
@@ -2258,6 +2280,7 @@ async function main(argv: string[]): Promise<void> {
             body: text,
             ...(o.note ? { note: o.note } : {}),
             ...copies(o),
+            ...(await attached(o)),
           }),
         )
       }

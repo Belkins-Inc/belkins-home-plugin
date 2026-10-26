@@ -2330,10 +2330,29 @@ CREATE TABLE public.replies (
     meeting_id uuid,
     notice text,
     calendar_ics text,
+    files uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     CONSTRAINT replies_check CHECK (((status <> ALL (ARRAY['approved'::text, 'sending'::text, 'sent'::text])) OR (approved_at IS NOT NULL))),
     CONSTRAINT replies_meeting_notice_check CHECK (((notice IS NULL) = (meeting_id IS NULL))),
     CONSTRAINT replies_notice_check CHECK ((notice = ANY (ARRAY['confirmation'::text, 'reminder_day'::text, 'reminder_hour'::text, 'moved'::text, 'cancelled'::text]))),
     CONSTRAINT replies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'approved'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'discarded'::text, 'superseded'::text])))
+);
+
+
+--
+-- Name: reply_files; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reply_files (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    name text NOT NULL,
+    type text NOT NULL,
+    size integer NOT NULL,
+    sha256 text NOT NULL,
+    content bytea NOT NULL,
+    added_by uuid,
+    added_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -4122,6 +4141,14 @@ ALTER TABLE ONLY public.replies
 
 
 --
+-- Name: reply_files reply_files_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reply_files
+    ADD CONSTRAINT reply_files_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: reply_templates reply_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5168,6 +5195,13 @@ CREATE INDEX ix_provider_calls__project_at ON public.provider_calls USING btree 
 --
 
 CREATE INDEX ix_replies__thread ON public.replies USING btree (thread_id, created_at);
+
+
+--
+-- Name: ix_reply_files__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_reply_files__project ON public.reply_files USING btree (project_id);
 
 
 --
@@ -7762,6 +7796,22 @@ ALTER TABLE ONLY public.replies
 
 
 --
+-- Name: reply_files reply_files_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reply_files
+    ADD CONSTRAINT reply_files_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: reply_files reply_files_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reply_files
+    ADD CONSTRAINT reply_files_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
 -- Name: reply_templates reply_templates_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8992,4 +9042,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261025230355'),
     ('20261026102429'),
     ('20261026104719'),
-    ('20261026111623');
+    ('20261026111623'),
+    ('20261026112559');
