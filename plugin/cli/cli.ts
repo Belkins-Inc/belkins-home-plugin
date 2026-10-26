@@ -38,6 +38,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   whoami | health
   projects [--org <slug>] | project create <slug> --name <name> [--timezone <tz>] [--org <slug>] [--owner <user-id>]
   project members | project member <user-id> [--role owner|member] | project member remove <user-id>
+  project move <slug> --org <org>        move a project and all it owns to another organisation (platform admin)
   orgs | org create <slug> --name <name> [--billing external|stripe]   organisations you belong to (the platform admin: all)
   org billing <slug> external|stripe   stripe: Dylan's clients; external: billed outside the platform (platform admin)
   billing [--project <slug>]           the project's Stripe subscription, as Stripe last said it
@@ -1158,6 +1159,8 @@ async function main(argv: string[]): Promise<void> {
             ...(o.owner ? { ownerId: o.owner } : {}),
           }),
         )
+      if (sub === 'move')
+        return out(await call(config, 'PUT', `/projects/${arg}/organisation`, { org: o.org }))
       if (sub === 'members') return out(await call(config, 'GET', `/projects/${p()}/members`))
       if (sub === 'member' && arg === 'remove')
         return out(await call(config, 'DELETE', `/projects/${p()}/members/${pos[3]}`))
