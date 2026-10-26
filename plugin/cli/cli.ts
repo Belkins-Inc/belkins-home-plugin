@@ -18,7 +18,7 @@ import {
   saveConfig,
   saveSessionProject,
 } from './config.ts'
-import { readInput, readRows, readSecrets, readText } from './input.ts'
+import { readInput, readRows, readSecrets, readText, withImages } from './input.ts'
 import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
 import { setup } from './setup.ts'
 
@@ -470,9 +470,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   linkedin posts [--status scheduled|publishing|published|failed|cancelled]   this project's posts, by time
   linkedin post --file <json|jsonl|-> [--dry-run]   schedules posts, all or none; the engine publishes each at its
                                          time, then its first comment, as the same author
-                                         [{"linkedinAccountId","publishAt","text","pageId","firstComment"}]
+                                         [{"linkedinAccountId","publishAt","text","pageId","firstComment","images"}]
                                          publishAt names its offset (2026-10-22T09:00:00-04:00); without pageId the
-                                         post is the owner's own; an @ before a name in the text is a mention
+                                         post is the owner's own; an @ before a name in the text is a mention;
+                                         images: 1 to 9 PNG or JPEG paths (the file's folder unless absolute),
+                                         each at most 5 MB and 6012 px a side, shown in that order
   linkedin post cancel <post-id>         a scheduled post is not published
   linkedin accounts <org>                the organisation's LinkedIn accounts: managed ones with their IP, login,
                                          sign-in and owner, and hosted-link ones
@@ -833,13 +835,13 @@ async function company(
         throw new BhError(
           'Which posts?',
           {
-            hint: `bh company post ${org} <company> --file posts.json   [{"linkedinAccountId","pageId","publishAt","text","firstComment"}]`,
+            hint: `bh company post ${org} <company> --file posts.json   [{"linkedinAccountId","pageId","publishAt","text","firstComment","images"}]`,
           },
           2,
         )
       return out(
         await call(config, 'POST', `${one()}/linkedin-posts`, {
-          posts: await readRows(text('file')!),
+          posts: await withImages(await readRows(text('file')!), text('file')!),
           dryRun: Boolean(o['dry-run']),
         }),
       )
@@ -3132,7 +3134,7 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'post')
         return out(
           await call(config, 'POST', `/projects/${p()}/linkedin-posts`, {
-            posts: await readRows(need(o.file)),
+            posts: await withImages(await readRows(need(o.file)), need(o.file)),
             dryRun: Boolean(o['dry-run']),
           }),
         )

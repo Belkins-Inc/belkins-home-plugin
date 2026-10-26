@@ -1613,6 +1613,25 @@ CREATE TABLE public.linkedin_people (
 
 
 --
+-- Name: linkedin_post_images; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_post_images (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    linkedin_post_id uuid NOT NULL,
+    "position" integer NOT NULL,
+    name text NOT NULL,
+    type text NOT NULL,
+    size integer NOT NULL,
+    sha256 text NOT NULL,
+    content bytea NOT NULL,
+    CONSTRAINT linkedin_post_images_check CHECK (((size = octet_length(content)) AND (size <= 5242880))),
+    CONSTRAINT linkedin_post_images_position_check CHECK ((("position" >= 1) AND ("position" <= 9))),
+    CONSTRAINT linkedin_post_images_type_check CHECK ((type = ANY (ARRAY['image/png'::text, 'image/jpeg'::text])))
+);
+
+
+--
 -- Name: linkedin_posts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3786,6 +3805,22 @@ ALTER TABLE ONLY public.linkedin_events
 
 ALTER TABLE ONLY public.linkedin_people
     ADD CONSTRAINT linkedin_people_pkey PRIMARY KEY (sales_id);
+
+
+--
+-- Name: linkedin_post_images linkedin_post_images_linkedin_post_id_position_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_post_images
+    ADD CONSTRAINT linkedin_post_images_linkedin_post_id_position_key UNIQUE (linkedin_post_id, "position");
+
+
+--
+-- Name: linkedin_post_images linkedin_post_images_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_post_images
+    ADD CONSTRAINT linkedin_post_images_pkey PRIMARY KEY (id);
 
 
 --
@@ -6940,6 +6975,14 @@ ALTER TABLE ONLY public.linkedin_events
 
 
 --
+-- Name: linkedin_post_images linkedin_post_images_linkedin_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_post_images
+    ADD CONSTRAINT linkedin_post_images_linkedin_post_id_fkey FOREIGN KEY (linkedin_post_id) REFERENCES public.linkedin_posts(id) ON DELETE CASCADE;
+
+
+--
 -- Name: linkedin_posts linkedin_posts_cancelled_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9043,4 +9086,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261026102429'),
     ('20261026104719'),
     ('20261026111623'),
-    ('20261026112559');
+    ('20261026112559'),
+    ('20261026184911');

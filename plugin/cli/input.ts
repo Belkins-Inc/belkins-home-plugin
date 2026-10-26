@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { basename, dirname, resolve } from 'node:path'
 import readline from 'node:readline'
 
 import { BhError } from './client.ts'
@@ -27,6 +28,45 @@ export const readText = (path: string): Promise<string> =>
 export async function readRows(path: string): Promise<unknown[]> {
   const value = await readInput(path)
   return Array.isArray(value) ? value : [value]
+}
+
+/**
+ * Posts as a posts file gives them, each `"images": ["chart.png", …]` read into the files the engine
+ * takes ({name, content in base64}), in order. A path is the posts file's folder's unless absolute
+ * (stdin's: the working folder's). A file that cannot be read stops it all before any request.
+ */
+export async function withImages(rows: unknown[], path: string): Promise<unknown[]> {
+  const folder = path === '-' ? process.cwd() : dirname(resolve(path))
+  return Promise.all(
+    rows.map(async (row, i) => {
+      const images = (row as { images?: unknown } | null)?.images
+      if (images === undefined) return row
+      if (!Array.isArray(images) || !images.every((x) => typeof x === 'string' && x))
+        throw new BhError(
+          `Post ${i + 1}: images is a list of file paths`,
+          { hint: '"images": ["chart.png", "photo.jpg"]' },
+          2,
+        )
+      const files = await Promise.all(
+        images.map(async (image: string) => {
+          const file = resolve(folder, image)
+          try {
+            return { name: basename(file), content: (await readFile(file)).toString('base64') }
+          } catch (error) {
+            throw new BhError(
+              `Post ${i + 1}: ${image} cannot be read`,
+              {
+                error: error instanceof Error ? error.message : String(error),
+                hint: "A path is the posts file folder's unless absolute",
+              },
+              2,
+            )
+          }
+        }),
+      )
+      return { ...(row as object), images: files }
+    }),
+  )
 }
 
 function lines(path: string, text: string): unknown[] {
