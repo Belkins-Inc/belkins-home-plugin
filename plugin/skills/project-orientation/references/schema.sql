@@ -1558,6 +1558,9 @@ CREATE TABLE public.linkedin_accounts (
     browser_user_agent text,
     browser_session text,
     browser_opened_at timestamp with time zone,
+    profile_posts_at timestamp with time zone,
+    profile_posts_by uuid,
+    profile_posts_via public.actor_via,
     CONSTRAINT linkedin_accounts_managed_check CHECK (((proxy_id IS NOT NULL) OR ((credentials IS NULL) AND (sign_in_intent IS NULL)))),
     CONSTRAINT linkedin_accounts_proxy_country_check CHECK ((proxy_country ~ '^[A-Z]{2}$'::text)),
     CONSTRAINT linkedin_accounts_status_check CHECK ((status = ANY (ARRAY['new'::text, 'connecting'::text, 'checkpoint'::text, 'active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
@@ -6967,6 +6970,14 @@ ALTER TABLE ONLY public.linkedin_accounts
 
 
 --
+-- Name: linkedin_accounts linkedin_accounts_profile_posts_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_accounts
+    ADD CONSTRAINT linkedin_accounts_profile_posts_by_fkey FOREIGN KEY (profile_posts_by) REFERENCES public.users(id);
+
+
+--
 -- Name: linkedin_accounts linkedin_accounts_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9145,4 +9156,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261026112559'),
     ('20261026184911'),
     ('20261027114442'),
-    ('20261027150326');
+    ('20261027150326'),
+    ('20261027155804');

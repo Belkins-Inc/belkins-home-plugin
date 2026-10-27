@@ -478,7 +478,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          time, then its first comment, as the same author
                                          [{"linkedinAccountId","publishAt","text","pageId","firstComment","images"}]
                                          publishAt names its offset (2026-10-22T09:00:00-04:00); without pageId the
-                                         post is the owner's own; an @ before a name in the text is a mention;
+                                         post is the owner's own, refused unless profile posts are on for the
+                                         account (bh linkedin profile-posts); an @ before a name is a mention;
                                          images: 1 to 9 PNG or JPEG paths (the file's folder unless absolute),
                                          each at most 5 MB and 6012 px a side, shown in that order
   linkedin post cancel <post-id>         a scheduled post is not published
@@ -496,6 +497,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   linkedin checkpoint <id> [--code <c>]  the code LinkedIn asked for; no code waits for an approval in the app
   linkedin code|password <id>            its authenticator code now, or its password (both recorded)
   linkedin created|verified <id> [--owner <user id|none>] [--undo]   marks it made on LinkedIn, or through its checks
+  linkedin profile-posts <id> on|off     (a person) posts on its owner's own profile allowed, or not: off, it posts
+                                         only as the pages they manage
   linkedin owner <id> <user id|none>     who works in its browser
   linkedin email-link <id>               opens LinkedIn's latest link to confirm an added address (last 30 minutes,
                                          from its mailbox) in its open browser, on its own IP
@@ -3236,6 +3239,15 @@ async function main(argv: string[]): Promise<void> {
         if (o.undo) return out(await call(config, 'DELETE', path))
         return out(
           await call(config, 'PUT', path, o.owner ? { ownerId: orNone(String(o.owner)) } : {}),
+        )
+      }
+      if (sub === 'profile-posts') {
+        const path = `${account()}/profile-posts`
+        const to = pos[3]
+        if (to !== 'on' && to !== 'off')
+          throw new BhError('On or off?', { hint: `bh linkedin profile-posts ${arg} on|off` }, 2)
+        return out(
+          await call(config, to === 'on' ? 'PUT' : 'DELETE', path, to === 'on' ? {} : undefined),
         )
       }
       if (sub === 'email-link')
