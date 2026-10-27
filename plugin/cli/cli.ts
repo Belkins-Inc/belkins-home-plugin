@@ -184,6 +184,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          egresses, sent, bounces, Gmail's refusals, replies and blocks by receiving
                                          side (Google, Microsoft, Proofpoint, Mimecast, other gateways), seed
                                          verdicts — worst first
+  audit <org> <domain> [--message-file <file|->]
+                                         a sending domain as receivers read it: SPF, DKIM, DMARC, BIMI, MX, age,
+                                         blocklists and Spamhaus; with a message (its source, HTML or links) its
+                                         headers and the domains it links to; Google, Yahoo and Microsoft's
+                                         bulk-sender rules. Kept, with a link that opens it without a sign-in
+  audits <org> [--limit <n>]             the organisation's latest audits
   review subscribe <org> [--email <e>] [--timezone <tz>] [--reviews on|off] [--alerts on|off]
                                          hear the weekly review (Monday 09:00 in --timezone, Europe/Berlin by
                                          default) and alerts about your projects in Slack; an admin may add --email
@@ -1044,6 +1050,7 @@ async function main(argv: string[]): Promise<void> {
       'follow-up': { type: 'string' },
       return: { type: 'string' },
       'body-file': { type: 'string' },
+      'message-file': { type: 'string' },
       'html-file': { type: 'string' },
       'reply-to': { type: 'string' },
       'send-at': { type: 'string' },
@@ -3059,6 +3066,25 @@ async function main(argv: string[]): Promise<void> {
       if (!sub) throw new BhError('Which organisation?', { hint: 'bh mail-health belkins' }, 2)
       const q = o.days ? `?days=${Number(o.days)}` : ''
       return out(await call(config, 'GET', `/orgs/${encodeURIComponent(sub)}/mail-health${q}`))
+    }
+    case 'audit': {
+      if (!sub || !arg)
+        throw new BhError(
+          'Which organisation and domain?',
+          { hint: 'bh audit belkins brand.com' },
+          2,
+        )
+      return out(
+        await call(config, 'POST', `/orgs/${encodeURIComponent(sub)}/audits`, {
+          domain: arg,
+          ...(o['message-file'] ? { message: await readText(o['message-file']) } : {}),
+        }),
+      )
+    }
+    case 'audits': {
+      if (!sub) throw new BhError('Which organisation?', { hint: 'bh audits belkins' }, 2)
+      const q = o.limit ? `?limit=${Number(o.limit)}` : ''
+      return out(await call(config, 'GET', `/orgs/${encodeURIComponent(sub)}/audits${q}`))
     }
     case 'bounces': {
       if (!sub) throw new BhError('Which organisation?', { hint: 'bh bounces belkins' }, 2)
