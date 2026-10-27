@@ -1706,8 +1706,10 @@ CREATE TABLE public.linkedin_proxies (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid NOT NULL,
     created_via public.actor_via NOT NULL,
+    usd_month numeric(8,2) DEFAULT 4.00 NOT NULL,
     CONSTRAINT linkedin_proxies_country_check CHECK ((country ~ '^[A-Z]{2}$'::text)),
-    CONSTRAINT linkedin_proxies_port_check CHECK (((port >= 1) AND (port <= 65535)))
+    CONSTRAINT linkedin_proxies_port_check CHECK (((port >= 1) AND (port <= 65535))),
+    CONSTRAINT linkedin_proxies_usd_month_check CHECK ((usd_month >= (0)::numeric))
 );
 
 
@@ -1878,7 +1880,9 @@ CREATE TABLE public.microsoft_tenants (
     graph_probe_sent_at timestamp with time zone,
     graph_probe_token text,
     graph_probe_from public.citext,
+    seat_usd numeric(8,2) DEFAULT 4.80 NOT NULL,
     CONSTRAINT microsoft_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 900))),
+    CONSTRAINT microsoft_tenants_seat_usd_check CHECK ((seat_usd >= (0)::numeric)),
     CONSTRAINT microsoft_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
 
@@ -3461,9 +3465,11 @@ CREATE TABLE public.workspace_tenants (
     full_at timestamp with time zone,
     full_reason text,
     full_users integer,
+    seat_usd numeric(8,2) DEFAULT 8.40 NOT NULL,
     CONSTRAINT workspace_tenants_console_state_check CHECK ((console_state = ANY (ARRAY['none'::text, 'live'::text, 'expired'::text]))),
     CONSTRAINT workspace_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 600))),
     CONSTRAINT workspace_tenants_max_users_check CHECK (((max_users >= 1) AND (max_users <= 5000))),
+    CONSTRAINT workspace_tenants_seat_usd_check CHECK ((seat_usd >= (0)::numeric)),
     CONSTRAINT workspace_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
 
@@ -9157,4 +9163,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261026184911'),
     ('20261027114442'),
     ('20261027150326'),
-    ('20261027155804');
+    ('20261027155804'),
+    ('20261027212602');

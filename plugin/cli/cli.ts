@@ -374,14 +374,15 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          --max-users caps its users (default 250; Google's Business cap is 300),
                                          --default-pool no takes only domains approved into it with --tenant
   tenant update <id> [--status active|paused] [--max-domains <n>] [--max-users <n>] [--default-pool yes|no]
-                     [--admin-email <e>] [--key <file>]   (an admin)
+                     [--admin-email <e>] [--key <file>] [--seat-usd <n>]   (an admin); --seat-usd is what
+                                         a mailbox's seat costs a month, which Spend counts
   tenant add --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id> --key <private key PEM>
              --cert <certificate PEM> [--admin-email <e>] [--max-domains <n>] [--default-pool yes|no]
                                          a Microsoft 365 tenant: the app's certificate is proved against Graph and
                                          Exchange before it is kept; --admin-email records its administrator (an admin)
   tenant seats <id> --provider microsoft   its licences: bought and used; new mailboxes wait for a free one
   tenant update <id> --provider microsoft [--status active|paused] [--max-domains <n>] [--default-pool yes|no]
-                     [--admin-email <e>]
+                     [--admin-email <e>] [--seat-usd <n>]
   tenant console-login <id>              sign in to the Google Admin console through the console service's IP,
                                          so it can do DKIM (an admin; #home-alerts says when it is needed again)
   tenant console-credentials <id> --email <admin> [--totp]   the login the console service signs in with by
@@ -512,8 +513,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   linkedin member password|disable|enable <org> <user id>   (an organisation admin; passwords asked hidden)
   proxy list                             the LinkedIn IP pool: free, in use, failing, retired (the platform admin's)
   proxy add --country <US> --host <h> --port <n> --username <u> --provider <name> [--paid-until <YYYY-MM-DD>]
-                                         checked through itself first; the password is asked hidden
-  proxy update <id> [--paid-until <date|none>] [--username <u>]   a new login is checked before it is kept
+            [--usd-month <n>]           checked through itself first; the password is asked hidden; --usd-month
+                                         is what it costs a month (4.00 unless given), which Spend counts
+  proxy update <id> [--paid-until <date|none>] [--usd-month <n>] [--username <u>]   a new login is checked
+                                         before it is kept
   proxy check|retire|unretire <id>
   inbox                                  replies waiting for triage, with the engine's classification
   inbox test-send --from <our address> --to <our address> [--subject <t>] [--body <t>] [--reply]
@@ -919,6 +922,8 @@ async function main(argv: string[]): Promise<void> {
       undo: { type: 'boolean' },
       port: { type: 'string' },
       'paid-until': { type: 'string' },
+      'usd-month': { type: 'string' },
+      'seat-usd': { type: 'string' },
       remove: { type: 'boolean' },
       project: { type: 'string' },
       name: { type: 'string' },
@@ -2644,6 +2649,7 @@ async function main(argv: string[]): Promise<void> {
         ...defaultPool(o['default-pool']),
       }
       const maxUsers = o['max-users'] ? { maxUsers: Number(o['max-users']) } : {}
+      const seatUsd = o['seat-usd'] ? { seatUsd: Number(o['seat-usd']) } : {}
       if (o.provider === 'microsoft') {
         if (sub === 'add')
           return out(
@@ -2666,6 +2672,7 @@ async function main(argv: string[]): Promise<void> {
               ...(o.status ? { status: o.status } : {}),
               ...(o['admin-email'] ? { adminEmail: o['admin-email'] } : {}),
               ...room,
+              ...seatUsd,
             }),
           )
         throw new BhError(
@@ -2718,6 +2725,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.status ? { status: o.status } : {}),
             ...room,
             ...maxUsers,
+            ...seatUsd,
             ...(o['admin-email'] ? { adminEmail: o['admin-email'] } : {}),
             ...(key ? { key } : {}),
           }),
@@ -3339,6 +3347,7 @@ async function main(argv: string[]): Promise<void> {
             password,
             provider: o.provider,
             ...(o['paid-until'] ? { paidUntil: orNone(String(o['paid-until'])) } : {}),
+            ...(o['usd-month'] ? { usdMonth: Number(o['usd-month']) } : {}),
           }),
         )
       }
@@ -3348,6 +3357,7 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'PATCH', `/linkedin-proxies/${arg}`, {
             ...(o['paid-until'] ? { paidUntil: orNone(String(o['paid-until'])) } : {}),
+            ...(o['usd-month'] ? { usdMonth: Number(o['usd-month']) } : {}),
             ...(o.username ? { username: o.username, password: login[0] } : {}),
           }),
         )
