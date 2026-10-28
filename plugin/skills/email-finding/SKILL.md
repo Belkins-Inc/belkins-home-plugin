@@ -197,6 +197,6 @@ new BetterContact search is a person's session.
 - Checking the same address twice within 30 days (refused as a repeat; the verdict is already in
   `bh address checks`, the answer in `bh call show <call-id>`). `--again` pays for a fresh check —
   only when something changed.
-- Buying phones nobody asked for — only when a person wants phones, and from Apollo first (section C).
+- Buying phones nobody asked for: only when a person wants phones, and from Apollo first (section D).
 - Writing an Apollo address that Bouncer called catch-all, unknown or undeliverable — that contact
   goes to BetterContact.

@@ -50,7 +50,7 @@ condition). No advice.
 
 - `followUpOn` above is what `bh triage --follow-up` takes; `returnDate` is `bh triage --return`.
 - The engine moves a date that is not after the reply's day on by a year, and drops a malformed
-  one. An out-of-office return more than 90 days out, or none, pauses the lead for a week instead.
+  one. An out-of-office return more than 365 days out, or none, pauses the lead for a week instead.
 - The engine never sees the whole thread, only our last message and the reply. Read the thread
   (`bh thread`) when the class depends on what came before: "ok, let's do it" after a proposed time
   is `meeting`; after "shall I send the case study?" it is `interested`.

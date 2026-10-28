@@ -76,7 +76,7 @@ below). Paid enrichment stays a person's.
    Re-running `source add` with the same name updates it and keeps the fields left out;
    `bh source update <id>` changes status, cursor, estimate and the recipe (`--body`).
 4. **Put the client's hard rules in exclusions**, if `client-brief` has not: `bh exclusion add --kind
-   country|industry|business_model|employees_below|employees_above|rating_above|other --value <v>
+   country|country_outside|industry|business_model|employees_below|employees_above|rating_above|other --value <v>
    --note "<why, client's words>"`. The judge refuses to qualify a company that breaks one; the
    response lists already-qualified companies that now break it — re-judge those.
 5. **Size with free counts — companies and people.** Use counts that cost nothing: a count endpoint

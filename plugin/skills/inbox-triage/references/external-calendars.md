@@ -29,9 +29,9 @@ Chrome. A server agent cannot (below).
 2. Read the next working days' free times. Choose two or three that suit what the lead asked, in
    their working hours.
 3. Offer them as answers.md, Meetings says: the lead's own clock in the body, no zone label, no link.
-   `bh slots offer` does not apply (it holds Cal.com slots only): put the times, in the page's zone
-   and in UTC, and the calendar's name in the draft's `--note`. Nothing holds them for this lead, so
-   they are read again before booking.
+   `bh slots offer` does not apply (it holds only the slots `bh slots` lists, and a page's never
+   are): put the times, in the page's zone and in UTC, and the calendar's name in the draft's
+   `--note`. Nothing holds them for this lead, so they are read again before booking.
 
 ## Booking
 

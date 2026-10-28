@@ -172,9 +172,11 @@ real limits:
   urgent task for the project's owner and lets outreach go again once the notes are back for three
   days. A held mailbox shows `outreach_held_at`. Where each one stands:
   `bh sql "select address, daily_limit, warmed, sending_days, placement_state, outreach_held_at from mailboxes where sender_id in ('<sender-id>')"`.
-- **LinkedIn** — each account sends 15 invites and 40 messages a day (`daily_invite_limit`,
-  `daily_message_limit`), on send days. One invite per lead, so an account opens at most about 75
-  leads a week.
+- **LinkedIn**: each account sends up to 15 invites and 40 messages a day by default
+  (`daily_invite_limit`, `daily_message_limit`, changed with `bh linkedin update`), on send days.
+  An account with the ramp on (the default for one attached to a sender of an agency's company)
+  starts at 5 invites a day and adds 5 a week up to its limit. One invite per lead, so an account at
+  15 a day opens at most about 75 leads a week.
 - **Other caps** — `projects.daily_domain_cap` (3 by default) is sends per recipient company domain
   per day across the whole project, and binds when several people at one company are enrolled; a
   mailbox shared across projects gives this one only its `daily_share` of the sender; `dailyLimit` on the strategy
@@ -261,7 +263,8 @@ leads on an active strategy start sending as soon as their copy is ready, so wri
 
 ### 9. Health
 
-Signals (the engine opens a task; it never pauses by itself): hard bounces ≥ 3% of sends,
+Signals (the engine opens a task; in an organisation with autopause on it also pauses the strategy
+for bounces or opt-outs, `bh behaviour pauses-and-unsubscribes`): hard bounces ≥ 3% of sends,
 unsubscribes and complaints ≥ 2%, no replies after 200 sends. Read them only over enough volume.
 Queries: [references/queries.md](references/queries.md). Bounces mean sourcing was wrong (verify
 addresses; check the email-finding path); unsubscribes mean the segment or copy offends; silence

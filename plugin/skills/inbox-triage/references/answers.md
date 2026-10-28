@@ -70,7 +70,9 @@ stands.
   Meetings), not "let me know if you're interested". Pricing the brief does not state: say it
   depends on scope and that the call is where it gets sized; never a number.
 - **meeting** (agrees, proposes a time, asks for an invite): if they named a time the client is free
-  at, confirm it in one line in their time zone, and say the calendar invite follows.
+  at, confirm it as Meetings (below) says for that calendar: with a calendar of our own the engine
+  confirms the booking in the thread, so the draft says nothing about it; with a Cal.com calendar,
+  confirm it in one line in their time zone and say the invite follows.
   If they named a time the client is not free, or none, offer two or three free slots. If they sent
   their own booking link, do not book it yourself: the draft thanks them and the `--note` tells the
   approver to book it.
@@ -133,8 +135,9 @@ Mark it handled with `bh triage` and say why in `--note`.
 - Book when the lead plainly confirms one of the slots offered to them ("Tuesday 15:00 works"):
   `bh meeting book --thread <id> --calendar <id> --at <iso>`. The engine asks the calendar again
   and writes the event.
-  - **A calendar of our own** (`provider` `freebusy`, `ics` or `hours` in `bh calendars`): the
-    meeting is our organizer's event with a Google Meet, and the engine itself answers in the thread
+  - **A calendar of our own** (`provider` `gcal`, `outlook`, `freebusy`, `ics` or `hours` in
+    `bh calendars`): the meeting is our organizer's event with a Google Meet, and the engine
+    itself answers in the thread
     — the time in the lead's zone, the Meet link, the invitation attached — and reminds the lead a
     day and an hour before (`bh behaviour meetings`). Draft nothing about the booking: a second
     confirmation would be noise.

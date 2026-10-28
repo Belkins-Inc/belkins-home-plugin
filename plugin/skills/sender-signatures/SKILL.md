@@ -7,12 +7,13 @@ description: Build a sender's email signature — the plain-text one and an HTML
 
 Every email carries its sender's signature after the body. A sender has two:
 
-- **`signature`** — plain text. Always set: it is the text part of every email, and the whole
-  email for a sender without the HTML one.
-- **`signatureHtml`** — optional. When set, the engine sends each email as text **and** HTML
-  (multipart/alternative): the text part is exactly the body plus `signature`, the HTML part is the
-  body laid out as a mail client lays out what a person types, with `signatureHtml` after it. A
-  mail client shows the HTML one.
+- **`signature`**: plain text. Always set. Every sequence step goes out as plain text: the body,
+  then this signature after a blank line, never HTML and never a picture (`bh behaviour
+  email-sending`). A sender with only the HTML one has that sent as its text.
+- **`signatureHtml`**: optional. Only an answer in a thread uses it: the engine sends the answer as
+  text **and** HTML (multipart/alternative), the text part exactly the body plus `signature`, the
+  HTML part the body laid out as a mail client lays out what a person types, with `signatureHtml`
+  after it. A mail client shows the HTML one.
 
 An agency sender put on a project signs there with the project's own signature (it names the
 client); each of the two falls back to the sender's own when the project leaves it empty.
@@ -35,8 +36,9 @@ no social icon rows. Every link and picture is weighed by spam filters on a cold
 
 ## 2. The photo (only when asked for)
 
-A picture is sent inside every message (never from a server: Outlook blocks remote pictures, and one
-host in every client's mail is a fingerprint). It must be small.
+A picture goes only in the HTML signature, so only on answers in a thread, never on a step. It is
+sent inside the message (never from a server: Outlook blocks remote pictures, and one host in every
+client's mail is a fingerprint). It must be small.
 
 ```sh
 # 2× the size it shows at: a photo shown 100 px wide is saved 200 px wide, JPEG.
@@ -107,7 +109,7 @@ An empty `--signature-html-file` clears the HTML one: the sender goes back to pl
 
 ```sh
 bh sender signature <sender-id> --out signature-preview.html && open signature-preview.html
-bh preview <message-id>        # a written message: its text, and `html` with the photo inlined
+bh preview <message-id>        # a written step as it goes out: plain text, the signature as text
 ```
 
 Show the person the preview before any strategy sends with it. The web app shows it on the
