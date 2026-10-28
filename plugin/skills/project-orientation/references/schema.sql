@@ -1025,22 +1025,6 @@ CREATE TABLE public.dnc (
 
 
 --
--- Name: domain_audits; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.domain_audits (
-    id uuid DEFAULT uuidv7() NOT NULL,
-    organisation_id uuid NOT NULL,
-    domain public.citext NOT NULL,
-    report jsonb NOT NULL,
-    share_token text NOT NULL,
-    requested_by uuid,
-    requested_via public.actor_via NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
 -- Name: domains; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3706,22 +3690,6 @@ ALTER TABLE ONLY public.dnc
 
 
 --
--- Name: domain_audits domain_audits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.domain_audits
-    ADD CONSTRAINT domain_audits_pkey PRIMARY KEY (id);
-
-
---
--- Name: domain_audits domain_audits_share_token_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.domain_audits
-    ADD CONSTRAINT domain_audits_share_token_key UNIQUE (share_token);
-
-
---
 -- Name: domains domains_domain_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4733,13 +4701,6 @@ CREATE UNIQUE INDEX client_project_grants_active ON public.client_project_grants
 --
 
 CREATE INDEX client_project_grants_project ON public.client_project_grants USING btree (project_id);
-
-
---
--- Name: domain_audits_organisation_created_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX domain_audits_organisation_created_idx ON public.domain_audits USING btree (organisation_id, created_at DESC);
 
 
 --
@@ -6661,22 +6622,6 @@ ALTER TABLE ONLY public.dnc
 
 ALTER TABLE ONLY public.dnc
     ADD CONSTRAINT dnc_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
-
-
---
--- Name: domain_audits domain_audits_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.domain_audits
-    ADD CONSTRAINT domain_audits_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
-
-
---
--- Name: domain_audits domain_audits_requested_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.domain_audits
-    ADD CONSTRAINT domain_audits_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.users(id);
 
 
 --
@@ -9164,4 +9109,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261027114442'),
     ('20261027150326'),
     ('20261027155804'),
-    ('20261027212602');
+    ('20261027212602'),
+    ('20261028122851');
