@@ -1033,7 +1033,7 @@ CREATE TABLE public.daily_sends (
     scope text NOT NULL,
     key text NOT NULL,
     sent integer DEFAULT 0 NOT NULL,
-    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'mailbox_outreach'::text, 'domain_outreach'::text, 'mailbox_intake'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text])))
+    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'mailbox_outreach'::text, 'domain_outreach'::text, 'mailbox_intake'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text, 'organisation_leads'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
@@ -2146,8 +2146,13 @@ CREATE TABLE public.organisations (
     approved_via public.actor_via,
     stripe_customer_id text,
     wallet_cents bigint DEFAULT 0 NOT NULL,
+    autopause boolean DEFAULT false NOT NULL,
+    daily_lead_cap integer,
+    protections_set_by uuid,
+    protections_set_via public.actor_via,
     CONSTRAINT organisations_approved_check CHECK ((((approved_at IS NULL) = (approved_by IS NULL)) AND ((approved_at IS NULL) = (approved_via IS NULL)))),
     CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text, 'metered'::text]))),
+    CONSTRAINT organisations_daily_lead_cap_check CHECK (((daily_lead_cap IS NULL) OR (daily_lead_cap > 0))),
     CONSTRAINT organisations_slug_check CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{1,48}$'::text))
 );
 
@@ -2524,6 +2529,17 @@ CREATE TABLE public.provider_credit_prices (
     set_via public.actor_via NOT NULL,
     set_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT provider_credit_prices_usd_per_credit_check CHECK ((usd_per_credit > (0)::numeric))
+);
+
+
+--
+-- Name: rate_limit_hits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE UNLOGGED TABLE public.rate_limit_hits (
+    key text NOT NULL,
+    window_start timestamp with time zone NOT NULL,
+    hits integer DEFAULT 0 NOT NULL
 );
 
 
@@ -3156,6 +3172,7 @@ CREATE TABLE public.strategies (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     active_since timestamp with time zone,
     first_emails_first boolean DEFAULT false NOT NULL,
+    autopaused_at timestamp with time zone,
     CONSTRAINT strategies_catch_all_policy_check CHECK ((catch_all_policy = ANY (ARRAY['hold'::text, 'linkedin_only'::text, 'send'::text]))),
     CONSTRAINT strategies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'paused'::text, 'archived'::text])))
 );
@@ -4568,6 +4585,14 @@ ALTER TABLE ONLY public.provider_calls
 
 ALTER TABLE ONLY public.provider_credit_prices
     ADD CONSTRAINT provider_credit_prices_pkey PRIMARY KEY (provider);
+
+
+--
+-- Name: rate_limit_hits rate_limit_hits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_limit_hits
+    ADD CONSTRAINT rate_limit_hits_pkey PRIMARY KEY (key, window_start);
 
 
 --
@@ -8156,6 +8181,14 @@ ALTER TABLE ONLY public.organisations
 
 
 --
+-- Name: organisations organisations_protections_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisations
+    ADD CONSTRAINT organisations_protections_set_by_fkey FOREIGN KEY (protections_set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: personas personas_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9887,4 +9920,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028130916'),
     ('20261028131825'),
     ('20261028131827'),
-    ('20261028131831');
+    ('20261028131831'),
+    ('20261028132142');

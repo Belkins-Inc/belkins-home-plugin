@@ -92,6 +92,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   project move <slug> --org <org>        move a project and all it owns to another organisation (platform admin)
   orgs | org create <slug> --name <name> [--billing external|stripe]   organisations you belong to (the platform admin: all)
   org billing <slug> external|stripe   stripe: Dylan's clients; external: billed outside the platform (platform admin)
+  org protections <slug>               whether the engine pauses its unhealthy strategies, its daily lead cap, today's count
+  org autopause <slug> on|off          on: a strategy past a health limit is paused by the engine, not only flagged (platform admin)
+  org lead-cap <slug> <n>|off          new leads its projects may enroll a day, UTC (platform admin)
   org approve <slug>                    let an organisation that signed itself up send and buy (platform admin)
   org tier <slug> [--price <price_…>]   its platform tier and this month's leads; with --price, a Checkout link to subscribe
   wallet [--org <slug>] [--limit <n>]   a signed-up organisation's balance and ledger, newest first
@@ -1747,6 +1750,20 @@ async function main(argv: string[]): Promise<void> {
         )
       if (sub === 'billing')
         return out(await call(config, 'PATCH', `/orgs/${arg}`, { billing: pos[3] }))
+      if (sub === 'protections') return out(await call(config, 'GET', `/orgs/${arg}/protections`))
+      if (sub === 'autopause') {
+        if (pos[3] !== 'on' && pos[3] !== 'off')
+          throw new BhError(`autopause takes on or off, not ${pos[3] ?? 'nothing'}`, {}, 2)
+        return out(
+          await call(config, 'PUT', `/orgs/${arg}/protections`, { autopause: pos[3] === 'on' }),
+        )
+      }
+      if (sub === 'lead-cap') {
+        const cap = pos[3] === 'off' ? null : Number(pos[3])
+        if (cap !== null && !(Number.isInteger(cap) && cap > 0))
+          throw new BhError(`lead-cap takes a whole number above 0 or off, not ${pos[3]}`, {}, 2)
+        return out(await call(config, 'PUT', `/orgs/${arg}/protections`, { dailyLeadCap: cap }))
+      }
       if (sub === 'approve') return out(await call(config, 'POST', `/orgs/${arg}/approve`))
       if (sub === 'tier')
         return out(
