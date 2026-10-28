@@ -206,9 +206,7 @@ begin
       execute format('create table public.%I partition of public.events for values from (%L) to (%L)',
                      part, lo, hi);
     end if;
-    if exists (select 1 from pg_roles where rolname = 'bhn_reader') then
-      execute format('grant select on public.%I to bhn_reader', part);
-    end if;
+    execute format('alter table public.%I enable row level security', part);
     created := created + 1;
   end loop;
   return created;
@@ -244,6 +242,29 @@ begin
   return new;
 end
 $$;
+
+
+--
+-- Name: fence_organisations(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fence_organisations() RETURNS uuid[]
+    LANGUAGE sql STABLE PARALLEL SAFE
+    AS $$
+    select coalesce(string_to_array(nullif(current_setting('app.organisations', true), ''), ',')::uuid[], '{}')
+  $$;
+
+
+--
+-- Name: fence_projects(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fence_projects() RETURNS uuid[]
+    LANGUAGE sql STABLE SECURITY DEFINER PARALLEL SAFE
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    select coalesce(array_agg(id), '{}') from projects where organisation_id = any (fence_organisations())
+  $$;
 
 
 --
@@ -535,8 +556,11 @@ CREATE TABLE public.api_tokens (
     oauth_grant_id uuid,
     expires_at timestamp with time zone,
     surface public.actor_via,
+    organisation_id uuid,
+    agent_run_id uuid,
     CONSTRAINT api_tokens_grant_is_mcp CHECK (((oauth_grant_id IS NULL) OR (surface = 'mcp'::public.actor_via))),
     CONSTRAINT api_tokens_kind_check CHECK ((kind = ANY (ARRAY['person'::text, 'scheduled_agent'::text]))),
+    CONSTRAINT api_tokens_run_bound CHECK (((agent_run_id IS NULL) OR (organisation_id IS NOT NULL))),
     CONSTRAINT api_tokens_surface_check CHECK (((surface IS NULL) OR (surface = ANY (ARRAY['mcp'::public.actor_via, 'api'::public.actor_via]))))
 );
 
@@ -692,7 +716,7 @@ CREATE TABLE public.meetings (
 -- Name: calendar_free_slots; Type: VIEW; Schema: public; Owner: -
 --
 
-CREATE VIEW public.calendar_free_slots AS
+CREATE VIEW public.calendar_free_slots WITH (security_invoker='true') AS
  SELECT c.id AS calendar_id,
     c.project_id,
     c.priority,
@@ -1341,7 +1365,7 @@ CREATE TABLE public.threads (
 -- Name: enrollment_outcomes; Type: VIEW; Schema: public; Owner: -
 --
 
-CREATE VIEW public.enrollment_outcomes AS
+CREATE VIEW public.enrollment_outcomes WITH (security_invoker='true') AS
  SELECT id AS enrollment_id,
     strategy_id,
     segment_id,
@@ -1467,7 +1491,7 @@ CREATE TABLE public.project_goals (
 -- Name: goal_progress; Type: VIEW; Schema: public; Owner: -
 --
 
-CREATE VIEW public.goal_progress AS
+CREATE VIEW public.goal_progress WITH (security_invoker='true') AS
  SELECT g.project_id,
     g.month,
     g.meetings_target,
@@ -1514,7 +1538,7 @@ CREATE TABLE public.hypotheses (
 -- Name: inbox_queue; Type: VIEW; Schema: public; Owner: -
 --
 
-CREATE VIEW public.inbox_queue AS
+CREATE VIEW public.inbox_queue WITH (security_invoker='true') AS
  SELECT tm.id AS thread_message_id,
     tm.thread_id,
     t.project_id,
@@ -2232,7 +2256,7 @@ CREATE TABLE public.strategy_personas (
 -- Name: persona_usage; Type: VIEW; Schema: public; Owner: -
 --
 
-CREATE VIEW public.persona_usage AS
+CREATE VIEW public.persona_usage WITH (security_invoker='true') AS
  SELECT id AS persona_id,
     project_id,
     name,
@@ -3132,7 +3156,7 @@ ALTER TABLE public.spend ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 -- Name: stalled_enrollments; Type: VIEW; Schema: public; Owner: -
 --
 
-CREATE VIEW public.stalled_enrollments AS
+CREATE VIEW public.stalled_enrollments WITH (security_invoker='true') AS
  SELECT id AS enrollment_id,
     strategy_id,
     contact_id,
@@ -3203,7 +3227,7 @@ CREATE TABLE public.strategy_companies (
 -- Name: strategy_persona_usage; Type: VIEW; Schema: public; Owner: -
 --
 
-CREATE VIEW public.strategy_persona_usage AS
+CREATE VIEW public.strategy_persona_usage WITH (security_invoker='true') AS
  SELECT strategy_id,
     persona_id,
     ( SELECT count(*) AS count
@@ -3259,7 +3283,7 @@ CREATE TABLE public.strategy_segments (
 -- Name: strategy_segment_usage; Type: VIEW; Schema: public; Owner: -
 --
 
-CREATE VIEW public.strategy_segment_usage AS
+CREATE VIEW public.strategy_segment_usage WITH (security_invoker='true') AS
  SELECT strategy_id,
     segment_id,
     status,
@@ -6468,7 +6492,7 @@ ALTER INDEX public.ix_events__strategy ATTACH PARTITION public.events_default_st
 -- Name: segment_usage _RETURN; Type: RULE; Schema: public; Owner: -
 --
 
-CREATE OR REPLACE VIEW public.segment_usage AS
+CREATE OR REPLACE VIEW public.segment_usage WITH (security_invoker='true') AS
  SELECT sg.id AS segment_id,
     sg.project_id,
     sg.name,
@@ -6500,7 +6524,7 @@ CREATE OR REPLACE VIEW public.segment_usage AS
 -- Name: source_usage _RETURN; Type: RULE; Schema: public; Owner: -
 --
 
-CREATE OR REPLACE VIEW public.source_usage AS
+CREATE OR REPLACE VIEW public.source_usage WITH (security_invoker='true') AS
  SELECT so.id AS source_id,
     so.segment_id,
     so.kind,
@@ -6773,11 +6797,27 @@ ALTER TABLE ONLY public.agent_runs
 
 
 --
+-- Name: api_tokens api_tokens_agent_run_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_tokens
+    ADD CONSTRAINT api_tokens_agent_run_id_fkey FOREIGN KEY (agent_run_id) REFERENCES public.agent_runs(id) ON DELETE CASCADE;
+
+
+--
 -- Name: api_tokens api_tokens_oauth_grant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_oauth_grant_id_fkey FOREIGN KEY (oauth_grant_id) REFERENCES public.oauth_grants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: api_tokens api_tokens_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_tokens
+    ADD CONSTRAINT api_tokens_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
 
 
 --
@@ -9725,6 +9765,1626 @@ ALTER TABLE ONLY public.workspace_tenants
 
 
 --
+-- Name: address_checks; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.address_checks ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: address_replacements; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.address_replacements ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: agent_runs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.agent_runs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: api_tokens; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.api_tokens ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: booking_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.booking_links ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: calendar_offers; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.calendar_offers ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: calendars; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.calendars ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: call_list_contacts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.call_list_contacts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: call_lists; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.call_lists ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: channel_invites; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.channel_invites ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: cli_logins; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.cli_logins ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: client_project_grants; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.client_project_grants ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: client_question_threads; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.client_question_threads ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: client_questions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.client_questions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: client_reports; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.client_reports ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: client_sign_in_challenges; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.client_sign_in_challenges ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: companies; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: company_labels; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.company_labels ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: contact_labels; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.contact_labels ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: contact_phones; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.contact_phones ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: contacts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: copy_tests; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.copy_tests ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: daily_sends; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.daily_sends ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: dialer_events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.dialer_events ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: dialer_sync; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.dialer_sync ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: dnc; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.dnc ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: domains; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.domains ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: egress_regions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.egress_regions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: api_tokens engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.api_tokens TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: cli_logins engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.cli_logins TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: client_sign_in_challenges engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.client_sign_in_challenges TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: daily_sends engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.daily_sends TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: dialer_events engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.dialer_events TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: dialer_sync engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.dialer_sync TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: egress_regions engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.egress_regions TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: linkedin_proxies engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.linkedin_proxies TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: microsoft_tenants engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.microsoft_tenants TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: oauth_clients engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.oauth_clients TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: oauth_requests engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.oauth_requests TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: organizer_sessions engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.organizer_sessions TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: placement_seeds engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.placement_seeds TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: rate_limit_hits engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.rate_limit_hits TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: sending_egresses engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.sending_egresses TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: sessions engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.sessions TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: sign_up_challenges engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.sign_up_challenges TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: slack_workspaces engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.slack_workspaces TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: system_mail_domains engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.system_mail_domains TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: tool_alerts engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.tool_alerts TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: tool_balances engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.tool_balances TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: tool_limits engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.tool_limits TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: warmup_seed_tenants engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.warmup_seed_tenants TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: warmup_seeds engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.warmup_seeds TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: workspace_tenants engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.workspace_tenants TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: enrollments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: events_default; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.events_default ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: hypotheses; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.hypotheses ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: labels; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.labels ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: linkedin_account_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_account_links ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: linkedin_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: linkedin_events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_events ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: linkedin_post_images; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_post_images ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: linkedin_posts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_posts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: linkedin_proxies; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_proxies ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: mailbox_orders; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.mailbox_orders ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: mailboxes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.mailboxes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: meeting_records; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.meeting_records ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: meeting_slots; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.meeting_slots ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: meetings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.meetings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: member_logins; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.member_logins ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: messages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: microsoft_tenants; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.microsoft_tenants ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: model_calls; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.model_calls ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: named_colleagues; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.named_colleagues ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: oauth_clients; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oauth_clients ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: oauth_grants; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oauth_grants ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: oauth_requests; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oauth_requests ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: address_checks organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.address_checks USING ((EXISTS ( SELECT 1
+   FROM public.contacts x
+  WHERE (x.id = address_checks.contact_id))));
+
+
+--
+-- Name: address_replacements organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.address_replacements USING ((EXISTS ( SELECT 1
+   FROM public.contacts x
+  WHERE (x.id = address_replacements.contact_id))));
+
+
+--
+-- Name: agent_runs organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.agent_runs USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: booking_links organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.booking_links USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: calendar_offers organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.calendar_offers USING ((EXISTS ( SELECT 1
+   FROM public.calendars x
+  WHERE (x.id = calendar_offers.calendar_id))));
+
+
+--
+-- Name: calendars organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.calendars USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: call_list_contacts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.call_list_contacts USING ((EXISTS ( SELECT 1
+   FROM public.call_lists x
+  WHERE (x.id = call_list_contacts.list_id))));
+
+
+--
+-- Name: call_lists organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.call_lists USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: channel_invites organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.channel_invites USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: client_project_grants organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.client_project_grants USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: client_question_threads organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.client_question_threads USING ((EXISTS ( SELECT 1
+   FROM public.client_questions x
+  WHERE (x.id = client_question_threads.question_id))));
+
+
+--
+-- Name: client_questions organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.client_questions USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: client_reports organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.client_reports USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: companies organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.companies USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: company_labels organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.company_labels USING ((EXISTS ( SELECT 1
+   FROM public.companies x
+  WHERE (x.id = company_labels.company_id))));
+
+
+--
+-- Name: contact_labels organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.contact_labels USING ((EXISTS ( SELECT 1
+   FROM public.contacts x
+  WHERE (x.id = contact_labels.contact_id))));
+
+
+--
+-- Name: contact_phones organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.contact_phones USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: contacts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.contacts USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: copy_tests organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.copy_tests USING ((EXISTS ( SELECT 1
+   FROM public.mailboxes x
+  WHERE (x.id = copy_tests.mailbox_id))));
+
+
+--
+-- Name: dnc organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.dnc USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: domains organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.domains USING (((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])) OR (organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[]))));
+
+
+--
+-- Name: enrollments organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.enrollments USING ((EXISTS ( SELECT 1
+   FROM public.strategies x
+  WHERE (x.id = enrollments.strategy_id))));
+
+
+--
+-- Name: events organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.events USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: hypotheses organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.hypotheses USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: labels organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.labels USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: linkedin_account_links organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.linkedin_account_links USING ((EXISTS ( SELECT 1
+   FROM public.linkedin_accounts x
+  WHERE (x.id = linkedin_account_links.linkedin_account_id))));
+
+
+--
+-- Name: linkedin_accounts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.linkedin_accounts USING (((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])) OR (EXISTS ( SELECT 1
+   FROM public.senders x
+  WHERE (x.id = linkedin_accounts.sender_id)))));
+
+
+--
+-- Name: linkedin_events organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.linkedin_events USING ((EXISTS ( SELECT 1
+   FROM public.linkedin_accounts x
+  WHERE (x.id = linkedin_events.linkedin_account_id))));
+
+
+--
+-- Name: linkedin_post_images organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.linkedin_post_images USING ((EXISTS ( SELECT 1
+   FROM public.linkedin_posts x
+  WHERE (x.id = linkedin_post_images.linkedin_post_id))));
+
+
+--
+-- Name: linkedin_posts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.linkedin_posts USING (((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])) OR (EXISTS ( SELECT 1
+   FROM public.sending_companies x
+  WHERE (x.id = linkedin_posts.company_id)))));
+
+
+--
+-- Name: mailbox_orders organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.mailbox_orders USING (((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])) OR (EXISTS ( SELECT 1
+   FROM public.domains x
+  WHERE (x.id = mailbox_orders.domain_id)))));
+
+
+--
+-- Name: mailboxes organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.mailboxes USING (((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])) OR (EXISTS ( SELECT 1
+   FROM public.senders x
+  WHERE (x.id = mailboxes.sender_id)))));
+
+
+--
+-- Name: meeting_records organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.meeting_records USING ((EXISTS ( SELECT 1
+   FROM public.meetings x
+  WHERE (x.id = meeting_records.meeting_id))));
+
+
+--
+-- Name: meeting_slots organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.meeting_slots USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: meetings organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.meetings USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: member_logins organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.member_logins USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: messages organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.messages USING ((EXISTS ( SELECT 1
+   FROM public.enrollments x
+  WHERE (x.id = messages.enrollment_id))));
+
+
+--
+-- Name: model_calls organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.model_calls USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: named_colleagues organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.named_colleagues USING ((EXISTS ( SELECT 1
+   FROM public.contacts x
+  WHERE (x.id = named_colleagues.contact_id))));
+
+
+--
+-- Name: oauth_grants organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.oauth_grants USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: organisation_lead_months organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.organisation_lead_months USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: organisation_members organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.organisation_members USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: organisation_subscriptions organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.organisation_subscriptions USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: organisations organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.organisations USING ((id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: personas organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.personas USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: placement_notes organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.placement_notes USING ((EXISTS ( SELECT 1
+   FROM public.mailboxes x
+  WHERE (x.id = placement_notes.mailbox_id))));
+
+
+--
+-- Name: placement_tests organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.placement_tests USING ((EXISTS ( SELECT 1
+   FROM public.mailboxes x
+  WHERE (x.id = placement_tests.mailbox_id))));
+
+
+--
+-- Name: project_exclusions organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.project_exclusions USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: project_goals organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.project_goals USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: project_members organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.project_members USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: project_notes organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.project_notes USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: project_senders organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.project_senders USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: project_subscriptions organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.project_subscriptions USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: projects organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.projects USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: provider_calls organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.provider_calls USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: replies organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.replies USING ((EXISTS ( SELECT 1
+   FROM public.threads x
+  WHERE (x.id = replies.thread_id))));
+
+
+--
+-- Name: reply_files organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.reply_files USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: reply_templates organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.reply_templates USING ((EXISTS ( SELECT 1
+   FROM public.strategies x
+  WHERE (x.id = reply_templates.strategy_id))));
+
+
+--
+-- Name: review_alerts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.review_alerts USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: review_recipients organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.review_recipients USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: reviews organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.reviews USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: searches organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.searches USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: segment_companies organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.segment_companies USING ((EXISTS ( SELECT 1
+   FROM public.segments x
+  WHERE (x.id = segment_companies.segment_id))));
+
+
+--
+-- Name: segment_company_verdicts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.segment_company_verdicts USING ((EXISTS ( SELECT 1
+   FROM public.segments x
+  WHERE (x.id = segment_company_verdicts.segment_id))));
+
+
+--
+-- Name: segment_sources organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.segment_sources USING ((EXISTS ( SELECT 1
+   FROM public.segments x
+  WHERE (x.id = segment_sources.segment_id))));
+
+
+--
+-- Name: segments organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.segments USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: sender_images organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.sender_images USING ((EXISTS ( SELECT 1
+   FROM public.senders x
+  WHERE (x.id = sender_images.sender_id))));
+
+
+--
+-- Name: senders organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.senders USING (((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])) OR (organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[]))));
+
+
+--
+-- Name: sending_companies organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.sending_companies USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: slack_client_invites organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.slack_client_invites USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: slack_messages organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.slack_messages USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: slack_posts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.slack_posts USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: spend organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.spend USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: strategies organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.strategies USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: strategy_companies organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.strategy_companies USING ((EXISTS ( SELECT 1
+   FROM public.strategies x
+  WHERE (x.id = strategy_companies.strategy_id))));
+
+
+--
+-- Name: strategy_contacts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.strategy_contacts USING ((EXISTS ( SELECT 1
+   FROM public.strategies x
+  WHERE (x.id = strategy_contacts.strategy_id))));
+
+
+--
+-- Name: strategy_personas organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.strategy_personas USING ((EXISTS ( SELECT 1
+   FROM public.strategies x
+  WHERE (x.id = strategy_personas.strategy_id))));
+
+
+--
+-- Name: strategy_plans organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.strategy_plans USING ((EXISTS ( SELECT 1
+   FROM public.strategies x
+  WHERE (x.id = strategy_plans.strategy_id))));
+
+
+--
+-- Name: strategy_segments organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.strategy_segments USING ((EXISTS ( SELECT 1
+   FROM public.strategies x
+  WHERE (x.id = strategy_segments.strategy_id))));
+
+
+--
+-- Name: strategy_senders organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.strategy_senders USING ((EXISTS ( SELECT 1
+   FROM public.strategies x
+  WHERE (x.id = strategy_senders.strategy_id))));
+
+
+--
+-- Name: strategy_steps organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.strategy_steps USING ((EXISTS ( SELECT 1
+   FROM public.strategy_plans x
+  WHERE (x.id = strategy_steps.plan_id))));
+
+
+--
+-- Name: stripe_events organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.stripe_events USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: system_mail_messages organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.system_mail_messages USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: tasks organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.tasks USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: terms_acceptances organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.terms_acceptances USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: thread_messages organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.thread_messages USING ((EXISTS ( SELECT 1
+   FROM public.threads x
+  WHERE (x.id = thread_messages.thread_id))));
+
+
+--
+-- Name: threads organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.threads USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: triage_holds organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.triage_holds USING ((EXISTS ( SELECT 1
+   FROM public.thread_messages x
+  WHERE (x.id = triage_holds.thread_message_id))));
+
+
+--
+-- Name: users organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.users USING ((EXISTS ( SELECT 1
+   FROM public.organisation_members x
+  WHERE (x.user_id = users.id))));
+
+
+--
+-- Name: wallet_entries organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.wallet_entries USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: warmup_correspondents organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.warmup_correspondents USING ((EXISTS ( SELECT 1
+   FROM public.mailboxes x
+  WHERE (x.id = warmup_correspondents.mailbox_id))));
+
+
+--
+-- Name: warmup_replies organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.warmup_replies USING ((EXISTS ( SELECT 1
+   FROM public.mailboxes x
+  WHERE (x.id = warmup_replies.mailbox_id))));
+
+
+--
+-- Name: warmup_sends organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.warmup_sends USING ((EXISTS ( SELECT 1
+   FROM public.mailboxes x
+  WHERE (x.id = warmup_sends.mailbox_id))));
+
+
+--
+-- Name: organisation_lead_months; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.organisation_lead_months ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: organisation_members; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.organisation_members ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: organisation_subscriptions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.organisation_subscriptions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: organisations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.organisations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: organizer_sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.organizer_sessions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: personas; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.personas ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: placement_notes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.placement_notes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: placement_seeds; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.placement_seeds ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: placement_tests; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.placement_tests ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: project_exclusions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.project_exclusions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: project_goals; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.project_goals ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: project_members; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: project_notes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.project_notes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: project_senders; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.project_senders ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: project_subscriptions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.project_subscriptions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: projects; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: provider_calls; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.provider_calls ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: rate_limit_hits; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.rate_limit_hits ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: replies; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.replies ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: reply_files; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.reply_files ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: reply_templates; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.reply_templates ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: review_alerts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.review_alerts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: review_recipients; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.review_recipients ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: reviews; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: searches; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.searches ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: segment_companies; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.segment_companies ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: segment_company_verdicts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.segment_company_verdicts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: segment_sources; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.segment_sources ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: segments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.segments ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sender_images; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sender_images ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: senders; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.senders ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sending_companies; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sending_companies ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sending_egresses; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sending_egresses ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sign_up_challenges; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sign_up_challenges ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: slack_client_invites; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.slack_client_invites ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: slack_messages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.slack_messages ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: slack_posts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.slack_posts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: slack_workspaces; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.slack_workspaces ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: spend; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.spend ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: strategies; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.strategies ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: strategy_companies; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.strategy_companies ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: strategy_contacts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.strategy_contacts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: strategy_personas; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.strategy_personas ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: strategy_plans; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.strategy_plans ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: strategy_segments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.strategy_segments ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: strategy_senders; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.strategy_senders ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: strategy_steps; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.strategy_steps ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: stripe_events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.stripe_events ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: system_mail_domains; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.system_mail_domains ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: system_mail_messages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.system_mail_messages ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: tasks; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: terms_acceptances; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.terms_acceptances ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: thread_messages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.thread_messages ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: threads; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.threads ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: tool_alerts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tool_alerts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: tool_balances; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tool_balances ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: tool_limits; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tool_limits ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: triage_holds; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.triage_holds ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: users; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: wallet_entries; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.wallet_entries ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: warmup_correspondents; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.warmup_correspondents ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: warmup_replies; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.warmup_replies ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: warmup_seed_tenants; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.warmup_seed_tenants ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: warmup_seeds; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.warmup_seeds ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: warmup_sends; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.warmup_sends ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: workspace_tenants; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.workspace_tenants ENABLE ROW LEVEL SECURITY;
+
+--
 -- PostgreSQL database dump complete
 --
 
@@ -9921,4 +11581,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028131825'),
     ('20261028131827'),
     ('20261028131831'),
-    ('20261028132142');
+    ('20261028132047'),
+    ('20261028132142'),
+    ('20261028132305'),
+    ('20261028142319');
