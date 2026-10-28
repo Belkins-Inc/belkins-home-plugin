@@ -3806,11 +3806,7 @@ CREATE TABLE public.warmup_seed_tenants (
     graph_probe_sent_at timestamp with time zone,
     graph_probe_token text,
     graph_probe_from public.citext,
-    pool text DEFAULT 'agency'::text NOT NULL,
-    pool_set_by uuid,
-    pool_set_via public.actor_via,
     CONSTRAINT warmup_seed_tenants_microsoft_check CHECK (((provider = 'google'::text) OR ((name IS NOT NULL) AND (directory_id IS NOT NULL) AND (client_id IS NOT NULL) AND (initial_domain IS NOT NULL) AND (credential IS NOT NULL)))),
-    CONSTRAINT warmup_seed_tenants_pool_check CHECK ((pool = ANY (ARRAY['agency'::text, 'saas'::text]))),
     CONSTRAINT warmup_seed_tenants_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
     CONSTRAINT warmup_seed_tenants_seeds_wanted_check CHECK (((seeds_wanted >= 0) AND (seeds_wanted <= 20))),
     CONSTRAINT warmup_seed_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'failed'::text])))
@@ -10276,14 +10272,6 @@ ALTER TABLE ONLY public.warmup_seed_tenants
 
 
 --
--- Name: warmup_seed_tenants warmup_seed_tenants_pool_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.warmup_seed_tenants
-    ADD CONSTRAINT warmup_seed_tenants_pool_set_by_fkey FOREIGN KEY (pool_set_by) REFERENCES public.users(id);
-
-
---
 -- Name: warmup_seed_tenants warmup_seed_tenants_seeds_wanted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12262,4 +12250,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028195603'),
     ('20261028195632'),
     ('20261028195930'),
-    ('20261028210500');
+    ('20261028210500'),
+    ('20261028220033');
