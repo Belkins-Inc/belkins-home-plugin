@@ -1758,6 +1758,22 @@ CREATE TABLE public.linkedin_companies (
 
 
 --
+-- Name: linkedin_connect_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_connect_links (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    user_id uuid NOT NULL,
+    project_id uuid,
+    sender_id uuid,
+    known_accounts text[] NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    used_at timestamp with time zone,
+    unipile_account_id text
+);
+
+
+--
 -- Name: linkedin_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4353,6 +4369,14 @@ ALTER TABLE ONLY public.linkedin_accounts
 
 ALTER TABLE ONLY public.linkedin_companies
     ADD CONSTRAINT linkedin_companies_pkey PRIMARY KEY (linkedin_id);
+
+
+--
+-- Name: linkedin_connect_links linkedin_connect_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_links
+    ADD CONSTRAINT linkedin_connect_links_pkey PRIMARY KEY (id);
 
 
 --
@@ -8080,6 +8104,30 @@ ALTER TABLE ONLY public.linkedin_accounts
 
 
 --
+-- Name: linkedin_connect_links linkedin_connect_links_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_links
+    ADD CONSTRAINT linkedin_connect_links_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: linkedin_connect_links linkedin_connect_links_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_links
+    ADD CONSTRAINT linkedin_connect_links_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: linkedin_connect_links linkedin_connect_links_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_links
+    ADD CONSTRAINT linkedin_connect_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: linkedin_events linkedin_events_actor_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10573,6 +10621,13 @@ CREATE POLICY engine ON public.egress_regions TO bhn_tenant USING (true) WITH CH
 
 
 --
+-- Name: linkedin_connect_links engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.linkedin_connect_links TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
 -- Name: linkedin_proxies engine; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -10752,6 +10807,12 @@ ALTER TABLE public.linkedin_account_links ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.linkedin_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: linkedin_connect_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_connect_links ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: linkedin_events; Type: ROW SECURITY; Schema: public; Owner: -
@@ -12251,4 +12312,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028195632'),
     ('20261028195930'),
     ('20261028210500'),
-    ('20261028220033');
+    ('20261028220033'),
+    ('20261028224116');
