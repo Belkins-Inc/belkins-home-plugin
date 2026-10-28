@@ -1950,6 +1950,9 @@ CREATE TABLE public.mailboxes (
     placement_state text DEFAULT 'unknown'::text NOT NULL,
     placement_state_at timestamp with time zone,
     outreach_held_at timestamp with time zone,
+    warmup_on_at timestamp with time zone,
+    warmup_set_by uuid,
+    warmup_set_via public.actor_via,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 60))),
     CONSTRAINT mailboxes_placement_state_check CHECK ((placement_state = ANY (ARRAY['good'::text, 'unknown'::text, 'hold'::text, 'bad'::text]))),
@@ -3631,9 +3634,13 @@ CREATE TABLE public.wallet_entries (
     note text,
     created_by uuid,
     created_via public.actor_via NOT NULL,
+    held_on date,
+    mailbox_id uuid,
+    linkedin_account_id uuid,
     CONSTRAINT wallet_entries_amount_cents_check CHECK ((amount_cents <> 0)),
     CONSTRAINT wallet_entries_check CHECK (((kind = 'adjustment'::text) OR ((kind = 'top_up'::text) = (amount_cents > 0)))),
     CONSTRAINT wallet_entries_check1 CHECK (((created_via = 'engine'::public.actor_via) OR (created_by IS NOT NULL))),
+    CONSTRAINT wallet_entries_held_check CHECK (((held_on IS NULL) OR (kind = ANY (ARRAY['mailbox'::text, 'warmup'::text, 'linkedin_account'::text])))),
     CONSTRAINT wallet_entries_kind_check CHECK ((kind = ANY (ARRAY['top_up'::text, 'provider_call'::text, 'domain'::text, 'mailbox'::text, 'warmup'::text, 'linkedin_account'::text, 'adjustment'::text])))
 );
 
@@ -3715,7 +3722,11 @@ CREATE TABLE public.warmup_seed_tenants (
     graph_probe_sent_at timestamp with time zone,
     graph_probe_token text,
     graph_probe_from public.citext,
+    pool text DEFAULT 'agency'::text NOT NULL,
+    pool_set_by uuid,
+    pool_set_via public.actor_via,
     CONSTRAINT warmup_seed_tenants_microsoft_check CHECK (((provider = 'google'::text) OR ((name IS NOT NULL) AND (directory_id IS NOT NULL) AND (client_id IS NOT NULL) AND (initial_domain IS NOT NULL) AND (credential IS NOT NULL)))),
+    CONSTRAINT warmup_seed_tenants_pool_check CHECK ((pool = ANY (ARRAY['agency'::text, 'saas'::text]))),
     CONSTRAINT warmup_seed_tenants_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
     CONSTRAINT warmup_seed_tenants_seeds_wanted_check CHECK (((seeds_wanted >= 0) AND (seeds_wanted <= 20))),
     CONSTRAINT warmup_seed_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'failed'::text])))
@@ -6557,6 +6568,20 @@ CREATE UNIQUE INDEX ux_users__preview_of ON public.users USING btree (preview_of
 
 
 --
+-- Name: ux_wallet_entries__linkedin_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_wallet_entries__linkedin_day ON public.wallet_entries USING btree (linkedin_account_id, held_on) WHERE ((held_on IS NOT NULL) AND (linkedin_account_id IS NOT NULL));
+
+
+--
+-- Name: ux_wallet_entries__mailbox_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_wallet_entries__mailbox_day ON public.wallet_entries USING btree (mailbox_id, kind, held_on) WHERE ((held_on IS NOT NULL) AND (mailbox_id IS NOT NULL));
+
+
+--
 -- Name: ux_warmup_correspondents__live; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7989,6 +8014,14 @@ ALTER TABLE ONLY public.mailboxes
 
 ALTER TABLE ONLY public.mailboxes
     ADD CONSTRAINT mailboxes_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.workspace_tenants(id);
+
+
+--
+-- Name: mailboxes mailboxes_warmup_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mailboxes
+    ADD CONSTRAINT mailboxes_warmup_set_by_fkey FOREIGN KEY (warmup_set_by) REFERENCES public.users(id);
 
 
 --
@@ -9808,6 +9841,22 @@ ALTER TABLE ONLY public.wallet_entries
 
 
 --
+-- Name: wallet_entries wallet_entries_linkedin_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_linkedin_account_id_fkey FOREIGN KEY (linkedin_account_id) REFERENCES public.linkedin_accounts(id) ON DELETE SET NULL;
+
+
+--
+-- Name: wallet_entries wallet_entries_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_mailbox_id_fkey FOREIGN KEY (mailbox_id) REFERENCES public.mailboxes(id) ON DELETE SET NULL;
+
+
+--
 -- Name: wallet_entries wallet_entries_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9893,6 +9942,14 @@ ALTER TABLE ONLY public.warmup_seed_tenants
 
 ALTER TABLE ONLY public.warmup_seed_tenants
     ADD CONSTRAINT warmup_seed_tenants_egress_id_fkey FOREIGN KEY (egress_id) REFERENCES public.sending_egresses(id);
+
+
+--
+-- Name: warmup_seed_tenants warmup_seed_tenants_pool_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_seed_tenants
+    ADD CONSTRAINT warmup_seed_tenants_pool_set_by_fkey FOREIGN KEY (pool_set_by) REFERENCES public.users(id);
 
 
 --
@@ -11800,4 +11857,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028142319'),
     ('20261028171500'),
     ('20261028172222'),
-    ('20261028183447');
+    ('20261028183447'),
+    ('20261028195632');
