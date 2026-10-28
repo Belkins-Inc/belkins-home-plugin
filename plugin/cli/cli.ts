@@ -92,6 +92,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   project move <slug> --org <org>        move a project and all it owns to another organisation (platform admin)
   orgs | org create <slug> --name <name> [--billing external|stripe]   organisations you belong to (the platform admin: all)
   org billing <slug> external|stripe   stripe: Dylan's clients; external: billed outside the platform (platform admin)
+  org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
+  dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
   billing [--project <slug>]           the project's Stripe subscription, as Stripe last said it
   billing link <cus_…>                 link the project to its Stripe customer (a stripe organisation's project only)
   client-access | client-access add <email> | client-access remove <user-id>   who watches the project in the
@@ -1689,6 +1691,12 @@ async function main(argv: string[]): Promise<void> {
       return out(await call(config, 'GET', `/projects/${p()}/goals`))
     case 'orgs':
       return out(await call(config, 'GET', '/orgs'))
+    case 'dialer':
+      if (sub === 'snapshot')
+        return out(
+          await call(config, 'POST', `/dialer/organizations/${encodeURIComponent(arg!)}/snapshot`),
+        )
+      return out(await call(config, 'GET', '/dialer'))
     case 'client-access':
       if (sub === 'add')
         return out(await call(config, 'POST', `/projects/${p()}/client-access`, { email: arg }))
@@ -1710,6 +1718,12 @@ async function main(argv: string[]): Promise<void> {
         )
       if (sub === 'billing')
         return out(await call(config, 'PATCH', `/orgs/${arg}`, { billing: pos[3] }))
+      if (sub === 'dialer')
+        return out(
+          await call(config, 'PUT', `/orgs/${arg}/dialer`, {
+            organizationId: pos[3] === 'none' ? null : pos[3],
+          }),
+        )
       if (sub === 'members') return out(await call(config, 'GET', `/orgs/${arg}/members`))
       if (sub === 'add')
         return out(

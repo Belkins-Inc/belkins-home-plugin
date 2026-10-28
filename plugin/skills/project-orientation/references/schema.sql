@@ -41,7 +41,8 @@ CREATE TYPE public.actor_via AS ENUM (
     'client',
     'slack',
     'member',
-    'link'
+    'link',
+    'dialer'
 );
 
 
@@ -1031,6 +1032,45 @@ WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze
 
 
 --
+-- Name: dialer_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dialer_events (
+    webhook_id text NOT NULL,
+    type text NOT NULL,
+    organization_id text NOT NULL,
+    workspace_id text,
+    sequence bigint NOT NULL,
+    installation_id text,
+    caused_by_installation_id text,
+    object text NOT NULL,
+    body jsonb NOT NULL,
+    source text NOT NULL,
+    received_at timestamp with time zone DEFAULT now() NOT NULL,
+    applied_at timestamp with time zone,
+    skipped text,
+    error text,
+    CONSTRAINT dialer_events_check CHECK (((skipped IS NULL) OR (applied_at IS NOT NULL))),
+    CONSTRAINT dialer_events_skipped_check CHECK ((skipped = ANY (ARRAY['stale'::text, 'echo'::text]))),
+    CONSTRAINT dialer_events_source_check CHECK ((source = ANY (ARRAY['webhook'::text, 'journal'::text])))
+);
+
+
+--
+-- Name: dialer_sync; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dialer_sync (
+    dialer_organization_id text NOT NULL,
+    journal_mark bigint DEFAULT 0 NOT NULL,
+    read_at timestamp with time zone,
+    expired_at timestamp with time zone,
+    error text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: dnc; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1983,6 +2023,9 @@ CREATE TABLE public.organisations (
     billing text DEFAULT 'external'::text NOT NULL,
     billing_set_by uuid,
     billing_set_via public.actor_via,
+    dialer_organization_id text,
+    dialer_organization_set_by uuid,
+    dialer_organization_set_via public.actor_via,
     CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text]))),
     CONSTRAINT organisations_slug_check CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{1,48}$'::text))
 );
@@ -2306,6 +2349,7 @@ CREATE TABLE public.projects (
     slack_client_workspace_id uuid,
     slack_client_channel_set_by uuid,
     slack_client_channel_set_via public.actor_via,
+    dialer_workspace_id text,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
@@ -3739,6 +3783,22 @@ ALTER TABLE ONLY public.daily_sends
 
 
 --
+-- Name: dialer_events dialer_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dialer_events
+    ADD CONSTRAINT dialer_events_pkey PRIMARY KEY (webhook_id);
+
+
+--
+-- Name: dialer_sync dialer_sync_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dialer_sync
+    ADD CONSTRAINT dialer_sync_pkey PRIMARY KEY (dialer_organization_id);
+
+
+--
 -- Name: dnc dnc_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4959,6 +5019,27 @@ CREATE INDEX ix_copy_tests__message ON public.copy_tests USING btree (message_id
 
 
 --
+-- Name: ix_dialer_events__object; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_dialer_events__object ON public.dialer_events USING btree (organization_id, object, sequence);
+
+
+--
+-- Name: ix_dialer_events__received; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_dialer_events__received ON public.dialer_events USING btree (received_at);
+
+
+--
+-- Name: ix_dialer_events__unapplied; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_dialer_events__unapplied ON public.dialer_events USING btree (organization_id, sequence) WHERE (applied_at IS NULL);
+
+
+--
 -- Name: ix_domains__company; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5806,6 +5887,13 @@ CREATE UNIQUE INDEX ux_microsoft_tenants__name ON public.microsoft_tenants USING
 
 
 --
+-- Name: ux_organisations__dialer_organization; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_organisations__dialer_organization ON public.organisations USING btree (dialer_organization_id) WHERE (dialer_organization_id IS NOT NULL);
+
+
+--
 -- Name: ux_placement_notes__rfc; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5831,6 +5919,13 @@ CREATE UNIQUE INDEX ux_placement_tests__confirms ON public.placement_tests USING
 --
 
 CREATE UNIQUE INDEX ux_project_members__one_owner ON public.project_members USING btree (project_id) WHERE (role = 'owner'::text);
+
+
+--
+-- Name: ux_projects__dialer_workspace; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_projects__dialer_workspace ON public.projects USING btree (dialer_workspace_id) WHERE (dialer_workspace_id IS NOT NULL);
 
 
 --
@@ -7600,6 +7695,14 @@ ALTER TABLE ONLY public.organisations
 
 
 --
+-- Name: organisations organisations_dialer_organization_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisations
+    ADD CONSTRAINT organisations_dialer_organization_set_by_fkey FOREIGN KEY (dialer_organization_set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: personas personas_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9262,4 +9365,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261027155804'),
     ('20261027212602'),
     ('20261028122421'),
-    ('20261028122851');
+    ('20261028122851'),
+    ('20261028124024');
