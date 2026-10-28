@@ -96,6 +96,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   org autopause <slug> on|off          on: a strategy past a health limit is paused by the engine, not only flagged (platform admin)
   org lead-cap <slug> <n>|off          new leads its projects may enroll a day, UTC (platform admin)
   org approve <slug>                    let an organisation that signed itself up send and buy (platform admin)
+  org erase <slug> [--email <e>] [--linkedin <url>] [--note <t>]   forget a person who asked, in every project of the
+                                         organisation; only hashes stay, so it never writes to them again (its admin; final)
+  org erasures <slug> [--limit <n>]     when people were erased and by whom, never who
   org tier <slug> [--price <price_…>]   its platform tier and this month's leads; with --price, a Checkout link to subscribe
   wallet [--org <slug>] [--limit <n>]   a signed-up organisation's balance and ledger, newest first
   wallet top-up <dollars> [--org <slug>]   a Checkout link that adds to the wallet once paid (its admin)
@@ -1867,6 +1870,21 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'PUT', `/orgs/${arg}/protections`, { dailyLeadCap: cap }))
       }
       if (sub === 'approve') return out(await call(config, 'POST', `/orgs/${arg}/approve`))
+      if (sub === 'erase') {
+        if (!o.email && !o.linkedin)
+          throw new BhError('erase needs --email or --linkedin (or both)', {}, 2)
+        return out(
+          await call(config, 'POST', `/orgs/${arg}/erasures`, {
+            ...(o.email ? { email: o.email } : {}),
+            ...(o.linkedin ? { linkedinUrl: o.linkedin } : {}),
+            ...(o.note ? { note: o.note } : {}),
+          }),
+        )
+      }
+      if (sub === 'erasures')
+        return out(
+          await call(config, 'GET', `/orgs/${arg}/erasures${o.limit ? `?limit=${o.limit}` : ''}`),
+        )
       if (sub === 'tier')
         return out(
           o.price

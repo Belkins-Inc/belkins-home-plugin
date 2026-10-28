@@ -1065,7 +1065,8 @@ CREATE TABLE public.contacts (
     deal_stage_at timestamp with time zone,
     deal_stage_by uuid,
     deal_stage_via public.actor_via,
-    CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL))),
+    erasure_id uuid,
+    CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL) OR (erasure_id IS NOT NULL))),
     CONSTRAINT contacts_deal_stage_check CHECK ((deal_stage = ANY (ARRAY['opportunity'::text, 'proposal'::text, 'won'::text, 'lost'::text]))),
     CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text])))
 )
@@ -1442,6 +1443,25 @@ CREATE VIEW public.enrollment_outcomes WITH (security_invoker='true') AS
              LEFT JOIN public.threads t ON ((t.id = mt.thread_id)))
           WHERE ((mt.contact_id = e.contact_id) AND (mt.strategy_id = e.strategy_id) AND (mt.status = ANY (ARRAY['scheduled'::text, 'held'::text])) AND ((t.enrollment_id IS NULL) OR (t.enrollment_id = e.id)))))) AS meeting
    FROM public.enrollments e;
+
+
+--
+-- Name: erasures; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.erasures (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    organisation_id uuid NOT NULL,
+    email_hashes text[] DEFAULT '{}'::text[] NOT NULL,
+    linkedin_hashes text[] DEFAULT '{}'::text[] NOT NULL,
+    contacts integer DEFAULT 0 NOT NULL,
+    note text,
+    erased_by uuid NOT NULL,
+    erased_via public.actor_via NOT NULL,
+    erased_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT erasures_check CHECK (((cardinality(email_hashes) + cardinality(linkedin_hashes)) > 0)),
+    CONSTRAINT erasures_contacts_check CHECK ((contacts >= 0))
+);
 
 
 --
@@ -2155,6 +2175,18 @@ CREATE TABLE public.oauth_requests (
     CONSTRAINT oauth_requests_check3 CHECK (((approved_at IS NULL) = (code_hash IS NULL))),
     CONSTRAINT oauth_requests_check4 CHECK (((approved_at IS NULL) OR (denied_at IS NULL))),
     CONSTRAINT oauth_requests_check5 CHECK (((used_at IS NULL) OR (approved_at IS NOT NULL)))
+);
+
+
+--
+-- Name: opt_out_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.opt_out_links (
+    token text NOT NULL,
+    message_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    used_at timestamp with time zone
 );
 
 
@@ -3534,7 +3566,7 @@ CREATE TABLE public.terms_acceptances (
     version text NOT NULL,
     accepted_at timestamp with time zone DEFAULT now() NOT NULL,
     accepted_via public.actor_via NOT NULL,
-    CONSTRAINT terms_acceptances_terms_check CHECK ((terms = 'acceptable_use'::text))
+    CONSTRAINT terms_acceptances_terms_check CHECK ((terms = ANY (ARRAY['acceptable_use'::text, 'data_processing'::text])))
 );
 
 
@@ -4175,6 +4207,14 @@ ALTER TABLE ONLY public.enrollments
 
 
 --
+-- Name: erasures erasures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.erasures
+    ADD CONSTRAINT erasures_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: event_types event_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4508,6 +4548,14 @@ ALTER TABLE ONLY public.oauth_requests
 
 ALTER TABLE ONLY public.oauth_requests
     ADD CONSTRAINT oauth_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: opt_out_links opt_out_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.opt_out_links
+    ADD CONSTRAINT opt_out_links_pkey PRIMARY KEY (token);
 
 
 --
@@ -5645,6 +5693,27 @@ CREATE INDEX ix_enrollments__to_plan ON public.enrollments USING btree (planned_
 
 
 --
+-- Name: ix_erasures__email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_erasures__email ON public.erasures USING gin (email_hashes);
+
+
+--
+-- Name: ix_erasures__linkedin; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_erasures__linkedin ON public.erasures USING gin (linkedin_hashes);
+
+
+--
+-- Name: ix_erasures__organisation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_erasures__organisation ON public.erasures USING btree (organisation_id, erased_at DESC);
+
+
+--
 -- Name: ix_hypotheses__project; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5817,6 +5886,13 @@ CREATE INDEX ix_named_colleagues__waiting ON public.named_colleagues USING btree
 --
 
 CREATE INDEX ix_oauth_grants__user ON public.oauth_grants USING btree (user_id) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: ix_opt_out_links__message; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_opt_out_links__message ON public.opt_out_links USING btree (message_id);
 
 
 --
@@ -7431,6 +7507,14 @@ ALTER TABLE ONLY public.contacts
 
 
 --
+-- Name: contacts contacts_erasure_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contacts
+    ADD CONSTRAINT contacts_erasure_id_fkey FOREIGN KEY (erasure_id) REFERENCES public.erasures(id);
+
+
+--
 -- Name: contacts contacts_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7676,6 +7760,22 @@ ALTER TABLE ONLY public.enrollments
 
 ALTER TABLE ONLY public.enrollments
     ADD CONSTRAINT enrollments_strategy_id_fkey FOREIGN KEY (strategy_id) REFERENCES public.strategies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: erasures erasures_erased_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.erasures
+    ADD CONSTRAINT erasures_erased_by_fkey FOREIGN KEY (erased_by) REFERENCES public.users(id);
+
+
+--
+-- Name: erasures erasures_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.erasures
+    ADD CONSTRAINT erasures_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
 
 
 --
@@ -8388,6 +8488,14 @@ ALTER TABLE ONLY public.oauth_requests
 
 ALTER TABLE ONLY public.oauth_requests
     ADD CONSTRAINT oauth_requests_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: opt_out_links opt_out_links_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.opt_out_links
+    ADD CONSTRAINT opt_out_links_message_id_fkey FOREIGN KEY (message_id) REFERENCES public.messages(id) ON DELETE CASCADE;
 
 
 --
@@ -10416,6 +10524,12 @@ CREATE POLICY engine ON public.workspace_tenants TO bhn_tenant USING (((organisa
 ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: erasures; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.erasures ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: events; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -10552,6 +10666,12 @@ ALTER TABLE public.oauth_grants ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.oauth_requests ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: opt_out_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.opt_out_links ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: address_checks organisation_fence; Type: POLICY; Schema: public; Owner: -
@@ -10740,6 +10860,13 @@ CREATE POLICY organisation_fence ON public.enrollments USING ((EXISTS ( SELECT 1
 
 
 --
+-- Name: erasures organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.erasures USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
 -- Name: events organisation_fence; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -10883,6 +11010,15 @@ CREATE POLICY organisation_fence ON public.named_colleagues USING ((EXISTS ( SEL
 --
 
 CREATE POLICY organisation_fence ON public.oauth_grants USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+
+
+--
+-- Name: opt_out_links organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.opt_out_links USING ((EXISTS ( SELECT 1
+   FROM public.messages m
+  WHERE (m.id = opt_out_links.message_id))));
 
 
 --
@@ -11904,5 +12040,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028171500'),
     ('20261028172222'),
     ('20261028183447'),
+    ('20261028195603'),
     ('20261028195632'),
     ('20261028195930');
