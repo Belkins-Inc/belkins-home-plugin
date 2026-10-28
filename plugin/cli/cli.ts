@@ -101,6 +101,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   wallet top-up <dollars> [--org <slug>]   a Checkout link that adds to the wallet once paid (its admin)
   org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
+  dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
+  dialer link <workspace-id> [--queue <queue-id>] | dialer link none   link the project to a dialer workspace: its new
+                                         call lists go there and are attached to the queue (platform admin)
   billing [--project <slug>]           the project's Stripe subscription, as Stripe last said it
   billing link <cus_…>                 link the project to its Stripe customer (a stripe organisation's project only)
   client-access | client-access add <email> | client-access remove <user-id>   who watches the project in the
@@ -188,6 +191,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          confirmed and rejected carry --verdict
   calls                                 the project's call lists: who was handed to callers, and how far they got
   calls create --name <n> --file <json|jsonl|-> [--note <t>] [--allow-repeat]   (a person only)
+       [--attempts <1-10>] [--spacing <minutes>] [--open-days <n>]   in a project linked to a dialer workspace the list
+                                         goes to the dialer too: tries per person (3), minutes between them (1440),
+                                         days it stays open (14); its "dialer" says what went and who was left out
+  calls push <list-id> [--attempts …]   hand the list to the dialer again after a push that failed (a person only)
                                          [{"contactId","phone","reason"}] in call order; phone is optional: without it
                                          the contact's first live number not on do-not-call, with it one of theirs (bh phones);
                                          all or nothing: a contact on dnc, outside the project, with no such number or
@@ -721,6 +728,15 @@ function copies(o: { cc?: string; bcc?: string }) {
   }
 }
 
+/** A dialer list's attempt policy, from --attempts, --spacing (minutes) and --open-days. */
+function attemptsOf(o: { attempts?: string; spacing?: string; 'open-days'?: string }) {
+  return {
+    ...(o.attempts ? { attempts: Number(o.attempts) } : {}),
+    ...(o.spacing ? { spacingMinutes: Number(o.spacing) } : {}),
+    ...(o['open-days'] ? { openForDays: Number(o['open-days']) } : {}),
+  }
+}
+
 /** `--default-pool yes|no`: whether a tenant takes domains approved without naming a tenant. */
 function defaultPool(value: string | undefined): { defaultPool?: boolean } {
   if (value === undefined) return {}
@@ -1162,6 +1178,10 @@ async function main(argv: string[]): Promise<void> {
       window: { type: 'string' },
       outcome: { type: 'string' },
       'allow-repeat': { type: 'boolean' },
+      attempts: { type: 'string' },
+      spacing: { type: 'string' },
+      'open-days': { type: 'string' },
+      queue: { type: 'string' },
       feedback: { type: 'string' },
       notes: { type: 'string' },
       upcoming: { type: 'boolean' },
@@ -1679,10 +1699,13 @@ async function main(argv: string[]): Promise<void> {
             name: o.name,
             ...(o.note ? { note: o.note } : {}),
             allowRepeat: o['allow-repeat'] ?? false,
+            ...attemptsOf(o),
             contacts: await readRows(need(o.file)),
           }),
         )
       if (!arg) throw new BhError('Which call list?', { hint: 'bh calls' }, 2)
+      if (sub === 'push')
+        return out(await call(config, 'POST', `/call-lists/${arg}/dialer`, attemptsOf(o)))
       if (sub === 'show') {
         if (o.out) {
           await writeFile(o.out, await callText(config, `/call-lists/${arg}/csv`))
@@ -1708,6 +1731,26 @@ async function main(argv: string[]): Promise<void> {
     case 'orgs':
       return out(await call(config, 'GET', '/orgs'))
     case 'dialer':
+      if (sub === 'workspaces') {
+        if (!arg) throw new BhError('Which dialer organization?', { hint: 'bh dialer' }, 2)
+        return out(
+          await call(config, 'GET', `/dialer/organizations/${encodeURIComponent(arg)}/workspaces`),
+        )
+      }
+      if (sub === 'link') {
+        if (!arg)
+          throw new BhError('Which workspace?', { hint: 'bh dialer workspaces <dialer-org-id>' }, 2)
+        return out(
+          await call(
+            config,
+            'PUT',
+            `/projects/${p()}/dialer`,
+            arg === 'none'
+              ? { workspaceId: null }
+              : { workspaceId: arg, ...(o.queue ? { queueId: o.queue } : {}) },
+          ),
+        )
+      }
       if (sub === 'snapshot')
         return out(
           await call(config, 'POST', `/dialer/organizations/${encodeURIComponent(arg!)}/snapshot`),

@@ -748,6 +748,10 @@ CREATE TABLE public.call_list_contacts (
     outcome_by uuid,
     outcome_via public.actor_via,
     phone_id uuid,
+    dialer_skipped text,
+    closed_reason text,
+    closed_at timestamp with time zone,
+    attempts integer,
     CONSTRAINT call_list_contacts_outcome_check CHECK ((outcome = ANY (ARRAY['no_answer'::text, 'voicemail'::text, 'wrong_number'::text, 'not_interested'::text, 'call_back'::text, 'meeting'::text, 'other'::text]))),
     CONSTRAINT call_list_contacts_outcome_recorded CHECK ((((outcome IS NULL) = (outcome_at IS NULL)) AND ((outcome IS NULL) = (outcome_via IS NULL)))),
     CONSTRAINT call_list_contacts_position_check CHECK (("position" >= 1))
@@ -765,7 +769,41 @@ CREATE TABLE public.call_lists (
     note text,
     created_by uuid,
     created_via public.actor_via NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    dialer_list_id text,
+    dialer_pushed_at timestamp with time zone,
+    dialer_error text
+);
+
+
+--
+-- Name: calls; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.calls (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    contact_id uuid,
+    list_id uuid,
+    dialer_call_id text NOT NULL,
+    dialer_user_id text,
+    state text NOT NULL,
+    end_reason text,
+    placed_at timestamp with time zone NOT NULL,
+    answered_at timestamp with time zone,
+    connected_at timestamp with time zone,
+    ended_at timestamp with time zone,
+    talk_seconds integer,
+    connected boolean DEFAULT false NOT NULL,
+    conversation boolean DEFAULT false NOT NULL,
+    outcome text,
+    outcome_notes text,
+    follow_up_at timestamp with time zone,
+    loss_reason text,
+    referral jsonb,
+    outcome_version integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -1084,6 +1122,18 @@ CREATE TABLE public.dialer_events (
     CONSTRAINT dialer_events_check CHECK (((skipped IS NULL) OR (applied_at IS NOT NULL))),
     CONSTRAINT dialer_events_skipped_check CHECK ((skipped = ANY (ARRAY['stale'::text, 'echo'::text]))),
     CONSTRAINT dialer_events_source_check CHECK ((source = ANY (ARRAY['webhook'::text, 'journal'::text])))
+);
+
+
+--
+-- Name: dialer_leads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dialer_leads (
+    contact_id uuid NOT NULL,
+    project_id uuid NOT NULL,
+    dialer_lead_id text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2500,6 +2550,7 @@ CREATE TABLE public.projects (
     slack_client_channel_set_by uuid,
     slack_client_channel_set_via public.actor_via,
     dialer_workspace_id text,
+    dialer_queue_id text,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
@@ -3868,6 +3919,22 @@ ALTER TABLE ONLY public.call_lists
 
 
 --
+-- Name: calls calls_dialer_call_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calls
+    ADD CONSTRAINT calls_dialer_call_id_key UNIQUE (dialer_call_id);
+
+
+--
+-- Name: calls calls_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calls
+    ADD CONSTRAINT calls_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: channel_invites channel_invites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4009,6 +4076,22 @@ ALTER TABLE ONLY public.daily_sends
 
 ALTER TABLE ONLY public.dialer_events
     ADD CONSTRAINT dialer_events_pkey PRIMARY KEY (webhook_id);
+
+
+--
+-- Name: dialer_leads dialer_leads_dialer_lead_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dialer_leads
+    ADD CONSTRAINT dialer_leads_dialer_lead_id_key UNIQUE (dialer_lead_id);
+
+
+--
+-- Name: dialer_leads dialer_leads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dialer_leads
+    ADD CONSTRAINT dialer_leads_pkey PRIMARY KEY (contact_id);
 
 
 --
@@ -5299,6 +5382,27 @@ CREATE INDEX ix_call_lists__project ON public.call_lists USING btree (project_id
 
 
 --
+-- Name: ix_calls__contact; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_calls__contact ON public.calls USING btree (contact_id, placed_at DESC);
+
+
+--
+-- Name: ix_calls__list; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_calls__list ON public.calls USING btree (list_id, placed_at DESC);
+
+
+--
+-- Name: ix_calls__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_calls__project ON public.calls USING btree (project_id, placed_at DESC);
+
+
+--
 -- Name: ix_channel_invites__sender; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5401,6 +5505,13 @@ CREATE INDEX ix_dialer_events__received ON public.dialer_events USING btree (rec
 --
 
 CREATE INDEX ix_dialer_events__unapplied ON public.dialer_events USING btree (organization_id, sequence) WHERE (applied_at IS NULL);
+
+
+--
+-- Name: ix_dialer_leads__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_dialer_leads__project ON public.dialer_leads USING btree (project_id);
 
 
 --
@@ -6150,6 +6261,13 @@ CREATE UNIQUE INDEX ux_agent_runs__one_rewrite ON public.agent_runs USING btree 
 --
 
 CREATE UNIQUE INDEX ux_calendars__live ON public.calendars USING btree (project_id, provider, external_id) WHERE (archived_at IS NULL);
+
+
+--
+-- Name: ux_call_lists__dialer_list; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_call_lists__dialer_list ON public.call_lists USING btree (dialer_list_id) WHERE (dialer_list_id IS NOT NULL);
 
 
 --
@@ -6957,6 +7075,30 @@ ALTER TABLE ONLY public.call_lists
 
 
 --
+-- Name: calls calls_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calls
+    ADD CONSTRAINT calls_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE SET NULL;
+
+
+--
+-- Name: calls calls_list_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calls
+    ADD CONSTRAINT calls_list_id_fkey FOREIGN KEY (list_id) REFERENCES public.call_lists(id) ON DELETE SET NULL;
+
+
+--
+-- Name: calls calls_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calls
+    ADD CONSTRAINT calls_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
 -- Name: channel_invites channel_invites_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7266,6 +7408,22 @@ ALTER TABLE ONLY public.copy_tests
 
 ALTER TABLE ONLY public.copy_tests
     ADD CONSTRAINT copy_tests_sent_by_fkey FOREIGN KEY (sent_by) REFERENCES public.users(id);
+
+
+--
+-- Name: dialer_leads dialer_leads_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dialer_leads
+    ADD CONSTRAINT dialer_leads_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: dialer_leads dialer_leads_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dialer_leads
+    ADD CONSTRAINT dialer_leads_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 
 
 --
@@ -9819,6 +9977,12 @@ ALTER TABLE public.call_list_contacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.call_lists ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: calls; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.calls ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: channel_invites; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -9907,6 +10071,12 @@ ALTER TABLE public.daily_sends ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.dialer_events ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: dialer_leads; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.dialer_leads ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: dialer_sync; Type: ROW SECURITY; Schema: public; Owner: -
@@ -10316,6 +10486,13 @@ CREATE POLICY organisation_fence ON public.call_lists USING ((project_id = ANY (
 
 
 --
+-- Name: calls organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.calls USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
 -- Name: channel_invites organisation_fence; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -10398,6 +10575,13 @@ CREATE POLICY organisation_fence ON public.contacts USING ((project_id = ANY (( 
 CREATE POLICY organisation_fence ON public.copy_tests USING ((EXISTS ( SELECT 1
    FROM public.mailboxes x
   WHERE (x.id = copy_tests.mailbox_id))));
+
+
+--
+-- Name: dialer_leads organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.dialer_leads USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
 
 
 --
@@ -11584,4 +11768,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028132047'),
     ('20261028132142'),
     ('20261028132305'),
-    ('20261028142319');
+    ('20261028142319'),
+    ('20261028171500');
