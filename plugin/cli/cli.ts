@@ -333,8 +333,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   company posts <org> <company> [--status scheduled|publishing|published|failed|cancelled]   its page's posts, by time
   company post <org> <company> --file <json|jsonl|-> [--dry-run]   schedules posts as its LinkedIn page, all or none,
                                          with no client project (its admin only): each on an account of one of its
-                                         people who manages the page, as in linkedin post, pageId always given
-                                         (bh linkedin pages <account id>); cancel one with linkedin post cancel
+                                         people who manages the page, as in linkedin post (bh linkedin pages
+                                         <account id>); without pageId on that person's own profile, once
+                                         bh linkedin profile-posts <id> on; cancel one with linkedin post cancel
   calendars                              the project's calendars: state, event type or booking link, last sync
   calendar connect --sender <id> [--key <Cal.com API key> [--event-type <id>]]
                                          the sender's Cal.com; without a key, a URL to open: sign in to
