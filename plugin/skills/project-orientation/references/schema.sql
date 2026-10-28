@@ -2105,6 +2105,53 @@ CREATE TABLE public.named_colleagues (
 
 
 --
+-- Name: notice_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notice_settings (
+    user_id uuid NOT NULL,
+    token text NOT NULL,
+    work_mail boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    set_at timestamp with time zone,
+    set_by uuid,
+    set_via public.actor_via,
+    CONSTRAINT notice_settings_check CHECK (((set_at IS NULL) = (set_via IS NULL)))
+);
+
+
+--
+-- Name: notices; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notices (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    user_id uuid NOT NULL,
+    organisation_id uuid NOT NULL,
+    project_id uuid,
+    kind text NOT NULL,
+    essential boolean NOT NULL,
+    urgent boolean DEFAULT false NOT NULL,
+    title text NOT NULL,
+    body text,
+    link text,
+    task_id uuid,
+    reply_id uuid,
+    repeat integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    mailed_at timestamp with time zone,
+    system_mail_id uuid,
+    dropped_at timestamp with time zone,
+    dropped_reason text,
+    CONSTRAINT notices_check CHECK (((mailed_at IS NULL) = (system_mail_id IS NULL))),
+    CONSTRAINT notices_check1 CHECK (((dropped_at IS NULL) = (dropped_reason IS NULL))),
+    CONSTRAINT notices_check2 CHECK (((mailed_at IS NULL) OR (dropped_at IS NULL))),
+    CONSTRAINT notices_kind_check CHECK ((kind = ANY (ARRAY['task'::text, 'draft'::text, 'strategies_paused'::text, 'wallet_low'::text, 'insufficient_funds'::text]))),
+    CONSTRAINT notices_repeat_check CHECK ((repeat >= 0))
+);
+
+
+--
 -- Name: oauth_clients; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2265,10 +2312,12 @@ CREATE TABLE public.organisations (
     google_order jsonb,
     google_order_set_by uuid,
     google_order_set_via public.actor_via,
+    wallet_notice text,
     CONSTRAINT organisations_approved_check CHECK ((((approved_at IS NULL) = (approved_by IS NULL)) AND ((approved_at IS NULL) = (approved_via IS NULL)))),
     CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text, 'metered'::text]))),
     CONSTRAINT organisations_daily_lead_cap_check CHECK (((daily_lead_cap IS NULL) OR (daily_lead_cap > 0))),
-    CONSTRAINT organisations_slug_check CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{1,48}$'::text))
+    CONSTRAINT organisations_slug_check CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{1,48}$'::text)),
+    CONSTRAINT organisations_wallet_notice_check CHECK (((wallet_notice IS NULL) OR (wallet_notice = ANY (ARRAY['low'::text, 'empty'::text]))))
 );
 
 
@@ -4487,6 +4536,30 @@ ALTER TABLE ONLY public.named_colleagues
 
 
 --
+-- Name: notice_settings notice_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notice_settings
+    ADD CONSTRAINT notice_settings_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: notice_settings notice_settings_token_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notice_settings
+    ADD CONSTRAINT notice_settings_token_key UNIQUE (token);
+
+
+--
+-- Name: notices notices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notices
+    ADD CONSTRAINT notices_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: oauth_clients oauth_clients_client_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6334,6 +6407,62 @@ CREATE INDEX linkedin_people_company_slug ON public.linkedin_people USING btree 
 --
 
 CREATE INDEX linkedin_people_slug ON public.linkedin_people USING btree (slug);
+
+
+--
+-- Name: notice_settings_set_by; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX notice_settings_set_by ON public.notice_settings USING btree (set_by) WHERE (set_by IS NOT NULL);
+
+
+--
+-- Name: notices_mailed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX notices_mailed ON public.notices USING btree (user_id, mailed_at) WHERE (mailed_at IS NOT NULL);
+
+
+--
+-- Name: notices_organisation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX notices_organisation ON public.notices USING btree (organisation_id);
+
+
+--
+-- Name: notices_project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX notices_project ON public.notices USING btree (project_id) WHERE (project_id IS NOT NULL);
+
+
+--
+-- Name: notices_reply; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX notices_reply ON public.notices USING btree (reply_id) WHERE (reply_id IS NOT NULL);
+
+
+--
+-- Name: notices_system_mail; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX notices_system_mail ON public.notices USING btree (system_mail_id) WHERE (system_mail_id IS NOT NULL);
+
+
+--
+-- Name: notices_task; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX notices_task ON public.notices USING btree (task_id) WHERE (task_id IS NOT NULL);
+
+
+--
+-- Name: notices_waiting; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX notices_waiting ON public.notices USING btree (user_id, created_at) WHERE ((mailed_at IS NULL) AND (dropped_at IS NULL));
 
 
 --
@@ -8427,6 +8556,70 @@ ALTER TABLE ONLY public.named_colleagues
 
 
 --
+-- Name: notice_settings notice_settings_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notice_settings
+    ADD CONSTRAINT notice_settings_set_by_fkey FOREIGN KEY (set_by) REFERENCES public.users(id);
+
+
+--
+-- Name: notice_settings notice_settings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notice_settings
+    ADD CONSTRAINT notice_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notices notices_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notices
+    ADD CONSTRAINT notices_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notices notices_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notices
+    ADD CONSTRAINT notices_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notices notices_reply_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notices
+    ADD CONSTRAINT notices_reply_id_fkey FOREIGN KEY (reply_id) REFERENCES public.replies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notices notices_system_mail_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notices
+    ADD CONSTRAINT notices_system_mail_id_fkey FOREIGN KEY (system_mail_id) REFERENCES public.system_mail_messages(id);
+
+
+--
+-- Name: notices notices_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notices
+    ADD CONSTRAINT notices_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notices notices_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notices
+    ADD CONSTRAINT notices_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: oauth_grants oauth_grants_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10406,6 +10599,13 @@ CREATE POLICY engine ON public.microsoft_tenants TO bhn_tenant USING (true) WITH
 
 
 --
+-- Name: notice_settings engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.notice_settings TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
 -- Name: oauth_clients engine; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -10648,6 +10848,18 @@ ALTER TABLE public.model_calls ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.named_colleagues ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: notice_settings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.notice_settings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: notices; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.notices ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: oauth_clients; Type: ROW SECURITY; Schema: public; Owner: -
@@ -11003,6 +11215,13 @@ CREATE POLICY organisation_fence ON public.model_calls USING ((project_id = ANY 
 CREATE POLICY organisation_fence ON public.named_colleagues USING ((EXISTS ( SELECT 1
    FROM public.contacts x
   WHERE (x.id = named_colleagues.contact_id))));
+
+
+--
+-- Name: notices organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.notices USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
 
 
 --
@@ -12042,4 +12261,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028183447'),
     ('20261028195603'),
     ('20261028195632'),
-    ('20261028195930');
+    ('20261028195930'),
+    ('20261028210500');
