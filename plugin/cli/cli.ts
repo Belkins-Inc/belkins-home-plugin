@@ -25,6 +25,56 @@ import { setup } from './setup.ts'
 /** Rows per dnc import or check request; the engine takes up to 10,000. */
 const DNC_CHUNK = 5000
 
+/** Companies and contacts per label request; the engine takes up to 1,000 of each. */
+const LABEL_CHUNK = 1000
+
+type LabelAnswer = {
+  label: { id: string; name: string }
+  companies: number
+  contacts: number
+  unknown: { companies: string[]; contacts: string[] }
+}
+
+/** What `bh label add|remove` names: --company and --contact lists, and the rows of --file. */
+async function labelTargets(o: { company?: string; contact?: string; file?: string }) {
+  const list = (v: string | undefined) =>
+    (v ?? '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+  const companies = list(o.company)
+  const contacts = list(o.contact)
+  for (const row of o.file ? await readRows(o.file) : []) {
+    const r = row as { company?: unknown; contact?: unknown }
+    if (typeof r.company === 'string') companies.push(r.company)
+    else if (typeof r.contact === 'string') contacts.push(r.contact)
+    else
+      throw new BhError(
+        `A row names neither a company nor a contact: ${JSON.stringify(row)}`,
+        { hint: '[{"company":"acme.com"},{"contact":"ann@acme.com"}]' },
+        2,
+      )
+  }
+  if (!companies.length && !contacts.length)
+    throw new BhError(
+      'Name a company or a contact',
+      { hint: 'bh label add Partner --company acme.com --contact ann@acme.com, or --file' },
+      2,
+    )
+  return { companies, contacts }
+}
+
+/** The parts' answers as one. */
+const mergeLabelAnswers = (answers: LabelAnswer[]): LabelAnswer => ({
+  label: answers[0]!.label,
+  companies: answers.reduce((n, a) => n + a.companies, 0),
+  contacts: answers.reduce((n, a) => n + a.contacts, 0),
+  unknown: {
+    companies: answers.flatMap((a) => a.unknown.companies),
+    contacts: answers.flatMap((a) => a.unknown.contacts),
+  },
+})
+
 const USAGE = `bh <command> [options] — JSON out, errors verbatim.
 
   setup [--dir <path>]                  once, after the plugin is installed: the working directory
@@ -71,7 +121,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   strategy exclude <id> --file <json|jsonl|->          [{"domain"|"companyId","reason","excluded":false to let back in}]
   strategy include <id> --company <id|domain> [--reason <t>]   let it back in
                                          enroll skips its people; those already in a plan keep going ("live")
-  leads [--q <text>] [--strategy <id>] [--state in_plan|paused|stuck|replied|ended] [--limit <n>] [--offset <n>]
+  leads [--q <text>] [--strategy <id>] [--state in_plan|paused|stuck|replied|ended] [--label <name>] [--limit <n>] [--offset <n>]
+                                         --label: the lead or its company carries it
   lead show <enrollment-id>              one lead's plan step by step
   lead resume <enrollment-id>            put back a lead a reply stopped when the reply needed nothing (a person only)
   lead pause <enrollment-id> | lead unpause <enrollment-id>   hold a lead by hand, and let it go on (a person only)
@@ -137,7 +188,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   goals | goal set <YYYY-MM> --target <meetings> [--counts qualified|held] | goal done <YYYY-MM> --done <n>   (a person only)
   contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts"}]
                                          a phone number is not a fact: facts.phone is refused, numbers go in with bh phones add
-  contacts [--q <text>]
+  contacts [--q <text>] [--label <name>]
+  labels                                 the project's own labels, with how many companies and contacts carry each
+  label add <name> [--company <id|domain>,…] [--contact <id|email|linkedin-url>,…] [--file <json|jsonl|->]
+                                         put it on (made if the project has none of that name, in any case);
+                                         --file: [{"company":"acme.com"},{"contact":"ann@acme.com"},…]; answers
+                                         how many it went on and what the project does not have ("unknown")
+  label remove <name> [--company …] [--contact …] [--file …]   take it off; the label stays
+  label rename <name> --name <new> | label delete <name>        delete takes it off everything that carries it
   phones <contact-id>                    a contact's numbers in dial order: kind, source, confidence, state, on do-not-call
   phones add --file <json|jsonl|->       [{"contactId","number","kind":"mobile|direct|company|other","source","confidence":"high|medium|low","dnc"}]
   phones add <contact-id> --number <n> --source <s> [--kind <k>] [--confidence <c>] [--dnc]
@@ -1104,6 +1162,7 @@ async function main(argv: string[]): Promise<void> {
       number: { type: 'string' },
       rank: { type: 'string' },
       dnc: { type: 'boolean' },
+      label: { type: 'string' },
     },
   })
   const config = await loadConfig()
@@ -1794,7 +1853,10 @@ async function main(argv: string[]): Promise<void> {
         await call(
           config,
           'GET',
-          `/projects/${p()}/contacts?${new URLSearchParams(o.q ? { q: o.q } : {})}`,
+          `/projects/${p()}/contacts?${new URLSearchParams({
+            ...(o.q ? { q: o.q } : {}),
+            ...(o.label ? { label: o.label } : {}),
+          })}`,
         ),
       )
     case 'phones': {
@@ -1830,6 +1892,50 @@ async function main(argv: string[]): Promise<void> {
       }
       if (!sub) throw new BhError('Whose numbers?', { hint: 'bh phones <contact-id>' }, 2)
       return out(await call(config, 'GET', `/contacts/${sub}/phones`))
+    }
+    case 'labels':
+      return out(await call(config, 'GET', `/projects/${p()}/labels`))
+    case 'label': {
+      if (!arg)
+        throw new BhError('Which label?', { hint: 'bh label add Partner --company acme.com' }, 2)
+      if (sub === 'add' || sub === 'remove') {
+        const { companies, contacts } = await labelTargets(o)
+        const answers = []
+        // In parts of LABEL_CHUNK, each list on its own: the engine takes that many of each.
+        for (let i = 0; i < Math.max(companies.length, contacts.length); i += LABEL_CHUNK)
+          answers.push(
+            (await call(
+              config,
+              'POST',
+              `/projects/${p()}/labels/${sub === 'add' ? 'apply' : 'remove'}`,
+              {
+                label: arg,
+                companies: companies.slice(i, i + LABEL_CHUNK),
+                contacts: contacts.slice(i, i + LABEL_CHUNK),
+              },
+            )) as LabelAnswer,
+          )
+        return out(mergeLabelAnswers(answers))
+      }
+      if (sub === 'rename' || sub === 'delete') {
+        const labels = (await call(config, 'GET', `/projects/${p()}/labels`)) as {
+          id: string
+          name: string
+        }[]
+        const found = labels.find((l) => l.name.toLowerCase() === arg.toLowerCase())
+        if (!found)
+          throw new BhError(
+            `Project ${current!.slug} has no label named ${arg}`,
+            { hint: 'bh labels lists them' },
+            2,
+          )
+        if (sub === 'delete')
+          return out(await call(config, 'DELETE', `/projects/${p()}/labels/${found.id}`))
+        return out(
+          await call(config, 'PATCH', `/projects/${p()}/labels/${found.id}`, { name: o.name }),
+        )
+      }
+      break
     }
     case 'esp':
       return out(await call(config, 'GET', `/projects/${p()}/esp`))
@@ -2365,6 +2471,7 @@ async function main(argv: string[]): Promise<void> {
           q: o.q,
           strategy: o.strategy,
           state: o.state,
+          label: o.label,
           limit: o.limit,
           offset: o.offset,
         }).filter((e): e is [string, string] => typeof e[1] === 'string'),

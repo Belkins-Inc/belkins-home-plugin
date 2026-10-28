@@ -901,6 +901,32 @@ WITH (autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.
 
 
 --
+-- Name: company_labels; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.company_labels (
+    company_id uuid NOT NULL,
+    label_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    created_via public.actor_via NOT NULL
+);
+
+
+--
+-- Name: contact_labels; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.contact_labels (
+    contact_id uuid NOT NULL,
+    label_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    created_via public.actor_via NOT NULL
+);
+
+
+--
 -- Name: contact_phones; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1466,6 +1492,21 @@ CREATE VIEW public.inbox_queue AS
      LEFT JOIN public.companies co ON ((co.id = ct.company_id)))
      LEFT JOIN public.enrollments e ON ((e.id = t.enrollment_id)))
   WHERE ((tm.direction = 'in'::text) AND (tm.kind = 'reply'::text) AND (tm.triaged_at IS NULL));
+
+
+--
+-- Name: labels; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.labels (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    name public.citext NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    created_via public.actor_via NOT NULL,
+    CONSTRAINT labels_name_check CHECK (((length(TRIM(BOTH FROM name)) >= 1) AND (length(TRIM(BOTH FROM name)) <= 60)))
+);
 
 
 --
@@ -3650,6 +3691,22 @@ ALTER TABLE ONLY public.companies
 
 
 --
+-- Name: company_labels company_labels_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.company_labels
+    ADD CONSTRAINT company_labels_pkey PRIMARY KEY (company_id, label_id);
+
+
+--
+-- Name: contact_labels contact_labels_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_labels
+    ADD CONSTRAINT contact_labels_pkey PRIMARY KEY (contact_id, label_id);
+
+
+--
 -- Name: contact_phones contact_phones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3751,6 +3808,22 @@ ALTER TABLE ONLY public.events_default
 
 ALTER TABLE ONLY public.hypotheses
     ADD CONSTRAINT hypotheses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: labels labels_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.labels
+    ADD CONSTRAINT labels_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: labels labels_project_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.labels
+    ADD CONSTRAINT labels_project_id_name_key UNIQUE (project_id, name);
 
 
 --
@@ -4701,6 +4774,20 @@ CREATE UNIQUE INDEX client_project_grants_active ON public.client_project_grants
 --
 
 CREATE INDEX client_project_grants_project ON public.client_project_grants USING btree (project_id);
+
+
+--
+-- Name: company_labels_label_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX company_labels_label_id_idx ON public.company_labels USING btree (label_id);
+
+
+--
+-- Name: contact_labels_label_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX contact_labels_label_id_idx ON public.contact_labels USING btree (label_id);
 
 
 --
@@ -6513,6 +6600,54 @@ ALTER TABLE ONLY public.companies
 
 
 --
+-- Name: company_labels company_labels_company_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.company_labels
+    ADD CONSTRAINT company_labels_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: company_labels company_labels_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.company_labels
+    ADD CONSTRAINT company_labels_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: company_labels company_labels_label_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.company_labels
+    ADD CONSTRAINT company_labels_label_id_fkey FOREIGN KEY (label_id) REFERENCES public.labels(id) ON DELETE CASCADE;
+
+
+--
+-- Name: contact_labels contact_labels_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_labels
+    ADD CONSTRAINT contact_labels_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: contact_labels contact_labels_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_labels
+    ADD CONSTRAINT contact_labels_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: contact_labels contact_labels_label_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_labels
+    ADD CONSTRAINT contact_labels_label_id_fkey FOREIGN KEY (label_id) REFERENCES public.labels(id) ON DELETE CASCADE;
+
+
+--
 -- Name: contact_phones contact_phones_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6878,6 +7013,22 @@ ALTER TABLE ONLY public.hypotheses
 
 ALTER TABLE ONLY public.hypotheses
     ADD CONSTRAINT hypotheses_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: labels labels_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.labels
+    ADD CONSTRAINT labels_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: labels labels_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.labels
+    ADD CONSTRAINT labels_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 
 
 --
@@ -9110,4 +9261,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261027150326'),
     ('20261027155804'),
     ('20261027212602'),
+    ('20261028122421'),
     ('20261028122851');

@@ -134,6 +134,10 @@ there are many:
 - `bh thread stage <thread-id> opportunity|proposal|won|lost|none` records where the deal with the
   lead stands after they answered (a meeting's outcome says only what that meeting came to). Set
   it when a thread or a person says so — a proposal went out, they signed, they chose someone else.
+- `bh label add <name> --contact <email>` (or `--company <domain>`) puts one of the project's own
+  labels on the lead or their company; `bh labels` lists them, `bh label remove` takes one off. The
+  team sorts by them (the Label filter on Leads); the engine never acts on one. Use the names the
+  project already has before making a new one.
 - `bh reply discard <id>` withdraws a draft, an approved reply not yet sent, or a failed one.
 - A failed reply (`bh replies --status failed`, `lastError`) is usually a disconnected mailbox; fix
   the mailbox, then draft again.
