@@ -99,6 +99,13 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   org tier <slug> [--price <price_…>]   its platform tier and this month's leads; with --price, a Checkout link to subscribe
   wallet [--org <slug>] [--limit <n>]   a signed-up organisation's balance and ledger, newest first
   wallet top-up <dollars> [--org <slug>]   a Checkout link that adds to the wallet once paid (its admin)
+  google-org [--org <slug>]             its own Google Workspace organisation, where bought Google mailboxes live:
+                                         made on the first Google domain bought; state, what it waits for, the terms link
+  google-org details --company <legal name> --address <street[; line 2]> --city <c> [--region <r>]
+       --postal-code <p> --country <US> --first <n> --last <n> --email <e> [--phone <p>] [--org <slug>]
+                                         what Google is told about the company, its customer of record (its admin)
+  google-org record <org> --customer-id <C0…>   Google's customer, made in Partner Sales Console: the engine gives
+                                         the customer the terms link and carries on (platform admin)
   org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
@@ -1011,6 +1018,10 @@ async function main(argv: string[]): Promise<void> {
       browser: { type: 'boolean' },
       first: { type: 'string' },
       last: { type: 'string' },
+      'customer-id': { type: 'string' },
+      city: { type: 'string' },
+      'postal-code': { type: 'string' },
+      phone: { type: 'string' },
       country: { type: 'string' },
       undo: { type: 'boolean' },
       port: { type: 'string' },
@@ -1777,6 +1788,43 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'link')
         return out(await call(config, 'PUT', `/projects/${p()}/subscription`, { customerId: arg }))
       return out(await call(config, 'GET', `/projects/${p()}/subscription`))
+    case 'google-org': {
+      if (sub === 'record') {
+        if (!arg || !o['customer-id'])
+          throw new BhError('bh google-org record <org> --customer-id <C0…>', {}, 2)
+        return out(
+          await call(config, 'POST', `/orgs/${arg}/google-organisation/customer`, {
+            customerId: o['customer-id'],
+          }),
+        )
+      }
+      const org = o.org ?? (await onlyMeteredOrg(config))
+      if (sub === 'details')
+        return out(
+          await call(config, 'PUT', `/orgs/${org}/google-organisation`, {
+            company: o.company,
+            address: {
+              lines: (o.address ?? '')
+                .split(';')
+                .map((line) => line.trim())
+                .filter(Boolean),
+              city: o.city,
+              ...(o.region ? { region: o.region } : {}),
+              postalCode: o['postal-code'],
+              country: o.country,
+            },
+            contact: {
+              firstName: o.first,
+              lastName: o.last,
+              email: o.email,
+              ...(o.phone ? { phone: o.phone } : {}),
+            },
+          }),
+        )
+      if (sub)
+        throw new BhError('bh google-org [details …|record <org> --customer-id <C0…>]', {}, 2)
+      return out(await call(config, 'GET', `/orgs/${org}/google-organisation`))
+    }
     case 'wallet': {
       const org = o.org ?? (await onlyMeteredOrg(config))
       if (sub === 'top-up') {

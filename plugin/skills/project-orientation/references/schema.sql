@@ -2230,6 +2230,9 @@ CREATE TABLE public.organisations (
     daily_lead_cap integer,
     protections_set_by uuid,
     protections_set_via public.actor_via,
+    google_order jsonb,
+    google_order_set_by uuid,
+    google_order_set_via public.actor_via,
     CONSTRAINT organisations_approved_check CHECK ((((approved_at IS NULL) = (approved_by IS NULL)) AND ((approved_at IS NULL) = (approved_via IS NULL)))),
     CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text, 'metered'::text]))),
     CONSTRAINT organisations_daily_lead_cap_check CHECK (((daily_lead_cap IS NULL) OR (daily_lead_cap > 0))),
@@ -3802,7 +3805,7 @@ CREATE TABLE public.workspace_tenants (
     id uuid DEFAULT uuidv7() NOT NULL,
     name text NOT NULL,
     admin_email public.citext NOT NULL,
-    key bytea NOT NULL,
+    key bytea,
     status text DEFAULT 'active'::text NOT NULL,
     max_domains integer DEFAULT 500 NOT NULL,
     created_by uuid NOT NULL,
@@ -3824,10 +3827,22 @@ CREATE TABLE public.workspace_tenants (
     full_reason text,
     full_users integer,
     seat_usd numeric(8,2) DEFAULT 8.40 NOT NULL,
+    organisation_id uuid,
+    setup text DEFAULT 'ready'::text NOT NULL,
+    google_customer_id text,
+    channel_customer text,
+    setup_asked_at timestamp with time zone,
+    setup_failure text,
+    customer_recorded_at timestamp with time zone,
+    customer_recorded_by uuid,
+    customer_recorded_via public.actor_via,
+    ready_at timestamp with time zone,
     CONSTRAINT workspace_tenants_console_state_check CHECK ((console_state = ANY (ARRAY['none'::text, 'live'::text, 'expired'::text]))),
     CONSTRAINT workspace_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 600))),
     CONSTRAINT workspace_tenants_max_users_check CHECK (((max_users >= 1) AND (max_users <= 5000))),
+    CONSTRAINT workspace_tenants_owner_check CHECK ((((organisation_id IS NULL) AND (setup = 'ready'::text) AND (key IS NOT NULL)) OR ((organisation_id IS NOT NULL) AND (NOT default_pool) AND ((setup = 'ordering'::text) OR ((key IS NOT NULL) AND (google_customer_id IS NOT NULL)))))),
     CONSTRAINT workspace_tenants_seat_usd_check CHECK ((seat_usd >= (0)::numeric)),
+    CONSTRAINT workspace_tenants_setup_check CHECK ((setup = ANY (ARRAY['ordering'::text, 'terms'::text, 'ready'::text]))),
     CONSTRAINT workspace_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
 
@@ -6624,6 +6639,13 @@ CREATE UNIQUE INDEX ux_warmup_sends__rfc ON public.warmup_sends USING btree (rfc
 
 
 --
+-- Name: ux_workspace_tenants__organisation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_workspace_tenants__organisation ON public.workspace_tenants USING btree (organisation_id) WHERE (organisation_id IS NOT NULL);
+
+
+--
 -- Name: events_default_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
@@ -8433,6 +8455,14 @@ ALTER TABLE ONLY public.organisations
 
 
 --
+-- Name: organisations organisations_google_order_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisations
+    ADD CONSTRAINT organisations_google_order_set_by_fkey FOREIGN KEY (google_order_set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: organisations organisations_protections_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10009,6 +10039,22 @@ ALTER TABLE ONLY public.workspace_tenants
 
 
 --
+-- Name: workspace_tenants workspace_tenants_customer_recorded_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workspace_tenants
+    ADD CONSTRAINT workspace_tenants_customer_recorded_by_fkey FOREIGN KEY (customer_recorded_by) REFERENCES public.users(id);
+
+
+--
+-- Name: workspace_tenants workspace_tenants_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workspace_tenants
+    ADD CONSTRAINT workspace_tenants_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id);
+
+
+--
 -- Name: address_checks; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -10360,7 +10406,7 @@ CREATE POLICY engine ON public.warmup_seeds TO bhn_tenant USING (true) WITH CHEC
 -- Name: workspace_tenants engine; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY engine ON public.workspace_tenants TO bhn_tenant USING (true) WITH CHECK (true);
+CREATE POLICY engine ON public.workspace_tenants TO bhn_tenant USING (((organisation_id IS NULL) OR (organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])))) WITH CHECK (((organisation_id IS NULL) OR (organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[]))));
 
 
 --
@@ -11858,4 +11904,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028171500'),
     ('20261028172222'),
     ('20261028183447'),
-    ('20261028195632');
+    ('20261028195632'),
+    ('20261028195930');
