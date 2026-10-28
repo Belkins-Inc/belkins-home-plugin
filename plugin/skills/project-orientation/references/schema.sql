@@ -5068,6 +5068,13 @@ CREATE INDEX ix_domains__project_status ON public.domains USING btree (project_i
 
 
 --
+-- Name: ix_enrollments__contact; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_enrollments__contact ON public.enrollments USING btree (contact_id, created_at DESC);
+
+
+--
 -- Name: ix_enrollments__linkedin_account; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9366,4 +9373,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261027212602'),
     ('20261028122421'),
     ('20261028122851'),
-    ('20261028124024');
+    ('20261028124024'),
+    ('20261028130916');
