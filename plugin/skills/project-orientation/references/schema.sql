@@ -1998,6 +1998,19 @@ CREATE TABLE public.named_colleagues (
 
 
 --
+-- Name: organisation_lead_months; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.organisation_lead_months (
+    organisation_id uuid NOT NULL,
+    month date NOT NULL,
+    leads bigint DEFAULT 0 NOT NULL,
+    CONSTRAINT organisation_lead_months_leads_check CHECK ((leads >= 0)),
+    CONSTRAINT organisation_lead_months_month_check CHECK ((EXTRACT(day FROM month) = (1)::numeric))
+);
+
+
+--
 -- Name: organisation_members; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2008,6 +2021,27 @@ CREATE TABLE public.organisation_members (
     added_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT organisation_members_role_check CHECK ((role = ANY (ARRAY['admin'::text, 'member'::text])))
+);
+
+
+--
+-- Name: organisation_subscriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.organisation_subscriptions (
+    organisation_id uuid NOT NULL,
+    stripe_subscription_id text NOT NULL,
+    status text NOT NULL,
+    price_id text,
+    plan_name text,
+    leads_per_month bigint,
+    amount_cents bigint,
+    currency text,
+    current_period_end timestamp with time zone,
+    last_event_id text,
+    last_event_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT organisation_subscriptions_leads_per_month_check CHECK ((leads_per_month >= 0))
 );
 
 
@@ -2026,7 +2060,13 @@ CREATE TABLE public.organisations (
     dialer_organization_id text,
     dialer_organization_set_by uuid,
     dialer_organization_set_via public.actor_via,
-    CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text]))),
+    approved_at timestamp with time zone,
+    approved_by uuid,
+    approved_via public.actor_via,
+    stripe_customer_id text,
+    wallet_cents bigint DEFAULT 0 NOT NULL,
+    CONSTRAINT organisations_approved_check CHECK ((((approved_at IS NULL) = (approved_by IS NULL)) AND ((approved_at IS NULL) = (approved_via IS NULL)))),
+    CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text, 'metered'::text]))),
     CONSTRAINT organisations_slug_check CHECK ((slug ~ '^[a-z0-9][a-z0-9-]{1,48}$'::text))
 );
 
@@ -2815,6 +2855,21 @@ CREATE TABLE public.sessions (
 
 
 --
+-- Name: sign_up_challenges; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sign_up_challenges (
+    id uuid NOT NULL,
+    email text NOT NULL,
+    code_hash bytea NOT NULL,
+    attempts bigint DEFAULT 0 NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    consumed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: slack_client_invites; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3190,7 +3245,8 @@ CREATE TABLE public.stripe_events (
     type text NOT NULL,
     received_at timestamp with time zone DEFAULT now() NOT NULL,
     project_id uuid,
-    note text
+    note text,
+    organisation_id uuid
 );
 
 
@@ -3227,12 +3283,13 @@ CREATE TABLE public.system_mail_messages (
     resend_id text,
     status text DEFAULT 'sending'::text NOT NULL,
     error text,
-    sent_by uuid NOT NULL,
+    sent_by uuid,
     sent_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     settled_at timestamp with time zone,
     CONSTRAINT system_mail_messages_check CHECK (((status = 'sending'::text) = (settled_at IS NULL))),
     CONSTRAINT system_mail_messages_check1 CHECK (((status = 'sent'::text) = (resend_id IS NOT NULL))),
+    CONSTRAINT system_mail_messages_sent_by_check CHECK (((sent_by IS NOT NULL) OR (sent_via = 'engine'::public.actor_via))),
     CONSTRAINT system_mail_messages_status_check CHECK ((status = ANY (ARRAY['sending'::text, 'sent'::text, 'failed'::text]))),
     CONSTRAINT system_mail_messages_to_check CHECK (((cardinality("to") >= 1) AND (cardinality("to") <= 50)))
 );
@@ -3277,6 +3334,22 @@ CREATE TABLE public.tasks (
     CONSTRAINT tasks_priority_check CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text]))),
     CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text, 'stalled'::text])) AND (strategy_id IS NOT NULL)))),
     CONSTRAINT tasks_status_check CHECK ((status = ANY (ARRAY['open'::text, 'done'::text, 'cancelled'::text])))
+);
+
+
+--
+-- Name: terms_acceptances; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.terms_acceptances (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    organisation_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    terms text NOT NULL,
+    version text NOT NULL,
+    accepted_at timestamp with time zone DEFAULT now() NOT NULL,
+    accepted_via public.actor_via NOT NULL,
+    CONSTRAINT terms_acceptances_terms_check CHECK ((terms = 'acceptable_use'::text))
 );
 
 
@@ -3357,6 +3430,32 @@ CREATE TABLE public.users (
     CONSTRAINT users_kind_check CHECK ((kind = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text]))),
     CONSTRAINT users_preview_is_client CHECK (((preview_of IS NULL) OR (kind = 'client'::text))),
     CONSTRAINT users_slack_workspace_check CHECK (((slack_user_id IS NULL) = (slack_workspace_id IS NULL)))
+);
+
+
+--
+-- Name: wallet_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.wallet_entries (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    organisation_id uuid NOT NULL,
+    at timestamp with time zone DEFAULT now() NOT NULL,
+    kind text NOT NULL,
+    amount_cents bigint NOT NULL,
+    balance_cents bigint NOT NULL,
+    cost_usd numeric(12,6),
+    project_id uuid,
+    provider_call_id uuid,
+    domain_id uuid,
+    stripe_ref text,
+    note text,
+    created_by uuid,
+    created_via public.actor_via NOT NULL,
+    CONSTRAINT wallet_entries_amount_cents_check CHECK ((amount_cents <> 0)),
+    CONSTRAINT wallet_entries_check CHECK (((kind = 'adjustment'::text) OR ((kind = 'top_up'::text) = (amount_cents > 0)))),
+    CONSTRAINT wallet_entries_check1 CHECK (((created_via = 'engine'::public.actor_via) OR (created_by IS NOT NULL))),
+    CONSTRAINT wallet_entries_kind_check CHECK ((kind = ANY (ARRAY['top_up'::text, 'provider_call'::text, 'domain'::text, 'mailbox'::text, 'warmup'::text, 'linkedin_account'::text, 'adjustment'::text])))
 );
 
 
@@ -4111,11 +4210,35 @@ ALTER TABLE ONLY public.named_colleagues
 
 
 --
+-- Name: organisation_lead_months organisation_lead_months_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisation_lead_months
+    ADD CONSTRAINT organisation_lead_months_pkey PRIMARY KEY (organisation_id, month);
+
+
+--
 -- Name: organisation_members organisation_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.organisation_members
     ADD CONSTRAINT organisation_members_pkey PRIMARY KEY (organisation_id, user_id);
+
+
+--
+-- Name: organisation_subscriptions organisation_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisation_subscriptions
+    ADD CONSTRAINT organisation_subscriptions_pkey PRIMARY KEY (organisation_id);
+
+
+--
+-- Name: organisation_subscriptions organisation_subscriptions_stripe_subscription_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisation_subscriptions
+    ADD CONSTRAINT organisation_subscriptions_stripe_subscription_id_key UNIQUE (stripe_subscription_id);
 
 
 --
@@ -4487,6 +4610,14 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: sign_up_challenges sign_up_challenges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sign_up_challenges
+    ADD CONSTRAINT sign_up_challenges_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: slack_client_invites slack_client_invites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4687,6 +4818,14 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: terms_acceptances terms_acceptances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.terms_acceptances
+    ADD CONSTRAINT terms_acceptances_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: thread_messages thread_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4764,6 +4903,30 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: wallet_entries wallet_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: wallet_entries wallet_entries_provider_call_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_provider_call_id_key UNIQUE (provider_call_id);
+
+
+--
+-- Name: wallet_entries wallet_entries_stripe_ref_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_stripe_ref_key UNIQUE (stripe_ref);
 
 
 --
@@ -5502,6 +5665,13 @@ CREATE INDEX ix_sending_companies__egress ON public.sending_companies USING btre
 
 
 --
+-- Name: ix_sign_up_challenges__email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_sign_up_challenges__email ON public.sign_up_challenges USING btree (email, created_at DESC);
+
+
+--
 -- Name: ix_slack_messages__open; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5572,6 +5742,13 @@ CREATE INDEX ix_tasks__open ON public.tasks USING btree (project_id, due_at) WHE
 
 
 --
+-- Name: ix_terms_acceptances__organisation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_terms_acceptances__organisation ON public.terms_acceptances USING btree (organisation_id);
+
+
+--
 -- Name: ix_thread_messages__replies; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5618,6 +5795,13 @@ CREATE INDEX ix_threads__project ON public.threads USING btree (project_id);
 --
 
 CREATE INDEX ix_triage_holds__effective ON public.triage_holds USING btree (effective_at);
+
+
+--
+-- Name: ix_wallet_entries__organisation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_wallet_entries__organisation ON public.wallet_entries USING btree (organisation_id, at DESC);
 
 
 --
@@ -5898,6 +6082,13 @@ CREATE UNIQUE INDEX ux_microsoft_tenants__name ON public.microsoft_tenants USING
 --
 
 CREATE UNIQUE INDEX ux_organisations__dialer_organization ON public.organisations USING btree (dialer_organization_id) WHERE (dialer_organization_id IS NOT NULL);
+
+
+--
+-- Name: ux_organisations__stripe_customer; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_organisations__stripe_customer ON public.organisations USING btree (stripe_customer_id) WHERE (stripe_customer_id IS NOT NULL);
 
 
 --
@@ -7670,6 +7861,14 @@ ALTER TABLE ONLY public.named_colleagues
 
 
 --
+-- Name: organisation_lead_months organisation_lead_months_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisation_lead_months
+    ADD CONSTRAINT organisation_lead_months_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
 -- Name: organisation_members organisation_members_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7691,6 +7890,22 @@ ALTER TABLE ONLY public.organisation_members
 
 ALTER TABLE ONLY public.organisation_members
     ADD CONSTRAINT organisation_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: organisation_subscriptions organisation_subscriptions_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisation_subscriptions
+    ADD CONSTRAINT organisation_subscriptions_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: organisations organisations_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organisations
+    ADD CONSTRAINT organisations_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.users(id);
 
 
 --
@@ -8790,6 +9005,14 @@ ALTER TABLE ONLY public.strategy_steps
 
 
 --
+-- Name: stripe_events stripe_events_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stripe_events
+    ADD CONSTRAINT stripe_events_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE SET NULL;
+
+
+--
 -- Name: stripe_events stripe_events_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8926,6 +9149,22 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: terms_acceptances terms_acceptances_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.terms_acceptances
+    ADD CONSTRAINT terms_acceptances_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: terms_acceptances terms_acceptances_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.terms_acceptances
+    ADD CONSTRAINT terms_acceptances_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: thread_messages thread_messages_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9059,6 +9298,46 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_slack_workspace_id_fkey FOREIGN KEY (slack_workspace_id) REFERENCES public.slack_workspaces(id);
+
+
+--
+-- Name: wallet_entries wallet_entries_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: wallet_entries wallet_entries_domain_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_domain_id_fkey FOREIGN KEY (domain_id) REFERENCES public.domains(id) ON DELETE SET NULL;
+
+
+--
+-- Name: wallet_entries wallet_entries_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: wallet_entries wallet_entries_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE SET NULL;
+
+
+--
+-- Name: wallet_entries wallet_entries_provider_call_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.wallet_entries
+    ADD CONSTRAINT wallet_entries_provider_call_id_fkey FOREIGN KEY (provider_call_id) REFERENCES public.provider_calls(id) ON DELETE SET NULL;
 
 
 --
@@ -9374,4 +9653,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028122421'),
     ('20261028122851'),
     ('20261028124024'),
-    ('20261028130916');
+    ('20261028130916'),
+    ('20261028131831');

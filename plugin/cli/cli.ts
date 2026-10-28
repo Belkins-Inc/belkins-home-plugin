@@ -92,6 +92,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   project move <slug> --org <org>        move a project and all it owns to another organisation (platform admin)
   orgs | org create <slug> --name <name> [--billing external|stripe]   organisations you belong to (the platform admin: all)
   org billing <slug> external|stripe   stripe: Dylan's clients; external: billed outside the platform (platform admin)
+  org approve <slug>                    let an organisation that signed itself up send and buy (platform admin)
+  org tier <slug> [--price <price_…>]   its platform tier and this month's leads; with --price, a Checkout link to subscribe
+  wallet [--org <slug>] [--limit <n>]   a signed-up organisation's balance and ledger, newest first
+  wallet top-up <dollars> [--org <slug>]   a Checkout link that adds to the wallet once paid (its admin)
   org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
   billing [--project <slug>]           the project's Stripe subscription, as Stripe last said it
@@ -957,6 +961,14 @@ function noProject(): BhError {
   )
 }
 
+/** The one organisation the caller belongs to that pays from a wallet; asks for --org otherwise. */
+async function onlyMeteredOrg(config: Parameters<typeof call>[0]): Promise<string> {
+  const orgs = (await call(config, 'GET', '/orgs')) as { slug: string; billing: string }[]
+  const metered = orgs.filter((x) => x.billing === 'metered')
+  if (metered.length !== 1) throw new BhError('Name the organisation: --org <slug>', {}, 2)
+  return metered[0]!.slug
+}
+
 async function main(argv: string[]): Promise<void> {
   const { values: o, positionals: pos } = parseArgs({
     args: argv,
@@ -982,6 +994,7 @@ async function main(argv: string[]): Promise<void> {
       project: { type: 'string' },
       name: { type: 'string' },
       billing: { type: 'string' },
+      price: { type: 'string' },
       timezone: { type: 'string' },
       limit: { type: 'string' },
       hours: { type: 'string' },
@@ -1707,6 +1720,22 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'link')
         return out(await call(config, 'PUT', `/projects/${p()}/subscription`, { customerId: arg }))
       return out(await call(config, 'GET', `/projects/${p()}/subscription`))
+    case 'wallet': {
+      const org = o.org ?? (await onlyMeteredOrg(config))
+      if (sub === 'top-up') {
+        const dollars = Number(arg)
+        if (!Number.isFinite(dollars) || dollars <= 0)
+          throw new BhError('bh wallet top-up <dollars>', {}, 2)
+        return out(
+          await call(config, 'POST', `/orgs/${org}/wallet/top-up`, {
+            amountCents: Math.round(dollars * 100),
+          }),
+        )
+      }
+      return out(
+        await call(config, 'GET', `/orgs/${org}/wallet${o.limit ? `?limit=${o.limit}` : ''}`),
+      )
+    }
     case 'org':
       if (sub === 'create')
         return out(
@@ -1718,6 +1747,13 @@ async function main(argv: string[]): Promise<void> {
         )
       if (sub === 'billing')
         return out(await call(config, 'PATCH', `/orgs/${arg}`, { billing: pos[3] }))
+      if (sub === 'approve') return out(await call(config, 'POST', `/orgs/${arg}/approve`))
+      if (sub === 'tier')
+        return out(
+          o.price
+            ? await call(config, 'POST', `/orgs/${arg}/tier`, { priceId: o.price })
+            : await call(config, 'GET', `/orgs/${arg}/tier`),
+        )
       if (sub === 'dialer')
         return out(
           await call(config, 'PUT', `/orgs/${arg}/dialer`, {
