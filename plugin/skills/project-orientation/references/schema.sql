@@ -704,6 +704,8 @@ CREATE TABLE public.meetings (
     lead_responded_at timestamp with time zone,
     brief_posted_at timestamp with time zone,
     brief_ref text,
+    dialer_meeting_id text,
+    call_id uuid,
     CONSTRAINT meetings_check CHECK (((outcome IS NULL) OR (status = 'held'::text))),
     CONSTRAINT meetings_lead_response_check CHECK ((lead_response = ANY (ARRAY['accepted'::text, 'declined'::text, 'tentative'::text]))),
     CONSTRAINT meetings_no_show_by_check CHECK ((no_show_by = ANY (ARRAY['lead'::text, 'rep'::text, 'both'::text]))),
@@ -803,7 +805,8 @@ CREATE TABLE public.calls (
     referral jsonb,
     outcome_version integer,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    reacted_outcome text
 );
 
 
@@ -1277,7 +1280,7 @@ CREATE TABLE public.enrollments (
     CONSTRAINT enrollments_check2 CHECK (((kind = 'first'::text) OR (follows_enrollment_id IS NOT NULL))),
     CONSTRAINT enrollments_check3 CHECK (((status = 'paused'::text) = (pause_reason IS NOT NULL))),
     CONSTRAINT enrollments_kind_check CHECK ((kind = ANY (ARRAY['first'::text, 're_engagement'::text, 'referral'::text]))),
-    CONSTRAINT enrollments_pause_reason_check CHECK ((pause_reason = ANY (ARRAY['out_of_office'::text, 'company_meeting'::text, 'manual'::text, 'held_back'::text]))),
+    CONSTRAINT enrollments_pause_reason_check CHECK ((pause_reason = ANY (ARRAY['out_of_office'::text, 'company_meeting'::text, 'manual'::text, 'held_back'::text, 'call_follow_up'::text]))),
     CONSTRAINT enrollments_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'active'::text, 'paused'::text, 'completed'::text, 'stopped'::text]))),
     CONSTRAINT enrollments_stop_reason_check CHECK ((stop_reason = ANY (ARRAY['replied'::text, 'unsubscribed'::text, 'dnc'::text, 'no_channel_left'::text, 'sender_gone'::text, 'manual'::text, 'wrong_person'::text]))),
     CONSTRAINT enrollments_stuck_code_check CHECK ((stuck_code = ANY (ARRAY['no_copy'::text, 'linkedin_not_configured'::text, 'mailbox_disconnected'::text, 'linkedin_disconnected'::text, 'other'::text]))),
@@ -6383,6 +6386,13 @@ CREATE UNIQUE INDEX ux_meetings__calendar_slot ON public.meetings USING btree (c
 
 
 --
+-- Name: ux_meetings__dialer_meeting; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_meetings__dialer_meeting ON public.meetings USING btree (dialer_meeting_id) WHERE (dialer_meeting_id IS NOT NULL);
+
+
+--
 -- Name: ux_messages__plan_step; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8032,6 +8042,14 @@ ALTER TABLE ONLY public.meetings
 
 ALTER TABLE ONLY public.meetings
     ADD CONSTRAINT meetings_calendar_id_fkey FOREIGN KEY (calendar_id) REFERENCES public.calendars(id);
+
+
+--
+-- Name: meetings meetings_call_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meetings
+    ADD CONSTRAINT meetings_call_id_fkey FOREIGN KEY (call_id) REFERENCES public.calls(id) ON DELETE SET NULL;
 
 
 --
@@ -11769,4 +11787,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028132142'),
     ('20261028132305'),
     ('20261028142319'),
-    ('20261028171500');
+    ('20261028171500'),
+    ('20261028172222');
