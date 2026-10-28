@@ -42,6 +42,8 @@ CREATE TYPE public.actor_via AS ENUM (
     'slack',
     'member',
     'link',
+    'mcp',
+    'api',
     'dialer'
 );
 
@@ -530,7 +532,12 @@ CREATE TABLE public.api_tokens (
     revoke_at timestamp with time zone,
     revoke_by uuid,
     revoke_via public.actor_via,
-    CONSTRAINT api_tokens_kind_check CHECK ((kind = ANY (ARRAY['person'::text, 'scheduled_agent'::text])))
+    oauth_grant_id uuid,
+    expires_at timestamp with time zone,
+    surface public.actor_via,
+    CONSTRAINT api_tokens_grant_is_mcp CHECK (((oauth_grant_id IS NULL) OR (surface = 'mcp'::public.actor_via))),
+    CONSTRAINT api_tokens_kind_check CHECK ((kind = ANY (ARRAY['person'::text, 'scheduled_agent'::text]))),
+    CONSTRAINT api_tokens_surface_check CHECK (((surface IS NULL) OR (surface = ANY (ARRAY['mcp'::public.actor_via, 'api'::public.actor_via]))))
 );
 
 
@@ -1994,6 +2001,80 @@ CREATE TABLE public.named_colleagues (
     CONSTRAINT named_colleagues_check2 CHECK (((status = 'written'::text) = (enrollment_id IS NOT NULL))),
     CONSTRAINT named_colleagues_classification_check CHECK ((classification = ANY (ARRAY['out_of_office'::text, 'referral'::text]))),
     CONSTRAINT named_colleagues_status_check CHECK ((status = ANY (ARRAY['waiting'::text, 'written'::text, 'dropped'::text])))
+);
+
+
+--
+-- Name: oauth_clients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.oauth_clients (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    client_id text NOT NULL,
+    client_secret_hash bytea,
+    client_name text NOT NULL,
+    client_uri text,
+    redirect_uris text[] NOT NULL,
+    token_endpoint_auth_method text DEFAULT 'none'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT oauth_clients_check CHECK (((client_secret_hash IS NULL) = (token_endpoint_auth_method = 'none'::text))),
+    CONSTRAINT oauth_clients_redirect_uris_check CHECK (((cardinality(redirect_uris) >= 1) AND (cardinality(redirect_uris) <= 10))),
+    CONSTRAINT oauth_clients_token_endpoint_auth_method_check CHECK ((token_endpoint_auth_method = ANY (ARRAY['none'::text, 'client_secret_post'::text, 'client_secret_basic'::text])))
+);
+
+
+--
+-- Name: oauth_grants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.oauth_grants (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    client_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    organisation_id uuid NOT NULL,
+    scope text DEFAULT 'mcp'::text NOT NULL,
+    resource text,
+    refresh_hash bytea NOT NULL,
+    previous_refresh_hash bytea,
+    refresh_expires_at timestamp with time zone NOT NULL,
+    refreshed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_via public.actor_via DEFAULT 'web'::public.actor_via NOT NULL,
+    revoked_at timestamp with time zone,
+    revoked_by uuid,
+    revoked_via public.actor_via
+);
+
+
+--
+-- Name: oauth_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.oauth_requests (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    client_id uuid NOT NULL,
+    consent_hash bytea NOT NULL,
+    redirect_uri text NOT NULL,
+    state text,
+    code_challenge text NOT NULL,
+    scope text DEFAULT 'mcp'::text NOT NULL,
+    resource text,
+    expires_at timestamp with time zone NOT NULL,
+    approved_by uuid,
+    approved_at timestamp with time zone,
+    approved_via public.actor_via,
+    organisation_id uuid,
+    code_hash bytea,
+    denied_at timestamp with time zone,
+    grant_id uuid,
+    used_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT oauth_requests_check CHECK (((approved_by IS NULL) = (approved_at IS NULL))),
+    CONSTRAINT oauth_requests_check1 CHECK (((approved_at IS NULL) = (approved_via IS NULL))),
+    CONSTRAINT oauth_requests_check2 CHECK (((approved_at IS NULL) = (organisation_id IS NULL))),
+    CONSTRAINT oauth_requests_check3 CHECK (((approved_at IS NULL) = (code_hash IS NULL))),
+    CONSTRAINT oauth_requests_check4 CHECK (((approved_at IS NULL) OR (denied_at IS NULL))),
+    CONSTRAINT oauth_requests_check5 CHECK (((used_at IS NULL) OR (approved_at IS NOT NULL)))
 );
 
 
@@ -4210,6 +4291,70 @@ ALTER TABLE ONLY public.named_colleagues
 
 
 --
+-- Name: oauth_clients oauth_clients_client_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_clients
+    ADD CONSTRAINT oauth_clients_client_id_key UNIQUE (client_id);
+
+
+--
+-- Name: oauth_clients oauth_clients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_clients
+    ADD CONSTRAINT oauth_clients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_grants oauth_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_grants
+    ADD CONSTRAINT oauth_grants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: oauth_grants oauth_grants_previous_refresh_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_grants
+    ADD CONSTRAINT oauth_grants_previous_refresh_hash_key UNIQUE (previous_refresh_hash);
+
+
+--
+-- Name: oauth_grants oauth_grants_refresh_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_grants
+    ADD CONSTRAINT oauth_grants_refresh_hash_key UNIQUE (refresh_hash);
+
+
+--
+-- Name: oauth_requests oauth_requests_code_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_requests
+    ADD CONSTRAINT oauth_requests_code_hash_key UNIQUE (code_hash);
+
+
+--
+-- Name: oauth_requests oauth_requests_consent_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_requests
+    ADD CONSTRAINT oauth_requests_consent_hash_key UNIQUE (consent_hash);
+
+
+--
+-- Name: oauth_requests oauth_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_requests
+    ADD CONSTRAINT oauth_requests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: organisation_lead_months organisation_lead_months_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5077,6 +5222,13 @@ CREATE INDEX ix_agent_runs__review ON public.agent_runs USING btree (review_id) 
 
 
 --
+-- Name: ix_api_tokens__oauth_grant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_api_tokens__oauth_grant ON public.api_tokens USING btree (oauth_grant_id) WHERE (oauth_grant_id IS NOT NULL);
+
+
+--
 -- Name: ix_booking_links__thread; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5466,6 +5618,13 @@ CREATE INDEX ix_named_colleagues__contact ON public.named_colleagues USING btree
 --
 
 CREATE INDEX ix_named_colleagues__waiting ON public.named_colleagues USING btree (created_at) WHERE (status = 'waiting'::text);
+
+
+--
+-- Name: ix_oauth_grants__user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_oauth_grants__user ON public.oauth_grants USING btree (user_id) WHERE (revoked_at IS NULL);
 
 
 --
@@ -6586,6 +6745,14 @@ ALTER TABLE ONLY public.agent_runs
 
 ALTER TABLE ONLY public.agent_runs
     ADD CONSTRAINT agent_runs_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads(id);
+
+
+--
+-- Name: api_tokens api_tokens_oauth_grant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_tokens
+    ADD CONSTRAINT api_tokens_oauth_grant_id_fkey FOREIGN KEY (oauth_grant_id) REFERENCES public.oauth_grants(id) ON DELETE CASCADE;
 
 
 --
@@ -7858,6 +8025,70 @@ ALTER TABLE ONLY public.named_colleagues
 
 ALTER TABLE ONLY public.named_colleagues
     ADD CONSTRAINT named_colleagues_thread_message_id_fkey FOREIGN KEY (thread_message_id) REFERENCES public.thread_messages(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_grants oauth_grants_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_grants
+    ADD CONSTRAINT oauth_grants_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.oauth_clients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_grants oauth_grants_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_grants
+    ADD CONSTRAINT oauth_grants_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_grants oauth_grants_revoked_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_grants
+    ADD CONSTRAINT oauth_grants_revoked_by_fkey FOREIGN KEY (revoked_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: oauth_grants oauth_grants_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_grants
+    ADD CONSTRAINT oauth_grants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_requests oauth_requests_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_requests
+    ADD CONSTRAINT oauth_requests_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_requests oauth_requests_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_requests
+    ADD CONSTRAINT oauth_requests_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.oauth_clients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: oauth_requests oauth_requests_grant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_requests
+    ADD CONSTRAINT oauth_requests_grant_id_fkey FOREIGN KEY (grant_id) REFERENCES public.oauth_grants(id) ON DELETE SET NULL;
+
+
+--
+-- Name: oauth_requests oauth_requests_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_requests
+    ADD CONSTRAINT oauth_requests_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
 
 
 --
@@ -9654,4 +9885,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028122851'),
     ('20261028124024'),
     ('20261028130916'),
+    ('20261028131825'),
+    ('20261028131827'),
     ('20261028131831');
