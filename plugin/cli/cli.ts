@@ -2302,14 +2302,14 @@ async function main(argv: string[]): Promise<void> {
         ...(o.again ? { again: true } : {}),
         ...(Object.keys(refs).length ? { refs } : {}),
       })) as {
-        callId: string
+        callId: string | null
         status: number
         costUsd: number | null
         results: number | null
         credits: number | null
         creditsLeft: number | null
         deliveredLater?: boolean
-        cached?: { fetchedAt: string; callId: string }
+        cached?: { fetchedAt: string; callId: string | null }
         body: unknown
       }
       const cost = answer.costUsd === null ? 'cost unknown' : `$${answer.costUsd.toFixed(4)}`
@@ -2318,11 +2318,11 @@ async function main(argv: string[]): Promise<void> {
           ? ''
           : ` · ${answer.credits} credits${answer.creditsLeft === null ? '' : ` (${answer.creditsLeft} left)`}`
       process.stderr.write(
-        `# ${name} ${answer.status} · ${cost}${credits} · ${answer.results ?? '?'} results · call ${answer.callId}\n`,
+        `# ${name} ${answer.status} · ${cost}${credits} · ${answer.results ?? '?'} results${answer.callId ? ` · call ${answer.callId}` : ''}\n`,
       )
       if (answer.cached)
         process.stderr.write(
-          `# from the cache: bought ${answer.cached.fetchedAt} by call ${answer.cached.callId}; --again buys it anew\n`,
+          `# from the cache: bought ${answer.cached.fetchedAt}${answer.cached.callId ? ` by call ${answer.cached.callId}` : ' by another organisation'}; --again buys it anew\n`,
         )
       if (answer.deliveredLater)
         process.stderr.write(
