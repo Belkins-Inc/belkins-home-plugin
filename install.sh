@@ -62,6 +62,12 @@ else
 fi
 claude plugin install belkins-home@belkins-home
 [ -x "$marketplace/plugin/bin/bh" ] || fail "the plugin did not install: no $marketplace/plugin/bin/bh"
+# A clone made before the repository carried .gitattributes, under core.autocrlf=true, keeps bin/bh
+# with CRLF ("bad interpreter"); checking every file out again applies the attributes.
+if grep -q $'\r' "$marketplace/plugin/bin/bh"; then
+  git -C "$marketplace" rm -rq --cached .
+  git -C "$marketplace" reset -q --hard
+fi
 
 step 'The working directory, and bh on the PATH'
 node "$marketplace/plugin/cli/cli.ts" setup >/dev/null
