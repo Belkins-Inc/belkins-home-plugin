@@ -489,13 +489,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          holds the domain's outreach
   warmup seeds                           our own seed organisations, Google and Microsoft 365: seeds held and
                                          ready, today's notes, spam and tabs (an admin)
-  warmup seeds <admin email> [--count <n>] [--pool agency|saas]
-                                         adds an organisation lent to us, or tends it again: the engine keeps
+  warmup seeds <admin email> [--count <n>]   adds an organisation lent to us, or tends it again: the engine keeps
                                          n seed users of its own there (default 4), in the home-seeds unit, on its
                                          domains; its Admin console grants the WARMUP_SEED_KEY service account
-                                         domain-wide delegation first. --pool saas gives its seeds to SaaS
-                                         customers' mailboxes alone (the agency's never write to them, nor they
-                                         to the agency's); the list shows each pool's want against 70% of its caps
+                                         domain-wide delegation first. One pool serves every mailbox; the list
+                                         shows what the warming mailboxes want of it against 70% of its caps
   warmup on|off <mailbox id>             a metered organisation's mailbox: warm-up on ($9 a month, by the day,
                                          from the wallet; after approval) or off (a person only)
   warmup seeds <admin email> --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id>
@@ -1080,7 +1078,6 @@ async function main(argv: string[]): Promise<void> {
       spare: { type: 'boolean' },
       region: { type: 'string' },
       'tenant-id': { type: 'string' },
-      pool: { type: 'string' },
       egress: { type: 'string' },
       'client-id': { type: 'string' },
       cert: { type: 'string' },
@@ -3381,8 +3378,6 @@ async function main(argv: string[]): Promise<void> {
             ? await call(config, 'POST', '/warmup/seeds', {
                 adminEmail: arg,
                 ...(o.count !== undefined ? { count: Number(o.count) } : {}),
-                // Whose mailboxes its seeds take notes from: agency (the default) or saas.
-                ...(o.pool ? { pool: o.pool } : {}),
                 // A Microsoft 365 seed tenant: its app, as bh tenant add --provider microsoft takes it.
                 ...(o.provider ? { provider: o.provider } : {}),
                 ...(o.name ? { name: o.name } : {}),
