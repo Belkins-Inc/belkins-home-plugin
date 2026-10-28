@@ -2554,6 +2554,9 @@ CREATE TABLE public.projects (
     slack_client_channel_set_via public.actor_via,
     dialer_workspace_id text,
     dialer_queue_id text,
+    reply_bcc text[] DEFAULT '{}'::text[] NOT NULL,
+    reply_bcc_set_by uuid,
+    reply_bcc_set_via public.actor_via,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
@@ -8645,6 +8648,14 @@ ALTER TABLE ONLY public.projects
 
 
 --
+-- Name: projects projects_reply_bcc_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.projects
+    ADD CONSTRAINT projects_reply_bcc_set_by_fkey FOREIGN KEY (reply_bcc_set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: projects projects_setup_skipped_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11788,4 +11799,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028132305'),
     ('20261028142319'),
     ('20261028171500'),
-    ('20261028172222');
+    ('20261028172222'),
+    ('20261028183447');

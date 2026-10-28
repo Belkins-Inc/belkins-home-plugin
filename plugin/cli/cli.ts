@@ -110,6 +110,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          client app; add needs a paid subscription (a person only)
   org members <org> | org add <org> --email <e> [--name <n>] [--role admin|member] | org role <org> <user-id> --role admin|member | org remove <org> <user-id>
   project update [--name <n>] [--timezone <tz>] [--domain-cap <n>] [--brief <text> | --brief-file <path>]   (a person only)
+       [--reply-bcc a@x.com,b@y.com]     every answer in its email threads copies them without the lead seeing
+                                         them ("" for nobody); its owner or an organisation admin sets it
   brief [--project <slug>]              read this first, every session
   behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
                                          the topics, one topic's entries, or the entries with every word;
@@ -607,6 +609,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
        [--approve-by <iso>] [--sender <id>] [--cc a@x.com,b@y.com] [--bcc c@z.com]
                                          --cc copies people in the open (left out: whom the lead's message
                                          copied, bh thread's replyCc; "" for none), --bcc without the lead seeing them
+                                         (left out: the project's, bh project update --reply-bcc; "" for none)
        [--attach <file>]…                 a file to send with it (repeat for more): only in an answer to a lead who
                                          wrote in this email thread; PDF, PNG, JPEG, .docx, .xlsx or .pptx, at most
                                          3 and 2 MB together, no macros, scripts or passwords
@@ -1136,6 +1139,7 @@ async function main(argv: string[]): Promise<void> {
       'invite-limit': { type: 'string' },
       'message-limit': { type: 'string' },
       'domain-cap': { type: 'string' },
+      'reply-bcc': { type: 'string' },
       class: { type: 'string' },
       cc: { type: 'string' },
       bcc: { type: 'string' },
@@ -1310,6 +1314,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.name ? { name: o.name } : {}),
             ...(o.timezone ? { timezone: o.timezone } : {}),
             ...(o['domain-cap'] ? { dailyDomainCap: Number(o['domain-cap']) } : {}),
+            ...(o['reply-bcc'] !== undefined ? { replyBcc: addresses(o['reply-bcc']) } : {}),
             ...(o['brief-file']
               ? { brief: await readFile(o['brief-file'], 'utf8') }
               : o.brief
