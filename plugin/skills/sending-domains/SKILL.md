@@ -59,9 +59,10 @@ bh domain approve getacme.com tryacme.com --max-cents 1500 --redirect https://ac
   cheque.
 - `--redirect` is the client's real site; set it now (or later with `bh domain redirect`): a domain
   that opens nothing reads as abandoned.
-- `insufficient_credit` means the credit cannot carry these plus what is already approved. A person
-  tops it up at porkbun.com/account/credit (the API cannot) and the same command is run again —
-  nothing was half-done.
+- A short credit is topped up from the saved card by the approval itself. `insufficient_credit`
+  means that top-up failed too (its reason is in the message): a person fixes the card or adds
+  credit at porkbun.com/account/credit and the same command is run again — nothing was half-done.
+  Do not retry it in a loop: it will not pass by itself.
 - `<name> is already …` means it is ours or in flight: `bh domains`.
 
 Nothing is bought by the command itself: the row is the approval, and the engine buys on its next
