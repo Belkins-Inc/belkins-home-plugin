@@ -1774,6 +1774,33 @@ CREATE TABLE public.linkedin_connect_links (
 
 
 --
+-- Name: linkedin_connect_pages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_connect_pages (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    token_hash bytea NOT NULL,
+    user_id uuid NOT NULL,
+    project_id uuid NOT NULL,
+    sender_id uuid,
+    reconnect_id uuid,
+    country text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    browser_hash bytea,
+    intent_id text,
+    checkpoint jsonb,
+    error text,
+    sign_ins integer DEFAULT 0 NOT NULL,
+    codes integer DEFAULT 0 NOT NULL,
+    busy_until timestamp with time zone,
+    locked_at timestamp with time zone,
+    used_at timestamp with time zone,
+    linkedin_account_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: linkedin_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4377,6 +4404,22 @@ ALTER TABLE ONLY public.linkedin_companies
 
 ALTER TABLE ONLY public.linkedin_connect_links
     ADD CONSTRAINT linkedin_connect_links_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: linkedin_connect_pages linkedin_connect_pages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_pages
+    ADD CONSTRAINT linkedin_connect_pages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: linkedin_connect_pages linkedin_connect_pages_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_pages
+    ADD CONSTRAINT linkedin_connect_pages_token_hash_key UNIQUE (token_hash);
 
 
 --
@@ -8128,6 +8171,46 @@ ALTER TABLE ONLY public.linkedin_connect_links
 
 
 --
+-- Name: linkedin_connect_pages linkedin_connect_pages_linkedin_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_pages
+    ADD CONSTRAINT linkedin_connect_pages_linkedin_account_id_fkey FOREIGN KEY (linkedin_account_id) REFERENCES public.linkedin_accounts(id) ON DELETE SET NULL;
+
+
+--
+-- Name: linkedin_connect_pages linkedin_connect_pages_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_pages
+    ADD CONSTRAINT linkedin_connect_pages_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: linkedin_connect_pages linkedin_connect_pages_reconnect_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_pages
+    ADD CONSTRAINT linkedin_connect_pages_reconnect_id_fkey FOREIGN KEY (reconnect_id) REFERENCES public.linkedin_accounts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: linkedin_connect_pages linkedin_connect_pages_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_pages
+    ADD CONSTRAINT linkedin_connect_pages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: linkedin_connect_pages linkedin_connect_pages_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_connect_pages
+    ADD CONSTRAINT linkedin_connect_pages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: linkedin_events linkedin_events_actor_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10628,6 +10711,13 @@ CREATE POLICY engine ON public.linkedin_connect_links TO bhn_tenant USING (true)
 
 
 --
+-- Name: linkedin_connect_pages engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.linkedin_connect_pages TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
 -- Name: linkedin_proxies engine; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -10813,6 +10903,12 @@ ALTER TABLE public.linkedin_accounts ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.linkedin_connect_links ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: linkedin_connect_pages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_connect_pages ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: linkedin_events; Type: ROW SECURITY; Schema: public; Owner: -
@@ -12314,4 +12410,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028210500'),
     ('20261028220033'),
     ('20261028224116'),
-    ('20261029002223');
+    ('20261029002223'),
+    ('20261029120000');
