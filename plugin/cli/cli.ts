@@ -121,7 +121,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   org members <org> | org add <org> --email <e> [--name <n>] [--role admin|member] | org role <org> <user-id> --role admin|member | org remove <org> <user-id>
   project update [--name <n>] [--timezone <tz>] [--domain-cap <n>] [--brief <text> | --brief-file <path>]   (a person only)
        [--reply-bcc a@x.com,b@y.com]     every answer in its email threads copies them without the lead seeing
-                                         them ("" for nobody); its owner or an organisation admin sets it
+                                         them ("" for nobody)
   brief [--project <slug>]              read this first, every session
   behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
                                          the topics, one topic's entries, or the entries with every word;

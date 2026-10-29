@@ -263,7 +263,10 @@ CREATE FUNCTION public.fence_projects() RETURNS uuid[]
     LANGUAGE sql STABLE SECURITY DEFINER PARALLEL SAFE
     SET search_path TO 'public', 'pg_temp'
     AS $$
-    select coalesce(array_agg(id), '{}') from projects where organisation_id = any (fence_organisations())
+    select coalesce(array_agg(id), '{}') from projects
+     where organisation_id = any (fence_organisations())
+       and (nullif(current_setting('app.projects', true), '') is null
+            or id = any (string_to_array(current_setting('app.projects', true), ',')::uuid[]))
   $$;
 
 
@@ -11552,7 +11555,7 @@ CREATE POLICY organisation_fence ON public.project_subscriptions USING ((project
 -- Name: projects organisation_fence; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY organisation_fence ON public.projects USING ((organisation_id = ANY (( SELECT public.fence_organisations() AS fence_organisations)::uuid[])));
+CREATE POLICY organisation_fence ON public.projects USING ((id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
 
 
 --
@@ -12482,4 +12485,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261029003029'),
     ('20261029120000'),
     ('20261029180000'),
-    ('20261029180100');
+    ('20261029180100'),
+    ('20261029190000');
