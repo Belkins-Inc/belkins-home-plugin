@@ -1580,6 +1580,49 @@ CREATE VIEW public.goal_progress WITH (security_invoker='true') AS
 
 
 --
+-- Name: google_orgs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.google_orgs (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    purpose text NOT NULL,
+    domain public.citext,
+    company text,
+    licences integer NOT NULL,
+    seeds integer,
+    key_tenant_id uuid,
+    console_ip text,
+    state text DEFAULT 'buying'::text NOT NULL,
+    failure text,
+    bought_at timestamp with time zone,
+    customer_id text,
+    channel_customer text,
+    verified_at timestamp with time zone,
+    console_login bytea,
+    console_session bytea,
+    console_seen_at timestamp with time zone,
+    console_failed_at timestamp with time zone,
+    terms_at timestamp with time zone,
+    delegated_at timestamp with time zone,
+    dkim_record text,
+    dkim_published_at timestamp with time zone,
+    dkim_started_at timestamp with time zone,
+    seed_tenant_id uuid,
+    tenant_id uuid,
+    ready_at timestamp with time zone,
+    ordered_by uuid NOT NULL,
+    ordered_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT google_orgs_check CHECK (((purpose = 'seeds'::text) = (seeds IS NOT NULL))),
+    CONSTRAINT google_orgs_check1 CHECK (((purpose = 'seeds'::text) OR (key_tenant_id IS NOT NULL))),
+    CONSTRAINT google_orgs_licences_check CHECK (((licences >= 1) AND (licences <= 300))),
+    CONSTRAINT google_orgs_purpose_check CHECK ((purpose = ANY (ARRAY['seeds'::text, 'sending'::text]))),
+    CONSTRAINT google_orgs_seeds_check CHECK (((seeds >= 0) AND (seeds <= 20))),
+    CONSTRAINT google_orgs_state_check CHECK ((state = ANY (ARRAY['buying'::text, 'ordering'::text, 'verifying'::text, 'console'::text, 'ready'::text, 'failed'::text])))
+);
+
+
+--
 -- Name: hypotheses; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4347,6 +4390,22 @@ ALTER TABLE ONLY public.events_default
 
 
 --
+-- Name: google_orgs google_orgs_domain_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_orgs
+    ADD CONSTRAINT google_orgs_domain_key UNIQUE (domain);
+
+
+--
+-- Name: google_orgs google_orgs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_orgs
+    ADD CONSTRAINT google_orgs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: hypotheses hypotheses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5560,6 +5619,13 @@ CREATE INDEX ix_events__strategy ON ONLY public.events USING btree (strategy_id,
 --
 
 CREATE INDEX events_default_strategy_id_type_at_idx ON public.events_default USING btree (strategy_id, type, at) WHERE (strategy_id IS NOT NULL);
+
+
+--
+-- Name: google_orgs_in_flight; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX google_orgs_in_flight ON public.google_orgs USING btree (purpose, created_at) WHERE (state <> ALL (ARRAY['ready'::text, 'failed'::text]));
 
 
 --
@@ -8034,6 +8100,38 @@ ALTER TABLE public.events
 
 ALTER TABLE public.events
     ADD CONSTRAINT events_type_fkey1 FOREIGN KEY (type) REFERENCES public.event_types(type);
+
+
+--
+-- Name: google_orgs google_orgs_key_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_orgs
+    ADD CONSTRAINT google_orgs_key_tenant_id_fkey FOREIGN KEY (key_tenant_id) REFERENCES public.workspace_tenants(id);
+
+
+--
+-- Name: google_orgs google_orgs_ordered_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_orgs
+    ADD CONSTRAINT google_orgs_ordered_by_fkey FOREIGN KEY (ordered_by) REFERENCES public.users(id);
+
+
+--
+-- Name: google_orgs google_orgs_seed_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_orgs
+    ADD CONSTRAINT google_orgs_seed_tenant_id_fkey FOREIGN KEY (seed_tenant_id) REFERENCES public.warmup_seed_tenants(id) ON DELETE SET NULL;
+
+
+--
+-- Name: google_orgs google_orgs_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_orgs
+    ADD CONSTRAINT google_orgs_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.workspace_tenants(id) ON DELETE SET NULL;
 
 
 --
@@ -10762,6 +10860,13 @@ CREATE POLICY engine ON public.egress_regions TO bhn_tenant USING (true) WITH CH
 
 
 --
+-- Name: google_orgs engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.google_orgs TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
 -- Name: linkedin_connect_links engine; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -10938,6 +11043,12 @@ ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.events_default ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: google_orgs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.google_orgs ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: hypotheses; Type: ROW SECURITY; Schema: public; Owner: -
@@ -12486,4 +12597,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261029120000'),
     ('20261029180000'),
     ('20261029180100'),
-    ('20261029190000');
+    ('20261029190000'),
+    ('20261029210000');

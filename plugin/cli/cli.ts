@@ -109,6 +109,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          what Google is told about the company, its customer of record (its admin)
   google-org record <org> --customer-id <C0…>   Google's customer, made in Partner Sales Console: the engine gives
                                          the customer the terms link and carries on (platform admin)
+  google-orgs                           Google organisations of ours the engine makes as reseller, and how far each is
+  google-orgs make --for seeds|sending [<domain>] [--company <name>] [--seeds <n>] [--licences <n>]
+       [--key-from <tenant>] [--ip <address>]   buys the domain (one is picked when none is given) and Business
+                                         Starter, signs in as its admin, grants delegation and DKIM, then makes it a
+                                         seed organisation or a sending tenant in the default pool (platform admin)
   org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
@@ -1213,6 +1218,8 @@ async function main(argv: string[]): Promise<void> {
       notes: { type: 'string' },
       upcoming: { type: 'boolean' },
       count: { type: 'string' },
+      seeds: { type: 'string' },
+      licences: { type: 'string' },
       claim: { type: 'string' },
       evidence: { type: 'string' },
       'add-evidence': { type: 'string' },
@@ -1794,6 +1801,26 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'link')
         return out(await call(config, 'PUT', `/projects/${p()}/subscription`, { customerId: arg }))
       return out(await call(config, 'GET', `/projects/${p()}/subscription`))
+    case 'google-orgs': {
+      if (!sub) return out(await call(config, 'GET', '/google-orgs'))
+      if (sub === 'make' && (o.for === 'seeds' || o.for === 'sending'))
+        return out(
+          await call(config, 'POST', '/google-orgs', {
+            purpose: o.for,
+            ...(arg ? { domain: arg } : {}),
+            ...(o.company ? { company: o.company } : {}),
+            ...(o.seeds !== undefined ? { seeds: Number(o.seeds) } : {}),
+            ...(o.licences !== undefined ? { licences: Number(o.licences) } : {}),
+            ...(o['key-from'] ? { keyFrom: o['key-from'] } : {}),
+            ...(o.ip ? { ip: o.ip } : {}),
+          }),
+        )
+      throw new BhError(
+        'bh google-orgs make --for seeds|sending [<domain>] [--company <name>] [--seeds <n>] [--licences <n>] [--key-from <tenant>] [--ip <address>]',
+        { hint: 'bh google-orgs lists them' },
+        2,
+      )
+    }
     case 'google-org': {
       if (sub === 'record') {
         if (!arg || !o['customer-id'])
