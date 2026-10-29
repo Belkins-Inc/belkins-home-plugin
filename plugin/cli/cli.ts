@@ -114,6 +114,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
        [--key-from <tenant>] [--ip <address>]   buys the domain (one is picked when none is given) and Business
                                          Starter, signs in as its admin, grants delegation and DKIM, then makes it a
                                          seed organisation or a sending tenant in the default pool (platform admin)
+  google-orgs update <domain> [--ip <address>|none] [--retry]   the IP its admin signs in through; --retry: the
+                                         console service tries now, not after a refused sign-in's wait (platform admin)
   org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
@@ -1222,6 +1224,7 @@ async function main(argv: string[]): Promise<void> {
       count: { type: 'string' },
       seeds: { type: 'string' },
       licences: { type: 'string' },
+      retry: { type: 'boolean' },
       claim: { type: 'string' },
       evidence: { type: 'string' },
       'add-evidence': { type: 'string' },
@@ -1815,6 +1818,13 @@ async function main(argv: string[]): Promise<void> {
             ...(o.licences !== undefined ? { licences: Number(o.licences) } : {}),
             ...(o['key-from'] ? { keyFrom: o['key-from'] } : {}),
             ...(o.ip ? { ip: o.ip } : {}),
+          }),
+        )
+      if (sub === 'update' && arg)
+        return out(
+          await call(config, 'PATCH', `/google-orgs/${encodeURIComponent(arg)}`, {
+            ...(o.ip ? { ip: o.ip === 'none' ? null : o.ip } : {}),
+            ...(o.retry ? { retry: true } : {}),
           }),
         )
       throw new BhError(
