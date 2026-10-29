@@ -2207,8 +2207,13 @@ CREATE TABLE public.oauth_clients (
     redirect_uris text[] NOT NULL,
     token_endpoint_auth_method text DEFAULT 'none'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    registration text DEFAULT 'dynamic'::text NOT NULL,
+    metadata_fetched_at timestamp with time zone,
+    created_by uuid,
+    created_via public.actor_via,
     CONSTRAINT oauth_clients_check CHECK (((client_secret_hash IS NULL) = (token_endpoint_auth_method = 'none'::text))),
     CONSTRAINT oauth_clients_redirect_uris_check CHECK (((cardinality(redirect_uris) >= 1) AND (cardinality(redirect_uris) <= 10))),
+    CONSTRAINT oauth_clients_registration_check CHECK ((registration = ANY (ARRAY['dynamic'::text, 'static'::text, 'metadata'::text]))),
     CONSTRAINT oauth_clients_token_endpoint_auth_method_check CHECK ((token_endpoint_auth_method = ANY (ARRAY['none'::text, 'client_secret_post'::text, 'client_secret_basic'::text])))
 );
 
@@ -3158,7 +3163,7 @@ CREATE TABLE public.sessions (
     revoked_via public.actor_via,
     last_seen_at timestamp with time zone,
     preview_project_id uuid,
-    CONSTRAINT sessions_audience_check CHECK ((audience = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text])))
+    CONSTRAINT sessions_audience_check CHECK ((audience = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text, 'connect'::text])))
 );
 
 
@@ -8747,6 +8752,14 @@ ALTER TABLE ONLY public.notices
 
 
 --
+-- Name: oauth_clients oauth_clients_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_clients
+    ADD CONSTRAINT oauth_clients_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: oauth_grants oauth_grants_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12411,4 +12424,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028220033'),
     ('20261028224116'),
     ('20261029002223'),
+    ('20261029003029'),
     ('20261029120000');

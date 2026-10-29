@@ -667,6 +667,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   reengage <message-id> [--on <yyyy-mm-dd>]           write again from that day; the id is the reply's, from bh inbox (a person only)
   refer <message-id> --email <e> [--first-name <n>] [--last-name <n>] [--title <t>]   the colleague they named (a person only)
   token create --name <n> [--kind scheduled_agent] [--for <email>] | token list | token revoke <id> | token unrevoke <id>
+  oauth-client add --name <n> --redirect <uri,...> [--auth basic|post]   a confidential client of Dylan's
+                                         OAuth server, for an agent platform that asks for an id and a
+                                         secret (an admin only); the secret is shown once
+  oauth-client list | oauth-client remove <client-id>   remove ends every connection made through it
   user add --email <e> --name <n> [--admin] | users
   user set <id> [--email <e>] [--name <n>] [--admin|--no-admin]   correct a person's record (an admin only);
                                          the email is what Google sign-in matches
@@ -1088,6 +1092,7 @@ async function main(argv: string[]): Promise<void> {
       'price-max-cents': { type: 'string' },
       tld: { type: 'string' },
       redirect: { type: 'string' },
+      auth: { type: 'string' },
       record: { type: 'string' },
       type: { type: 'string' },
       host: { type: 'string' },
@@ -3635,6 +3640,21 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'POST', `/linkedin-proxies/${arg}/${sub}`, {}))
       break
     }
+    case 'oauth-client':
+      if (sub === 'add')
+        return out(
+          await call(config, 'POST', '/saas/oauth-clients', {
+            name: o.name,
+            redirectUris: o.redirect ? list(String(o.redirect)) : [],
+            ...(o.auth ? { authMethod: `client_secret_${String(o.auth)}` } : {}),
+          }),
+        )
+      if (sub === 'list') return out(await call(config, 'GET', '/saas/oauth-clients'))
+      if (sub === 'remove') {
+        if (!arg) throw new BhError('Which client?', { hint: 'bh oauth-client list' }, 2)
+        return out(await call(config, 'DELETE', `/saas/oauth-clients/${encodeURIComponent(arg)}`))
+      }
+      break
     case 'token':
       if (sub === 'create')
         return out(
