@@ -504,6 +504,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          domains; its Admin console grants the WARMUP_SEED_KEY service account
                                          domain-wide delegation first. One pool serves every mailbox; the list
                                          shows what the warming mailboxes want of it against 70% of its caps
+  warmup grow [--max-orgs <n>]           the ceiling on Google seed organisations of ours the engine orders by
+                                         itself when the seeds cannot carry the warming mailboxes: daily, enough
+                                         for today's want and a fifth more, at most five a day and ten being made
+                                         at once, in the name of whoever set it; 0 stops it (an admin)
   warmup on|off <mailbox id>             a metered organisation's mailbox: warm-up on ($9 a month, by the day,
                                          from the wallet; after approval) or off (a person only)
   warmup seeds <admin email> --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id>
@@ -1222,6 +1226,7 @@ async function main(argv: string[]): Promise<void> {
       notes: { type: 'string' },
       upcoming: { type: 'boolean' },
       count: { type: 'string' },
+      'max-orgs': { type: 'string' },
       seeds: { type: 'string' },
       licences: { type: 'string' },
       retry: { type: 'boolean' },
@@ -3443,6 +3448,12 @@ async function main(argv: string[]): Promise<void> {
               })
             : await call(config, 'GET', '/warmup/seeds'),
         )
+      // The ceiling on the seed organisations the engine orders by itself when the network is short.
+      if (sub === 'grow') {
+        if (o['max-orgs'] === undefined)
+          return out(((await call(config, 'GET', '/warmup/seeds')) as { growth: unknown }).growth)
+        return out(await call(config, 'PUT', '/warmup/growth', { maxOrgs: Number(o['max-orgs']) }))
+      }
       // A metered organisation's mailbox: warm-up is a paid add-on a person switches per mailbox.
       if ((sub === 'on' || sub === 'off') && arg)
         return out(await call(config, 'POST', `/mailboxes/${arg}/warmup`, { on: sub === 'on' }))

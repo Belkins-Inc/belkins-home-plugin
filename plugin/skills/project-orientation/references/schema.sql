@@ -2992,6 +2992,21 @@ CREATE TABLE public.searches (
 
 
 --
+-- Name: seed_network_growth; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.seed_network_growth (
+    id boolean DEFAULT true NOT NULL,
+    max_orgs integer NOT NULL,
+    set_by uuid NOT NULL,
+    set_via public.actor_via NOT NULL,
+    set_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT seed_network_growth_id_check CHECK (id),
+    CONSTRAINT seed_network_growth_max_orgs_check CHECK (((max_orgs >= 0) AND (max_orgs <= 500)))
+);
+
+
+--
 -- Name: segment_companies; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5075,6 +5090,14 @@ ALTER TABLE ONLY public.schema_migrations
 
 ALTER TABLE ONLY public.searches
     ADD CONSTRAINT searches_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: seed_network_growth seed_network_growth_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seed_network_growth
+    ADD CONSTRAINT seed_network_growth_pkey PRIMARY KEY (id);
 
 
 --
@@ -9615,6 +9638,14 @@ ALTER TABLE ONLY public.searches
 
 
 --
+-- Name: seed_network_growth seed_network_growth_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seed_network_growth
+    ADD CONSTRAINT seed_network_growth_set_by_fkey FOREIGN KEY (set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: segment_companies segment_companies_company_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10944,6 +10975,13 @@ CREATE POLICY engine ON public.rate_limit_hits TO bhn_tenant USING (true) WITH C
 
 
 --
+-- Name: seed_network_growth engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.seed_network_growth TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
 -- Name: sending_egresses engine; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -12131,6 +12169,12 @@ ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.searches ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: seed_network_growth; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.seed_network_growth ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: segment_companies; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -12599,4 +12643,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261029180100'),
     ('20261029190000'),
     ('20261029210000'),
+    ('20261029213332'),
     ('20261029213902');
