@@ -427,6 +427,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domain move <name> --tenant <name|id>  a bought domain nothing lives on yet goes to another Google tenant, one
                                          with room: the engine takes it out of its tenant and sets it up again,
                                          DKIM included; then retry its failed orders (an admin)
+  domain platform <name> google|microsoft   a bought domain no tenant has taken yet goes on the other platform,
+                                         its orders not yet begun with it; its DNS is redressed (an admin)
   domain retry <name>                    a bought domain that failed on its way into a tenant goes back on it once
                                          the cause is fixed; nothing is bought again (a person only)
   domain redirect <name> <url>|none      where its website goes: a 301 from the apex and every subdomain to the
@@ -2908,6 +2910,14 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'POST', `/domains/${await domainId(arg)}/release`, {}))
       if (sub === 'retry')
         return out(await call(config, 'POST', `/domains/${await domainId(arg)}/retry`, {}))
+      if (sub === 'platform') {
+        const platform = pos[3]
+        if (platform !== 'google' && platform !== 'microsoft')
+          throw new BhError('Which platform?', { hint: `bh domain platform ${arg} microsoft` }, 2)
+        return out(
+          await call(config, 'POST', `/domains/${await domainId(arg)}/platform`, { platform }),
+        )
+      }
       if (sub === 'move') {
         if (!o.tenant)
           throw new BhError(
