@@ -2274,6 +2274,17 @@ CREATE TABLE public.oauth_requests (
 
 
 --
+-- Name: oauth_retired_refresh_tokens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.oauth_retired_refresh_tokens (
+    refresh_hash bytea NOT NULL,
+    grant_id uuid NOT NULL,
+    retired_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: opt_out_links; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2361,6 +2372,7 @@ CREATE TABLE public.organisations (
     google_order_set_by uuid,
     google_order_set_via public.actor_via,
     wallet_notice text,
+    signup_domain text,
     CONSTRAINT organisations_approved_check CHECK ((((approved_at IS NULL) = (approved_by IS NULL)) AND ((approved_at IS NULL) = (approved_via IS NULL)))),
     CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text, 'metered'::text]))),
     CONSTRAINT organisations_daily_lead_cap_check CHECK (((daily_lead_cap IS NULL) OR (daily_lead_cap > 0))),
@@ -4692,6 +4704,14 @@ ALTER TABLE ONLY public.oauth_requests
 
 
 --
+-- Name: oauth_retired_refresh_tokens oauth_retired_refresh_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_retired_refresh_tokens
+    ADD CONSTRAINT oauth_retired_refresh_tokens_pkey PRIMARY KEY (refresh_hash);
+
+
+--
 -- Name: opt_out_links opt_out_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6030,6 +6050,13 @@ CREATE INDEX ix_oauth_grants__user ON public.oauth_grants USING btree (user_id) 
 
 
 --
+-- Name: ix_oauth_retired_refresh_tokens__grant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_oauth_retired_refresh_tokens__grant ON public.oauth_retired_refresh_tokens USING btree (grant_id);
+
+
+--
 -- Name: ix_opt_out_links__message; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6041,6 +6068,13 @@ CREATE INDEX ix_opt_out_links__message ON public.opt_out_links USING btree (mess
 --
 
 CREATE INDEX ix_organisation_members__user ON public.organisation_members USING btree (user_id);
+
+
+--
+-- Name: ix_organisations__signup_domain; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_organisations__signup_domain ON public.organisations USING btree (signup_domain) WHERE (signup_domain IS NOT NULL);
 
 
 --
@@ -8824,6 +8858,14 @@ ALTER TABLE ONLY public.oauth_requests
 
 
 --
+-- Name: oauth_retired_refresh_tokens oauth_retired_refresh_tokens_grant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.oauth_retired_refresh_tokens
+    ADD CONSTRAINT oauth_retired_refresh_tokens_grant_id_fkey FOREIGN KEY (grant_id) REFERENCES public.oauth_grants(id) ON DELETE CASCADE;
+
+
+--
 -- Name: opt_out_links opt_out_links_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10766,6 +10808,13 @@ CREATE POLICY engine ON public.oauth_requests TO bhn_tenant USING (true) WITH CH
 
 
 --
+-- Name: oauth_retired_refresh_tokens engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.oauth_retired_refresh_tokens TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
 -- Name: organizer_sessions engine; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -11036,6 +11085,12 @@ ALTER TABLE public.oauth_grants ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.oauth_requests ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: oauth_retired_refresh_tokens; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oauth_retired_refresh_tokens ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: opt_out_links; Type: ROW SECURITY; Schema: public; Owner: -
@@ -12425,4 +12480,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261028224116'),
     ('20261029002223'),
     ('20261029003029'),
-    ('20261029120000');
+    ('20261029120000'),
+    ('20261029180000'),
+    ('20261029180100');
