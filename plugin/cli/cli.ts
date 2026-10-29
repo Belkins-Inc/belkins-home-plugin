@@ -118,6 +118,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          console service tries now, not after a refused sign-in's wait (platform admin)
   org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
+  dialer orgs                           the dialer organizations our key can see, and the organisation linked to each (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
   dialer link <workspace-id> [--queue <queue-id>] | dialer link none   link the project to a dialer workspace: its new
                                          call lists go there and are attached to the queue (platform admin)
@@ -1776,6 +1777,7 @@ async function main(argv: string[]): Promise<void> {
     case 'orgs':
       return out(await call(config, 'GET', '/orgs'))
     case 'dialer':
+      if (sub === 'orgs') return out(await call(config, 'GET', '/dialer/organizations'))
       if (sub === 'workspaces') {
         if (!arg) throw new BhError('Which dialer organization?', { hint: 'bh dialer' }, 2)
         return out(
