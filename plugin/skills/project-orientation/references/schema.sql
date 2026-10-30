@@ -535,7 +535,7 @@ CREATE TABLE public.agent_runs (
     thread_id uuid,
     review_id uuid,
     meeting_id uuid,
-    CONSTRAINT agent_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'rewrite'::text, 'draft'::text, 'review'::text, 'summary'::text]))),
+    CONSTRAINT agent_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'rewrite'::text, 'draft'::text, 'review'::text, 'summary'::text, 'task'::text]))),
     CONSTRAINT agent_runs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text])))
 );
 
@@ -3718,6 +3718,8 @@ CREATE TABLE public.tasks (
     domain_id uuid,
     closed_by uuid,
     close_posted_for timestamp with time zone,
+    snoozed_until timestamp with time zone,
+    handed_run_id uuid,
     CONSTRAINT tasks_check CHECK (((status = 'open'::text) = (closed_at IS NULL))),
     CONSTRAINT tasks_priority_check CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text]))),
     CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text, 'stalled'::text])) AND (strategy_id IS NOT NULL)))),
@@ -3814,6 +3816,7 @@ CREATE TABLE public.users (
     kind text DEFAULT 'staff'::text NOT NULL,
     slack_workspace_id uuid,
     preview_of uuid,
+    tasks_digested_at timestamp with time zone,
     CONSTRAINT users_client_not_admin CHECK (((kind = 'staff'::text) OR (NOT is_admin))),
     CONSTRAINT users_kind_check CHECK ((kind = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text]))),
     CONSTRAINT users_preview_is_client CHECK (((preview_of IS NULL) OR (kind = 'client'::text))),
@@ -6427,6 +6430,13 @@ CREATE INDEX ix_system_mail_messages__created_at ON public.system_mail_messages 
 --
 
 CREATE INDEX ix_system_mail_messages__domain ON public.system_mail_messages USING btree (domain_id);
+
+
+--
+-- Name: ix_tasks__handed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_tasks__handed ON public.tasks USING btree (handed_run_id) WHERE (handed_run_id IS NOT NULL);
 
 
 --
@@ -10263,6 +10273,14 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: tasks tasks_handed_run_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_handed_run_id_fkey FOREIGN KEY (handed_run_id) REFERENCES public.agent_runs(id) ON DELETE SET NULL;
+
+
+--
 -- Name: tasks tasks_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12648,4 +12666,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261029213902'),
     ('20261029225001'),
     ('20261030001642'),
-    ('20261030015304');
+    ('20261030015304'),
+    ('20261030015955');
