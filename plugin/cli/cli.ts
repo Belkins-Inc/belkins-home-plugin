@@ -118,6 +118,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          console service tries now, not after a refused sign-in's wait (platform admin)
   org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
+  dialer users <dialer-org-id>          its people, their roles and workspaces: who can work a queue (platform admin)
+  dialer queue <name> [--hours 08:00-18:00] --project <p>   makes the project's queue in its workspace and attaches its lists (platform admin)
+  dialer agents <email,…> --project <p>  who works the project's queue; replaces the set (platform admin)
   dialer orgs                           the dialer organizations our key can see, and the organisation linked to each (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
   dialer link <workspace-id> [--queue <queue-id>] | dialer link none   link the project to a dialer workspace: its new
@@ -770,6 +773,15 @@ function attemptsOf(o: { attempts?: string; spacing?: string; 'open-days'?: stri
     ...(o.spacing ? { spacingMinutes: Number(o.spacing) } : {}),
     ...(o['open-days'] ? { openForDays: Number(o['open-days']) } : {}),
   }
+}
+
+/** `--hours 08:00-18:00`: a dialer queue's calling hours, as minutes since local midnight. */
+function callingHours(value: string | undefined) {
+  if (!value) return {}
+  const m = value.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/)
+  if (!m) throw new BhError('Calling hours are HH:MM-HH:MM', { hint: '--hours 08:00-18:00' }, 2)
+  const [, fh, fm, uh, um] = m.map(Number)
+  return { callFromMinute: fh! * 60 + fm!, callUntilMinute: uh! * 60 + um! }
 }
 
 /** `--default-pool yes|no`: whether a tenant takes domains approved without naming a tenant. */
@@ -1778,6 +1790,38 @@ async function main(argv: string[]): Promise<void> {
       return out(await call(config, 'GET', '/orgs'))
     case 'dialer':
       if (sub === 'orgs') return out(await call(config, 'GET', '/dialer/organizations'))
+      if (sub === 'users') {
+        if (!arg) throw new BhError('Which dialer organization?', { hint: 'bh dialer orgs' }, 2)
+        return out(
+          await call(config, 'GET', `/dialer/organizations/${encodeURIComponent(arg)}/users`),
+        )
+      }
+      if (sub === 'queue') {
+        if (!arg)
+          throw new BhError(
+            'What is the queue called?',
+            { hint: 'bh dialer queue <name> --project <project>' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/projects/${p()}/dialer/queue`, {
+            name: pos.slice(2).join(' '),
+            ...callingHours(o.hours),
+          }),
+        )
+      }
+      if (sub === 'agents') {
+        if (!arg)
+          throw new BhError('Who works the queue?', { hint: 'bh dialer users <dialer-org-id>' }, 2)
+        return out(
+          await call(config, 'PUT', `/projects/${p()}/dialer/agents`, {
+            agents: pos
+              .slice(2)
+              .flatMap((a) => a.split(','))
+              .filter(Boolean),
+          }),
+        )
+      }
       if (sub === 'workspaces') {
         if (!arg) throw new BhError('Which dialer organization?', { hint: 'bh dialer' }, 2)
         return out(
