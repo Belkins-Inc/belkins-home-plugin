@@ -18,7 +18,7 @@ import {
   saveConfig,
   saveSessionProject,
 } from './config.ts'
-import { readInput, readRows, readSecrets, readText, withImages } from './input.ts'
+import { readBlocks, readInput, readRows, readSecrets, readText, withImages } from './input.ts'
 import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
 import { setup } from './setup.ts'
 
@@ -708,12 +708,15 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          project's team, and asks the client in through Slack Connect:
                                          these addresses and every client granted the project
   slack disconnect [--team <workspace>]  takes the bot out of one workspace (an admin only)
-  slack post (--body <text> | --body-file <path|->) [--to <#channel|email>] [--thread <link|ts>]
-             [--mention <email|name|member id, ...>] [--team <workspace>]
+  slack post (--body <text> | --body-file <path|->) [--blocks-file <path|->] [--to <#channel|email>]
+             [--thread <link|ts>] [--mention <email|name|member id, ...>] [--team <workspace>]
                                          the bot says it, in Markdown: to a channel, to a person by
                                          email, or to the project's channel; --thread answers under
                                          a message (Slack's "Copy link"); --mention notifies people,
-                                         found by email, by name as Slack shows it, or by member id
+                                         found by email, by name as Slack shows it, or by member id;
+                                         --blocks-file posts a designed card instead (Block Kit JSON:
+                                         a list of blocks, or {"blocks": [...]}), the body its
+                                         notification text; only one of the two files may be -
 `
 
 /** A list flag: items split on "|" (titles can hold commas), or on "," when there is no "|". */
@@ -1197,6 +1200,7 @@ async function main(argv: string[]): Promise<void> {
       'follow-up': { type: 'string' },
       return: { type: 'string' },
       'body-file': { type: 'string' },
+      'blocks-file': { type: 'string' },
       'html-file': { type: 'string' },
       'reply-to': { type: 'string' },
       'send-at': { type: 'string' },
@@ -3861,9 +3865,17 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'disconnect')
         return out(await call(config, 'POST', '/slack/disconnect', o.team ? { team: o.team } : {}))
       if (sub === 'post') {
+        if (o['body-file'] === '-' && o['blocks-file'] === '-')
+          throw new BhError(
+            'Only one of --body-file and --blocks-file can read stdin',
+            { hint: 'Write one of them to a file and pass its path' },
+            2,
+          )
         const text = o['body-file'] ? await readText(o['body-file']) : need(o.body)
+        const blocks = o['blocks-file'] ? await readBlocks(o['blocks-file']) : undefined
         const message = {
           text,
+          ...(blocks ? { blocks } : {}),
           ...(o.to ? { to: o.to } : {}),
           ...(o.thread ? { thread: o.thread } : {}),
           ...(o.mention ? { mention: list(o.mention) } : {}),

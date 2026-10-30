@@ -24,6 +24,32 @@ export async function readInput(path: string): Promise<unknown> {
 export const readText = (path: string): Promise<string> =>
   path === '-' ? stdin() : readFile(path, 'utf8')
 
+/**
+ * A Slack card's blocks, from a file or stdin: Block Kit Builder's list of blocks, or its whole
+ * payload (`{"blocks": [...]}`). What is inside each block is the engine's and Slack's to judge.
+ */
+export async function readBlocks(path: string): Promise<unknown[]> {
+  const text = await readText(path)
+  let value: unknown
+  try {
+    value = JSON.parse(text)
+  } catch {
+    throw new BhError(
+      `${path === '-' ? 'stdin' : path}: not JSON`,
+      { hint: 'Block Kit JSON: a list of blocks, or {"blocks": [...]}' },
+      2,
+    )
+  }
+  const blocks = Array.isArray(value) ? value : (value as { blocks?: unknown } | null)?.blocks
+  if (!Array.isArray(blocks))
+    throw new BhError(
+      `${path === '-' ? 'stdin' : path} holds no blocks`,
+      { hint: 'Block Kit JSON: a list of blocks, or {"blocks": [...]}' },
+      2,
+    )
+  return blocks
+}
+
 /** The rows a batch command sends: always a list, so a lone object is a list of one. */
 export async function readRows(path: string): Promise<unknown[]> {
   const value = await readInput(path)
