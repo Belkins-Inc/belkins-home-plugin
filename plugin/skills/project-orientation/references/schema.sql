@@ -3237,7 +3237,7 @@ CREATE TABLE public.sessions (
     revoked_via public.actor_via,
     last_seen_at timestamp with time zone,
     preview_project_id uuid,
-    CONSTRAINT sessions_audience_check CHECK ((audience = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text, 'connect'::text])))
+    CONSTRAINT sessions_audience_check CHECK ((audience = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text, 'connect'::text, 'account'::text])))
 );
 
 
@@ -12667,4 +12667,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261029225001'),
     ('20261030001642'),
     ('20261030015304'),
-    ('20261030015955');
+    ('20261030015955'),
+    ('20261030202636');
