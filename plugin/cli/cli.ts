@@ -682,7 +682,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   address checks <contact-id> | address collect      collect: Scrubby's answers for the project
   address replace <contact-id> --address <a>          a confirmed address: the bounced step goes again to it
   reengage <message-id> [--on <yyyy-mm-dd>]           write again from that day; the id is the reply's, from bh inbox (a person only)
-  refer <message-id> --email <e> [--first-name <n>] [--last-name <n>] [--title <t>]   the colleague they named (a person only)
+  refer <message-id> --email <e> [--first-name <n>] [--last-name <n>] [--title <t>]   the colleague they named (a person; the server agent only from a lead's referral, to a checked valid address)
   token create --name <n> [--kind scheduled_agent] [--for <email>] | token list | token revoke <id> | token unrevoke <id>
   oauth-client add --name <n> --redirect <uri,...> [--auth basic|post]   a confidential client of Dylan's
                                          OAuth server, for an agent platform that asks for an id and a

@@ -96,7 +96,8 @@ there are many:
    same way: the approved answer goes into the same chat from the thread's LinkedIn account, as
    plain text with no signature, so write it as a chat message (short, no greeting block, no
    sign-off). Nobody pastes it into LinkedIn by hand.
-5. **Follow-ups** (a person's token; a server agent opens a task instead, below):
+5. **Follow-ups** (a person's token; a server agent refers a colleague itself, "Referrals in a
+   server run" below, and opens a task for the rest):
    - `not_now` with a date: `bh reengage <inbound message id> [--on <yyyy-mm-dd>]` makes a new
      enrollment in the same strategy starting that day, with the same plan. Its copy is written
      like any other (`copywriting` skill, `bh copy queue` / `bh copy write`) with this thread as
@@ -150,21 +151,38 @@ person, or marks a reply that needs no answer as handled. A run is told which re
 `bh inbox` as it is, a draft waiting there included.
 
 A scheduled agent may: classify and re-classify, mark handled, draft replies, add notes, questions,
-tasks, hypotheses and their evidence, check and replace bounced addresses, offer slots (`bh slots offer`), and book or move a
+tasks, hypotheses and their evidence, check and replace bounced addresses, offer slots (`bh slots offer`), book or move a
 meeting to a slot that was offered to this lead and is still held (references/answers.md,
-Meetings). It may not: start a hypothesis's test or change how a running one is judged, approve or send, `bh reengage`, `bh refer`, `bh lead resume`, remove dnc,
-enroll, book any other time, cancel a meeting, or read or book an external calendar (it has no
+Meetings), and refer the colleague a lead's referral names (below). It may not: start a hypothesis's test or change how a running one is judged, approve or send, `bh reengage`, any other `bh refer`, `bh lead resume`, remove dnc,
+enroll anyone else, book any other time, cancel a meeting, or read or book an external calendar (it has no
 browser: references/external-calendars.md, The server agent). Where one of those is due, open a task for the
 person who launched the strategy:
 
 - their email: `bh sql "select u.email from threads t join enrollments e on e.id = t.enrollment_id join strategies s on s.id = e.strategy_id join users u on u.id = s.launched_by where t.id = '<threadId>'"`;
 - `bh task open --title "Re-engage <lead> on <date>" --assignee <email> --due <iso> --done-when "a re-engagement is scheduled" --body "<inbound message id>, what they said"`;
-- likewise "Refer <colleague> from <lead>" (with the name and address), "Resume <lead>: the reply
+- likewise "Refer <colleague> from <lead>" (with the name and address) when the engine refused
+  the agent's `bh refer`, "Resume <lead>: the reply
   needed nothing" (with the enrollment id), "Approve the reply to <lead>" with `--priority urgent`
   for a positive answer with offered slots.
 
 The engine already opened an urgent task for every positive reply it classified; do not duplicate
 it. Draft the answer so the task's owner only has to approve.
+
+### Referrals in a server run
+
+A run is told which referrals are its own: a lead's own `referral` reply in a live campaign that
+nobody followed yet. For each:
+
+1. `bh thread <threadId>`: who the lead points to, by name and address. An address the reply does
+   not give is found the usual way (`email-finding` skill); a reply that names nobody gets nothing
+   but the drafter's thank-you.
+2. `bh contacts upsert` the colleague at the lead's company (`companyDomain`, the name, the title
+   the reply gives), then `bh address check <contact-id> --address <e> --reason new_contact`.
+3. Valid: `bh refer <inbound message id> --email <e> [--first-name] [--last-name] [--title]`. The
+   colleague gets the lead's plan, naming who referred; write its copy now (`copywriting` skill).
+   Not valid, catch-all, or refused (the error says why: not a referral, written by someone else,
+   the strategy not active, enrolled before): open the "Refer <colleague> from <lead>" task above.
+4. Say in the summary whom each lead pointed to and what became of them.
 
 ## Record
 
