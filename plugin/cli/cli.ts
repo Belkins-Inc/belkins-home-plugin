@@ -90,6 +90,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   projects [--org <slug>] | project create <slug> --name <name> [--timezone <tz>] [--org <slug>] [--owner <user-id>]
   project members | project member <user-id> [--role owner|member] | project member remove <user-id>
   project move <slug> --org <org>        move a project and all it owns to another organisation (platform admin)
+  project remove <slug> [--dry-run]      delete a project that never worked for anyone, with its senders, mailboxes,
+                                         placement tests, tasks and events, and the domains only it used (platform admin)
   orgs | org create <slug> --name <name> [--billing external|stripe]   organisations you belong to (the platform admin: all)
   org billing <slug> external|stripe   stripe: Dylan's clients; external: billed outside the platform (platform admin)
   org protections <slug>               whether the engine pauses its unhealthy strategies, its daily lead cap, today's count
@@ -1353,6 +1355,10 @@ async function main(argv: string[]): Promise<void> {
         )
       if (sub === 'move')
         return out(await call(config, 'PUT', `/projects/${arg}/organisation`, { org: o.org }))
+      if (sub === 'remove')
+        return out(
+          await call(config, 'POST', `/projects/${arg}/remove`, { dryRun: Boolean(o['dry-run']) }),
+        )
       if (sub === 'members') return out(await call(config, 'GET', `/projects/${p()}/members`))
       if (sub === 'member' && arg === 'remove')
         return out(await call(config, 'DELETE', `/projects/${p()}/members/${pos[3]}`))
