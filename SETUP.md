@@ -101,9 +101,18 @@ bh projects
 - `401` / `unauthorized`: the token was revoked — back to step 2.
 - `projects` is empty: they are in the organisation but in no project — their admin adds them.
 
-## 4. Done — the guide
+## 4. Answers on a schedule
 
-Setup is finished when steps 1–3 pass. End with one message to the person, in their language, that
+Every answer to their leads, every rewrite they ask for and every follow-up's copy is written by
+their own Claude, not by the platform (the `writing-answers` skill). In the Claude desktop app, with
+`~/work/belkins-home` as the working directory, create its scheduled task as that skill says
+("Set up the schedule"): `belkins-answers`, every 15 minutes. Without the desktop app (no
+scheduled-tasks tool here), tell them to open `~/work/belkins-home` in it once and say "set up the
+answers schedule".
+
+## 5. Done — the guide
+
+Setup is finished when steps 1–4 pass. End with one message to the person, in their language, that
 holds the two parts below — short lines and lists, no paragraphs of prose. Leave out anything that
 does not apply to them (an empty `bh projects`, say, puts "ask your admin to add you to a project"
 first).
@@ -123,9 +132,12 @@ first).
 4. **Decisions stay theirs.** Anything that spends money, sends, launches or changes rules — buying
    domains, launching a strategy, approving a reply — the agent prepares and asks them to confirm;
    nothing goes out on its own.
-5. **The web app**, https://home-next.belkins.io, shows the same projects: leads, inbox, strategies,
+5. **Keep the desktop app open on a working day.** Its scheduled task writes the answers to their
+   leads every 15 minutes; they approve each in Slack or the web app. A pass missed while the app
+   was closed runs when it opens.
+6. **The web app**, https://home-next.belkins.io, shows the same projects: leads, inbox, strategies,
    senders, meetings and tasks.
-6. **Updates come by themselves** in `~/work/belkins-home`; `claude plugin marketplace update
+7. **Updates come by themselves** in `~/work/belkins-home`; `claude plugin marketplace update
    belkins-home` takes one at once. Something wrong with `bh` or a skill: say so to the agent — it
    files an issue for the platform team.
 
@@ -144,6 +156,8 @@ Each line is one ask away; the skill in brackets is what the agent follows.
   (`email-finding`). Do-not-contact lists are kept and checked.
 - **Strategies** — email and LinkedIn sequences per segment and persona, leads enrolled, a launch a
   person presses, and the strategy kept full and healthy afterwards (`strategy-and-plans`).
+- **Answers** — every reply of their leads answered by their own Claude on a schedule, for them to
+  approve; a rewrite asked for in Slack or the web app done on its next pass (`writing-answers`).
 - **Copy** — every step of every lead's plan written and checked against the house rules, previewed
   or sent as a test first (`copywriting`).
 - **Sending** — lookalike domains bought, mailboxes ordered and warmed up, signatures with links and a

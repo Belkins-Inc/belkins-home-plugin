@@ -9,8 +9,10 @@ All copy is written in Claude Code and stored in `messages`; the engine only sen
 written for **one named person**, every step up front at enrollment, so a person can review the
 whole plan before launch. A step whose copy is missing when it falls due holds the lead (stuck).
 
-Rights: a scheduled agent (server agent) writes re-engagement copy and drafts; first messages for
-newly enrolled people are a person's session (the engine opens a task instead).
+Rights: a server agent run writes no copy and no answer (`bh copy write` refuses its token):
+re-engagement and referral copy waits in `bh answers` for the own Claude of the person whose lead it
+is (`writing-answers` skill); first messages for newly enrolled people are a person's session (the
+engine opens a task instead).
 
 ## Read first
 

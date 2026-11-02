@@ -67,14 +67,13 @@ or the reschedule / cancel link of the booking), usually by a person. Then, and 
 
 ## The server agent
 
-A scheduled run has no browser and may not record a meeting. When a reply needs times or a booking
-and `bh slots` is empty while `bh calendars` lists an active external calendar:
-
-- leave the answer undrafted, or draft only what needs no time;
-- open an urgent task for the person who launched the strategy (their email as in SKILL.md, The
-  server agent): `bh task open --title "Offer times to <lead> from <calendar name>" --assignee
-  <email> --priority urgent --done-when "times are offered, or the meeting is booked" --body
-  "<thread id>, <bookingUrl>, the lead's zone, what they asked"`; once they confirmed a time, the
-  title is "Book <lead> at <time> on <calendar name>" and the body names the time in UTC.
+A server run writes no answer and has no browser: a reply that needs times or a booking is answered
+by the person's own Claude on its pass (`writing-answers` skill, `bh answers`), which runs this file
+from "Reading free times" or "Booking". When that Claude has no browser either, it opens an urgent
+task for the person who launched the strategy: `bh task open --title "Offer times to <lead> from
+<calendar name>" --assignee <email> --priority urgent --done-when "times are offered, or the
+meeting is booked" --body "<thread id>, <bookingUrl>, the lead's zone, what they asked"`; once they
+confirmed a time, the title is "Book <lead> at <time> on <calendar name>" and the body names the
+time in UTC.
 
 The person's session then runs this file from "Reading free times" or "Booking".

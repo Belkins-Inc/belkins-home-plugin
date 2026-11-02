@@ -126,8 +126,7 @@ Mark it handled with `bh triage` and say why in `--note`.
   (`provider: external`, a Calendly or HubSpot link) and nothing of it in `bh slots`: read its free
   times in a browser, offer two in the body, book the one the lead confirms on that page in the
   lead's name, and record it with `bh meeting record --calendar <id>`.
-  [external-calendars.md](external-calendars.md) is the whole procedure; a server agent, which has no
-  browser, opens a task for a person instead.
+  [external-calendars.md](external-calendars.md) is the whole procedure.
 - Hold what you offer: with the draft, run `bh slots offer <thread-id> --slots <iso>,<iso>
   [--calendar <id>]`. The slots are then kept for this lead — nobody else is offered them — for 72
   hours; a newer offer to the same thread replaces the older one. Set `--approve-by` on the draft to

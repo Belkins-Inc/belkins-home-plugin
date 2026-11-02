@@ -14,7 +14,7 @@ from threads t where t.enrollment_id = '<followsEnrollmentId>'
 Then `bh thread <thread_id>` for the whole conversation. For a referral, the referrer's reply is in
 their thread (the referrer's enrollment is `followsEnrollmentId`).
 
-## Re-engagements due for copy in the next days (server agent's work)
+## Re-engagements due for copy in the next days (`bh answers` lists them as `copy`)
 
 ```sql
 select e.id as enrollment_id, e.strategy_id, e.starts_at, c.first_name, c.last_name, co.name as company

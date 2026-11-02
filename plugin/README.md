@@ -44,6 +44,7 @@ Being added to the platform, getting a token, which environment to point at and 
 | `sending-domains` | buying lookalike domains and ordering mailboxes on them |
 | `sender-signatures` | a sender's text and HTML signature, with links and a photo |
 | `inbox-triage` | classes, drafts, approvals, re-engagement and referrals from replies |
+| `writing-answers` | your own Claude's scheduled pass that writes every answer and follow-up copy waiting for you (`bh answers`) |
 | `client-report` | the periodic report for the client |
 
 `meeting-outcomes` comes with calendars and meetings (phase 8).

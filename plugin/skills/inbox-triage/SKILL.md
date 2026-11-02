@@ -1,6 +1,6 @@
 ---
 name: inbox-triage
-description: Works a project's inbox — confirms or corrects the engine's classification of each reply, drafts answers for a person to approve, turns "not now" and referrals into follow-ups, and books meetings on a client's external calendar (a Calendly or HubSpot link) through the browser, recording them in Home. Use when replies are waiting (`bh brief` shows untriaged replies or drafts to approve), when asked to check or work the inbox, when a meeting is to be booked or recorded on a client's own booking page, and in every server-agent run that has replies waiting.
+description: Works a project's inbox — confirms or corrects the engine's classification of each reply, drafts answers for a person to approve (a person's own Claude does; a server run only triages), turns "not now" and referrals into follow-ups, and books meetings on a client's external calendar (a Calendly or HubSpot link) through the browser, recording them in Home. Use when replies are waiting (`bh brief` shows untriaged replies or drafts to approve), when asked to check or work the inbox, when a meeting is to be booked or recorded on a client's own booking page, and in every server-agent run that has replies waiting.
 ---
 
 # Inbox triage
@@ -79,8 +79,8 @@ there are many:
    addresses each at most when named. A draft already waiting in the thread (`bh thread`
    shows it) is changed with `bh reply revise <replyId> --body-file <path> --note "<what changed>"`,
    which keeps the old version — never a second draft beside it. A person can ask for a rewrite in
-   the web app or with `bh reply rewrite <replyId> --ask "<what to change>"`; a server-agent run
-   then does it.
+   the web app or with `bh reply rewrite <replyId> --ask "<what to change>"`; their own Claude
+   does it on its next pass (`writing-answers` skill, `bh answers`).
    A reply whose class still asks for an answer (`other`, mostly) but that needs none — a mailbox
    that moved and forwards, a thank-you — leaves Needs reply with
    `bh thread close <threadId> --note "<why>"`; it comes back when the lead writes again
@@ -145,12 +145,12 @@ there are many:
 
 ## The server agent
 
-The engine's drafter reads most email replies first, with one call: it leaves a draft waiting for a
-person, or marks a reply that needs no answer as handled. A run is told which replies are its own
-(the ones the drafter handed over: free times, a booking, a lookup); leave every other reply in
-`bh inbox` as it is, a draft waiting there included.
+A server run triages and writes nothing a lead reads: every answer, rewrite and follow-up copy is
+written by the Claude of the person whose lead it is, on their computer (`writing-answers` skill);
+`bh reply draft`, `bh reply revise` and `bh copy write` refuse a run's token. A run is told which replies are its
+own; confirm or correct each class with its note, and leave the answer to the person's Claude.
 
-A scheduled agent may: classify and re-classify, mark handled, draft replies, add notes, questions,
+A scheduled agent may: classify and re-classify, mark handled, add notes, questions,
 tasks, hypotheses and their evidence, check and replace bounced addresses, offer slots (`bh slots offer`), book or move a
 meeting to a slot that was offered to this lead and is still held (references/answers.md,
 Meetings), and refer the colleague a lead's referral names (below). It may not: start a hypothesis's test or change how a running one is judged, approve or send, `bh reengage`, any other `bh refer`, `bh lead resume`, remove dnc,
@@ -166,7 +166,7 @@ person who launched the strategy:
   for a positive answer with offered slots.
 
 The engine already opened an urgent task for every positive reply it classified; do not duplicate
-it. Draft the answer so the task's owner only has to approve.
+it. Its owner's Claude writes the answer.
 
 ### Referrals in a server run
 
@@ -175,11 +175,12 @@ nobody followed yet. For each:
 
 1. `bh thread <threadId>`: who the lead points to, by name and address. An address the reply does
    not give is found the usual way (`email-finding` skill); a reply that names nobody gets nothing
-   but the drafter's thank-you.
+   from the run.
 2. `bh contacts upsert` the colleague at the lead's company (`companyDomain`, the name, the title
    the reply gives), then `bh address check <contact-id> --address <e> --reason new_contact`.
 3. Valid: `bh refer <inbound message id> --email <e> [--first-name] [--last-name] [--title]`. The
-   colleague gets the lead's plan, naming who referred; write its copy now (`copywriting` skill).
+   colleague gets the lead's plan, naming who referred; its copy waits for the person's Claude
+   (`bh answers`).
    Not valid, catch-all, or refused (the error says why: not a referral, written by someone else,
    the strategy not active, enrolled before): open the "Refer <colleague> from <lead>" task above.
 4. Say in the summary whom each lead pointed to and what became of them.

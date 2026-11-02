@@ -541,6 +541,24 @@ CREATE TABLE public.agent_runs (
 
 
 --
+-- Name: answer_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.answer_requests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    project_id uuid NOT NULL,
+    thread_id uuid NOT NULL,
+    reply_id uuid,
+    ask text,
+    requested_by uuid NOT NULL,
+    requested_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    done_at timestamp with time zone,
+    done_reply_id uuid
+);
+
+
+--
 -- Name: api_tokens; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4092,6 +4110,14 @@ ALTER TABLE ONLY public.agent_runs
 
 
 --
+-- Name: answer_requests answer_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_requests
+    ADD CONSTRAINT answer_requests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: api_tokens api_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5593,6 +5619,20 @@ ALTER TABLE ONLY public.workspace_tenants
 
 ALTER TABLE ONLY public.workspace_tenants
     ADD CONSTRAINT workspace_tenants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: answer_requests_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX answer_requests_open ON public.answer_requests USING btree (thread_id) WHERE (done_at IS NULL);
+
+
+--
+-- Name: answer_requests_waiting; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX answer_requests_waiting ON public.answer_requests USING btree (requested_by) WHERE (done_at IS NULL);
 
 
 --
@@ -7385,6 +7425,46 @@ ALTER TABLE ONLY public.agent_runs
 
 ALTER TABLE ONLY public.agent_runs
     ADD CONSTRAINT agent_runs_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads(id);
+
+
+--
+-- Name: answer_requests answer_requests_done_reply_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_requests
+    ADD CONSTRAINT answer_requests_done_reply_id_fkey FOREIGN KEY (done_reply_id) REFERENCES public.replies(id) ON DELETE SET NULL;
+
+
+--
+-- Name: answer_requests answer_requests_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_requests
+    ADD CONSTRAINT answer_requests_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: answer_requests answer_requests_reply_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_requests
+    ADD CONSTRAINT answer_requests_reply_id_fkey FOREIGN KEY (reply_id) REFERENCES public.replies(id) ON DELETE SET NULL;
+
+
+--
+-- Name: answer_requests answer_requests_requested_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_requests
+    ADD CONSTRAINT answer_requests_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.users(id);
+
+
+--
+-- Name: answer_requests answer_requests_thread_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.answer_requests
+    ADD CONSTRAINT answer_requests_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads(id) ON DELETE CASCADE;
 
 
 --
@@ -10702,6 +10782,12 @@ ALTER TABLE public.address_replacements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_runs ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: answer_requests; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.answer_requests ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: api_tokens; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -11295,6 +11381,13 @@ CREATE POLICY organisation_fence ON public.address_replacements USING ((EXISTS (
 --
 
 CREATE POLICY organisation_fence ON public.agent_runs USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: answer_requests organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.answer_requests USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
 
 
 --
@@ -12673,4 +12766,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261030015955'),
     ('20261030202636'),
     ('20261101172829'),
-    ('20261102203830');
+    ('20261102203830'),
+    ('20261102223614');

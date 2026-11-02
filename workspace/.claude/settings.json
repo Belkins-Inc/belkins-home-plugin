@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "allow": ["Bash(bh *)", "Bash(gh issue create *)", "Bash(gh issue list *)"],
+    "allow": ["Bash(bh *)", "Bash(gh issue create *)", "Bash(gh issue list *)", "Edit(clients/**)"],
     "deny": ["Bash(git clone *)", "Bash(gh repo clone *)"]
   },
   "extraKnownMarketplaces": {

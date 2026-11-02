@@ -207,8 +207,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   questions [--status open|asked|answered|dropped|all] | question add --body <question> [--note <context>] [--asked]
                                          [--thread <thread-id>]: the lead's thread whose answer waits for it
   question ask <id>                      post it in the project's client Slack channel; the client's reply
-                                         in that thread is the answer, and the lead's answer is drafted again
+                                         in that thread is the answer, and the lead's thread waits in bh answers
   question asked <id> | question answer <id> --body <answer, verbatim> | question drop <id>
+  question link <id> --thread <thread-id>   another lead's thread waits for this question too (not a second one)
   hypothesis list [--status open|proposed|testing|confirmed|rejected|parked|all]   open: proposed and testing
   hypothesis add --claim <t> [--evidence <why>] [--segment <id>] [--persona <id>] [--strategy <id>]
        [--metric <what is measured>] [--threshold <what confirms it>] [--status proposed|parked]
@@ -625,6 +626,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          before it is kept
   proxy check|retire|unretire <id>
   inbox                                  replies waiting for triage, with the engine's classification
+  answers [--all]                        what waits for your own Claude to write, across your projects: your leads'
+                                         replies with no answer, answers and rewrites you asked for, drafts a client's
+                                         answer reached, follow-up copy (--all: every project you see)
   inbox test-send --from <our address> --to <our address> [--subject <t>] [--body <t>] [--reply]
                                          a test of the round trip: sends through the provider; the
                                          answer reaches the inbox only through the reader. --reply answers
@@ -655,8 +659,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
        [--attach <file>]… | [--no-attach]
                                          a new version of a draft; --cc/--bcc replace its copies ("" for none),
                                          --attach its files (left out: it keeps them), --no-attach takes them off
-  reply rewrite <id> --ask <what to change>   the server agent rewrites it (a person only) | reply versions <id>
-  reply agent <thread-id> [--ask <what to say>]  the server agent writes the first draft (a person only)
+  reply rewrite <id> --ask <what to change>   your own Claude rewrites it on its next pass (bh answers) | reply versions <id>
+  reply ask <thread-id> [--ask <what to say>]  your own Claude writes the answer on its next pass (a person only)
   reply-templates <strategy-id>          the fixed answers the engine sends on its own, by kind of reply
   reply-template approve <strategy-id> --class interested|meeting|question --body <text> | --body-file <path> [--cc a@x.com,b@y.com]
   reply-template approve <strategy-id> --class out_of_office|referral --subject <s> --body-file <path>
@@ -1391,6 +1395,8 @@ async function main(argv: string[]): Promise<void> {
       break
     case 'brief':
       return out(await call(config, 'GET', `/projects/${p()}/brief`))
+    case 'answers':
+      return out(await call(config, 'GET', `/me/answers${o.all ? '?all=1' : ''}`))
     case 'behaviour':
       if (o.search)
         return out(
@@ -1709,6 +1715,10 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       if (sub === 'ask') return out(await call(config, 'POST', `/questions/${arg}/ask`, {}))
+      if (sub === 'link')
+        return out(
+          await call(config, 'POST', `/questions/${arg}/threads`, { threadId: need(o.thread) }),
+        )
       if (sub === 'asked')
         return out(await call(config, 'PATCH', `/questions/${arg}`, { status: 'asked' }))
       if (sub === 'answer')
@@ -2718,7 +2728,7 @@ async function main(argv: string[]): Promise<void> {
       }
       if (sub === 'rewrite')
         return out(await call(config, 'POST', `/replies/${arg}/rewrite`, { ask: need(o.ask) }))
-      if (sub === 'agent')
+      if (sub === 'ask' || sub === 'agent')
         return out(await call(config, 'POST', `/threads/${arg}/draft`, o.ask ? { ask: o.ask } : {}))
       if (sub === 'versions') return out(await call(config, 'GET', `/replies/${arg}/versions`))
       break
