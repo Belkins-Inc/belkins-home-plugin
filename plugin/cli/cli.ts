@@ -359,7 +359,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          organizer, a published calendar's feed (Outlook's ICS link), or
                                          working hours alone; the address gets the invitations
   calendar invite --sender <id>          a link for the sender's owner to connect their Cal.com without
-                                         access to the tool (7 days, once; a new link replaces the last)
+                                         access to the tool (7 days; the first link used closes the rest)
   calendar add-external --url <booking link> [--sender <id>] [--name <t>] [--minutes <n>] [--timezone <iana>]
                                          a booking page Home has no integration with (a client's Calendly): Claude
                                          reads its free times and books it in a browser, then records the meeting
