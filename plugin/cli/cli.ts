@@ -122,6 +122,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
   dialer users <dialer-org-id>          its people, their roles and workspaces: who can work a queue (platform admin)
   dialer queue <name> [--hours 08:00-18:00] --project <p>   makes the project's queue in its workspace and attaches its lists (platform admin)
+  dialer key <dialer-org-id>            what our key opens there: scopes, writes, workspaces, expiry (platform admin)
+  dialer invite <email,…> [--role operator|manager] --project <p>   invites people to the project's dialer workspace (platform admin)
   dialer agents <email,…> --project <p>  who works the project's queue; replaces the set (platform admin)
   dialer orgs                           the dialer organizations our key can see, and the organisation linked to each (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
@@ -1818,6 +1820,29 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', `/projects/${p()}/dialer/queue`, {
             name: pos.slice(2).join(' '),
             ...callingHours(o.hours),
+          }),
+        )
+      }
+      if (sub === 'key') {
+        if (!arg) throw new BhError('Which dialer organization?', { hint: 'bh dialer orgs' }, 2)
+        return out(
+          await call(config, 'GET', `/dialer/organizations/${encodeURIComponent(arg)}/key`),
+        )
+      }
+      if (sub === 'invite') {
+        if (!arg)
+          throw new BhError(
+            'Whom to invite?',
+            { hint: 'bh dialer invite <email,…> --project <project>' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/projects/${p()}/dialer/invitations`, {
+            emails: pos
+              .slice(2)
+              .flatMap((a) => a.split(','))
+              .filter(Boolean),
+            ...(o.role ? { role: o.role } : {}),
           }),
         )
       }
