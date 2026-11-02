@@ -191,7 +191,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   source update <id> [--status active|paused|exhausted] [--cursor <c>] [--estimate <n>] [--body <instructions>]
                                          --estimate reads back as estimatedCompanies, in bh segments and bh sources
   search record --file <json>            {"kind":"companies","sourceId","provider","query","cursor","results","newRecords","duplicates","callIds":[…]}
-                                         {"kind":"contacts","strategyId","companyId","provider","query","results","newRecords","duplicates","callIds":[…]}
+                                         {"kind":"contacts","strategyId","companyId","provider","query","results","newRecords","duplicates","callIds":[…],
+                                          "dropped":{"former","title","over_cap","other_company","duplicate": <n>}}
                                          a company search names its sourceId, a contact search its strategyId
   exclusions | exclusion add --kind country|country_outside|industry|business_model|employees_below|employees_above|rating_above|other --value <v> [--note <why>]
   exclusion remove <id>

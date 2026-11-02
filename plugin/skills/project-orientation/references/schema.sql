@@ -2988,6 +2988,7 @@ CREATE TABLE public.searches (
     ran_by uuid,
     ran_at timestamp with time zone DEFAULT now() NOT NULL,
     cost_usd numeric(12,6) DEFAULT 0 NOT NULL,
+    dropped jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT searches_check CHECK (((kind <> 'companies'::text) OR (source_id IS NOT NULL))),
     CONSTRAINT searches_check1 CHECK (((kind <> 'contacts'::text) OR (strategy_id IS NOT NULL))),
     CONSTRAINT searches_kind_check CHECK ((kind = ANY (ARRAY['companies'::text, 'contacts'::text])))
@@ -12671,4 +12672,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261030015304'),
     ('20261030015955'),
     ('20261030202636'),
-    ('20261101172829');
+    ('20261101172829'),
+    ('20261102203830');

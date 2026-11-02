@@ -110,19 +110,31 @@ Decide before spending, and write the reason in one sentence (a note or the sess
    exclude`). `strategy_segment_usage.companies_left` counts the same rows, so the screen and this
    query agree on what is still to do.
 
-   A company with no LinkedIn page cannot be searched inside: find its page first (Generect
-   realtime by name, generect.md) or leave it.
+   A company with no LinkedIn page cannot be searched inside: find its page first — the cache by
+   domain, the company's own site, then Generect realtime by name (generect.md, cheapest first) —
+   or leave it.
 
    Another project may have bought people there already: `bh cache people <company_link>` lists
    them free (only those bought, so it never proves nobody else fits). Enough who fit the ladder →
    take them from there and skip the paid search.
-3. **Search inside each company** with `company_link`, `limit_by` about 3 × `max_per_company`,
-   `--strategy <id> --company <id>` (a lead count while sizing, before any strategy exists, takes
-   `--segment <id>` instead). Record each as a contact search:
-   `{"kind":"contacts","strategyId":…,"companyId":…,"provider":"generect","query":…,"results":…,"newRecords":…,"callIds":[…]}`.
+3. **Search inside each company, rung by rung**, with `company_link`, `--strategy <id> --company
+   <id>` (a lead count while sizing, before any strategy exists, takes `--segment <id>` instead):
+   - the top rung's titles first, `limit_by` = `max_per_company`; the next rung only for the places
+     still empty. One list of the whole ladder with a wide `limit_by` buys rows the cap throws away:
+     one project paid for 12,700 people in October and kept 21%.
+   - **Too few kept → realtime** with the same body (generect.md, "Inside one company, live"): the
+     database index misses people, most at small companies, and an empty realtime answer is free.
+     Check each realtime row's employer, duplicates and title before keeping it.
+   - Record each search (the database one and the realtime one apart) as a contact search, with
+     what was dropped and why:
+     `{"kind":"contacts","strategyId":…,"companyId":…,"provider":"generect","query":…,"results":…,"newRecords":…,"callIds":[…],"dropped":{"title":5,"over_cap":2}}`.
+     The reasons: `former`, `title` (outside the ladder or an excluded title), `over_cap` (past
+     `max_per_company`), `other_company` (realtime answered someone else's people), `duplicate`
+     (already held, or the same person twice). They are what answers "why was this lead not found".
 4. **Keep only people who fit**: `is_current` not false; title matches a persona (whole words; the
    first rung that matches is their persona); no excluded title; within `max_per_company`, highest
-   rung first. People who do not fit are not stored — the search's counts keep the record.
+   rung first. People who do not fit are not stored — the search's counts and `dropped` keep the
+   record.
 5. **Upsert contacts**: `linkedinUrl` (the vanity `/in/<slug>` form, no query, no trailing slash),
    `firstName` / `lastName` from `full_name`, `title`, `companyDomain`, `country` / `timezone` from
    `location` when plain, `source: "generect"`, `facts` (e.g. how long in role, which persona rung
@@ -132,7 +144,7 @@ Decide before spending, and write the reason in one sentence (a note or the sess
    `{"contactId","status","personaId"}` per line.
 
 6. **Say what the search came to** — `bh worked <strategy-id> --file companies.jsonl`, one
-   `{"domain","status"}` per line: `no_match` when the company was searched and nobody fits,
+   `{"domain","status"}` per line: `no_match` when the company was searched (realtime too) and nobody fits,
    `exhausted` when there is nobody left to find there. Both are refused for a company whose people
    already stand in this strategy, because the counts would then grow back over work being done.
    Companies with people found need no row — standing them wrote it.
@@ -140,6 +152,24 @@ Decide before spending, and write the reason in one sentence (a note or the sess
    still go on a LinkedIn-only plan.
 8. A stored contact that turns out wrong for the strategy:
    `bh stand <strategy-id> --contact <id> --status rejected --reason "<why>"` — never looked at again.
+
+## Why a lead was not found
+
+Someone has a person (another tool's list, a teammate's search) we did not find. Answer from data,
+in this order, before buying anything:
+
+1. **Held?** `bh sql "select … from contacts where linkedin_url …"` or by name and company — maybe
+   found, then rejected (`bh stand … rejected` keeps the reason).
+2. **Searched?** `bh sql "select ran_at, query, results, new_records, dropped, note from searches
+   where company_id = '<id>' order by ran_at"` — never searched (no LinkedIn page, the strategy did
+   not reach it), or searched and dropped: `dropped` says why (`title` → the ladder lacks the
+   person's title, `over_cap` → others came first).
+3. **In the index?** Free counts: `{"company_link": …}` alone, then with the ladder, then with the
+   person's own title. Held and not matched → the ladder; not held → the database index lacks them,
+   and realtime is the way (generect.md).
+
+Say which of these it was; a missing title is a persona change for a person to approve
+(`persona-design`), not a quiet widening of the ladder.
 
 ## Rules
 
@@ -169,3 +199,6 @@ Decide before spending, and write the reason in one sentence (a note or the sess
 - Writing `hq_country` ("United Kingdom") as the company's country — it must be `GB`.
 - Qualifying from the provider's industry label alone.
 - Enrolling former employees (`is_current: false`).
+- Calling a company with no row "nobody fits" before asking realtime: the database index may simply
+  not hold its people.
+- Keeping a realtime row without checking its employer (`linkedin_company_id`).

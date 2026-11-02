@@ -97,13 +97,34 @@ Company row (34 fields). What to keep:
 
 Strip NUL characters (`\u0000`) from text before writing — Postgres refuses them.
 
-### A company's page from its name (realtime, $0.007 per row)
+### A company's page from its domain or name — cheapest first
 
-```sh
-bh call generect POST /search/realtime/companies/ --company <id> --body '{
-  "keywords": ["Extra Space Storage"], "limit_by": 1, "offset_by": 0
-}'
-```
+A company imported by domain (a client list, Trustpilot, a directory) needs its LinkedIn page before
+anyone can be searched inside it. Three ways, in this order:
+
+1. **The cache, free**: `bh cache company --domain acme.com` — any project's earlier purchase.
+2. **The company's own site, $0.0009**: most sites link their LinkedIn page in the header or footer.
+   Ask Firecrawl for the links, not the text (`onlyMainContent: false`, or the footer is cut):
+
+   ```sh
+   bh call firecrawl POST /scrape --company <id> \
+     --body '{"url":"https://acme.com","formats":["links"],"onlyMainContent":false}' \
+     | jq -r '.data.links[] | select(test("linkedin.com/company/"))' | sort -u
+   ```
+
+   Two of three sites tried on 2026-11-02 gave the page (the third links none). One link is the
+   page; several (a parent, a region) — take the one whose name is the company's.
+3. **Realtime by name, $0.007 per row**:
+
+   ```sh
+   bh call generect POST /search/realtime/companies/ --company <id> --body '{
+     "keywords": ["Extra Space Storage"], "limit_by": 1, "offset_by": 0
+   }'
+   ```
+
+   `limit_by` 1, or 3 at most when the name is common and you need to choose among namesakes: every
+   row is billed. In the three weeks to 2026-11-02 one project asked 3.8 rows a lookup and another
+   6.6 — more than half of their $42 bought rows nobody used.
 
 Domains cannot be searched (`domains` is refused on both indexes). The answer approximates rather
 than misses: accept the row only if its `domain` equals the one you have, or the registrable label
@@ -134,6 +155,47 @@ bh call generect POST /search/database/leads/ --strategy <strategy> --company <c
 }'
 # rows at data.leads[]
 ```
+
+### Inside one company, live (realtime, $0.007 per row) — when the database has too few
+
+The database lead index does not hold everyone. Over the 30 days to 2026-11-02, 30–45% of the
+in-company searches of several projects answered no row for the persona ladder. On 25 such companies
+(30–800 people on LinkedIn) the same `company_link` and `job_titles` on realtime found someone in 11,
+and about 8 of those were the right person: CEOs and presidents in post since the 1990s, so not
+people the index was too old to know but people it never held. Generect adds the people a realtime
+search finds to its database (the database count rose right after), so the gap is widest at small
+companies nobody has searched live.
+
+Use it as the fallback, never first: after the database search of a company keeps fewer than
+`max_per_company` people, ask realtime with the same body. An empty answer is free.
+
+```sh
+bh call generect POST /search/realtime/leads/ --strategy <strategy> --company <company-id> --body '{
+  "company_link": "https://www.linkedin.com/company/acme-inc",
+  "job_titles": ["CEO", "Chief Executive Officer", "Founder", "President"],
+  "limit_by": 10, "offset_by": 0
+}'
+# rows at data.leads[]
+```
+
+A realtime row is looser than a database row — check every one:
+
+- **The employer**: keep a row only when its `linkedin_company_id` is the company's LinkedIn id
+  (`linkedinId` from `bh cache company <url>`; not cached → the row's `company_name` must be the
+  company's). A page realtime cannot place answers with someone else's people: one link answered a
+  vice president of an unrelated firm in another country.
+- **One person, several profiles**: the same `full_name` at the same company three times (duplicate
+  profiles) — keep the one with the latest `job_started_on`, once.
+- `is_current` must be true; `job_started_on` / `started_at_company` say how long in the role.
+- The title still has to match the ladder (realtime matches words, as Sales Navigator does).
+- **No vanity URL**: `linkedin_url` is null; `lead_simple_sales_link` is
+  `https://www.linkedin.com/in/<sales_id>`. Store that as the contact's `linkedinUrl` — the engine
+  takes it (3,142 contacts carried one on 2026-11-02) and LinkedIn steps work from it. Apollo's
+  match wants it as `/sales/lead/<sales_id>` (apollo.md).
+
+To see why a company gave nothing, count it free before paying: `{"company_link": …}` alone says how
+many of its people the index holds, the same body with the ladder how many of them fit. Few or none
+held → realtime; many held and none fit → the ladder, not the index, is the gap.
 
 ### Off the segment, no company named (same price; the employer comes on the row)
 
