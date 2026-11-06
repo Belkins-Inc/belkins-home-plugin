@@ -51,6 +51,18 @@ It answers `{"id", "src": "cid:<id>"}` — the `src` goes into the HTML as it is
 <id>` lists what a sender has; `bh sender image-remove <id> <image-id>` removes one no signature
 shows.
 
+The same headshot is the sender's **profile photo**, the face a mail client shows beside their name
+on every email, steps included. Set it whenever a sender has a headshot; the engine puts it on each
+of their mailboxes in our tenants within minutes:
+
+```sh
+bh sender photo <sender-id> --image <image-id>   # a picture they already have (JPEG or PNG)
+bh sender photo <sender-id> headshot-400.jpg     # or a square headshot, 400 px, 100 KB at most
+bh sender photo <sender-id>                      # where each mailbox stands: shown, waiting, refused, outside
+```
+
+`outside` is a mailbox connected from the client's own account: the client sets its photo there.
+
 ## 3. Write the HTML
 
 What every mail client renders the same way — as a person's own signature would be:

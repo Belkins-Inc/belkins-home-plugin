@@ -2083,6 +2083,9 @@ CREATE TABLE public.mailboxes (
     warmup_on_at timestamp with time zone,
     warmup_set_by uuid,
     warmup_set_via public.actor_via,
+    photo_id uuid,
+    photo_error text,
+    photo_tried_at timestamp with time zone,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 60))),
     CONSTRAINT mailboxes_placement_state_check CHECK ((placement_state = ANY (ARRAY['good'::text, 'unknown'::text, 'hold'::text, 'bad'::text]))),
@@ -3184,10 +3187,15 @@ CREATE TABLE public.senders (
     linkedin_wanted_via public.actor_via,
     linkedin_waiting text,
     linkedin_waiting_at timestamp with time zone,
+    photo_id uuid,
+    photo_set_at timestamp with time zone,
+    photo_set_by uuid,
+    photo_set_via public.actor_via,
     CONSTRAINT senders_company_check CHECK (((company_id IS NULL) OR (organisation_id IS NOT NULL))),
     CONSTRAINT senders_linkedin_waiting_check CHECK ((((linkedin_waiting IS NULL) OR (linkedin_wanted_at IS NOT NULL)) AND ((linkedin_waiting IS NULL) = (linkedin_waiting_at IS NULL)))),
     CONSTRAINT senders_linkedin_wanted_check CHECK ((num_nonnulls(linkedin_wanted_at, linkedin_wanted_by, linkedin_wanted_via) = ANY (ARRAY[0, 3]))),
-    CONSTRAINT senders_owner_check CHECK ((num_nonnulls(project_id, organisation_id) = 1))
+    CONSTRAINT senders_owner_check CHECK ((num_nonnulls(project_id, organisation_id) = 1)),
+    CONSTRAINT senders_photo_set_check CHECK ((num_nonnulls(photo_set_at, photo_set_by, photo_set_via) = ANY (ARRAY[0, 3])))
 );
 
 
@@ -8632,6 +8640,14 @@ ALTER TABLE ONLY public.mailboxes
 
 
 --
+-- Name: mailboxes mailboxes_photo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mailboxes
+    ADD CONSTRAINT mailboxes_photo_id_fkey FOREIGN KEY (photo_id) REFERENCES public.sender_images(id) ON DELETE SET NULL;
+
+
+--
 -- Name: mailboxes mailboxes_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9877,6 +9893,22 @@ ALTER TABLE ONLY public.senders
 
 ALTER TABLE ONLY public.senders
     ADD CONSTRAINT senders_organisation_id_fkey FOREIGN KEY (organisation_id) REFERENCES public.organisations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: senders senders_photo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.senders
+    ADD CONSTRAINT senders_photo_id_fkey FOREIGN KEY (photo_id) REFERENCES public.sender_images(id) ON DELETE SET NULL;
+
+
+--
+-- Name: senders senders_photo_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.senders
+    ADD CONSTRAINT senders_photo_set_by_fkey FOREIGN KEY (photo_set_by) REFERENCES public.users(id);
 
 
 --
@@ -12781,4 +12813,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261102203830'),
     ('20261102223614'),
     ('20261106195223'),
-    ('20261106205547');
+    ('20261106205547'),
+    ('20261106211500');

@@ -278,6 +278,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          goes as text and HTML (the text keeps --signature); an empty file clears it
   sender image <id> <file.png|jpg>       a picture for the HTML signature (100 KB at most); use the src it answers
   sender images <id> | sender image-remove <id> <image-id>
+  sender photo <id> [<file.jpg|png> | --image <image-id> | --none]   the face beside their name: the engine sets it
+                                         on each of their mailboxes in our tenants; with nothing, where each stands
   sender signature <id> [--out <file.html>]   how they sign on this project; --out writes it to open in a browser
   sender move <id> --to <project>        with their mailboxes and LinkedIn, while nothing was written as them
   sender remove <id>                     one nothing refers to (no mailbox, LinkedIn, message or strategy)
@@ -1066,6 +1068,8 @@ async function main(argv: string[]): Promise<void> {
       wait: { type: 'boolean' },
       'no-browser': { type: 'boolean' },
       totp: { type: 'boolean' },
+      image: { type: 'string' },
+      none: { type: 'boolean' },
       workplace: { type: 'boolean' },
       'sign-up': { type: 'boolean' },
       browser: { type: 'boolean' },
@@ -2785,6 +2789,21 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       if (sub === 'images') return out(await call(config, 'GET', `/senders/${arg}/images`))
+      if (sub === 'photo') {
+        if (pos[3])
+          return out(
+            await call(config, 'PUT', `/senders/${arg}/photo`, {
+              data: (await readFile(pos[3])).toString('base64'),
+            }),
+          )
+        if (o.image || o.none)
+          return out(
+            await call(config, 'PUT', `/senders/${arg}/photo`, {
+              imageId: o.none ? null : o.image,
+            }),
+          )
+        return out(await call(config, 'GET', `/senders/${arg}/photo`))
+      }
       if (sub === 'image-remove')
         return out(await call(config, 'DELETE', `/senders/${arg}/images/${need(pos[3])}`))
       if (sub === 'signature') {
@@ -3998,8 +4017,11 @@ async function signatureHtml(file: string | undefined) {
   return { signatureHtml: html || null }
 }
 
-/** A page showing a signature as the lead will see it: the HTML, and the text beneath. */
-const signaturePage = (s: { name: string; text: string | null; rendered: string | null }) => {
+/**
+ * A page showing a signature as the lead will see it: the HTML, and the text beneath. A function
+ * declaration: main runs at the top level above, before a `const` here would be initialised.
+ */
+function signaturePage(s: { name: string; text: string | null; rendered: string | null }) {
   const escape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return `<!doctype html><meta charset="utf-8"><title>${escape(s.name)}</title>
 <body style="font-family: Arial, sans-serif; font-size: 14px; max-width: 720px; margin: 32px auto">
