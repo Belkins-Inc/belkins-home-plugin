@@ -485,6 +485,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   tenant seats <id> --provider microsoft   its licences: bought and used; new mailboxes wait for a free one
   tenant update <id> --provider microsoft [--status active|paused] [--max-domains <n>] [--default-pool yes|no]
                      [--admin-email <e>] [--seat-usd <n>]
+  tenant users <id>                      every user Google holds in a Google tenant, last sign-in, and the mailbox
+                                         or order the engine holds of it; ones it holds nothing of come first,
+                                         the longest unused first: where seats are freed (an admin)
   tenant console-login <id>              sign in to the Google Admin console through the console service's IP,
                                          so it can do DKIM (an admin; #home-alerts says when it is needed again)
   tenant console-credentials <id> --email <admin> [--totp]   the login the console service signs in with by
@@ -3135,6 +3138,10 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'console-login') {
         if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
         return out(await consoleLogin(config, arg))
+      }
+      if (sub === 'users') {
+        if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
+        return out(await call(config, 'GET', `/tenants/${arg}/users`))
       }
       if (sub === 'console-retry') {
         if (!arg) throw new BhError('Which tenant?', { hint: 'bh tenants lists them' }, 2)
