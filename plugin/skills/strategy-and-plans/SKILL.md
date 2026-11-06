@@ -93,9 +93,11 @@ market, the buyer or the offer is a project hypothesis, `bh hypothesis add`.)
 
 ### 4. Set the plan templates — before the first enrollment
 
-`bh plan set <strategy-id> --file plans.json` replaces all templates. It is **refused once any lead
-has a plan copied from them** ("Add a new strategy, or change a lead's own plan"), so settle the
-steps first. Accepted values:
+`bh plan set <strategy-id> --file plans.json` replaces all templates. With leads enrolled it works
+only while the strategy is a **draft that has sent nothing**, and only for a person: the leads' own
+plans are copied again from the new templates, copy already written is kept for every step that
+keeps its channel, and the file must keep every template kind leads are on. Once launched, or once
+anything was sent, it is refused, so settle the steps before launch. Accepted values:
 
 - `appliesWhen`: `email_and_linkedin`, `email_only`, `linkedin_only` (one template each at most).
 - step `channel`: `email`, `linkedin_invite`, `linkedin_message`.
@@ -304,7 +306,7 @@ resumes with `bh strategy launch <id>`. A strategy that is finished or replaced:
 - An email-only plan by default while the client's history says LinkedIn answers and email does not.
 - Enrolling several hundred leads against one or two fresh mailboxes without the capacity
   arithmetic — messages queue for weeks and the month's goal slips.
-- Enrolling before plans are final — the templates are then frozen for this strategy.
+- Launching before plans are final — the templates are then frozen for this strategy.
 - `strategy update` with a partial `personas` list — it replaces the list and drops the rest.
 - An `email_and_linkedin` template in a project with no LinkedIn account.
 - `guidance` that references a conditional step ("as I said on LinkedIn").

@@ -171,7 +171,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          that serves its provider (mailbox update --recipients); a person only
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
-                                         a linkedin_invite step goes without a note unless it says "withoutNote": false
+                                         a linkedin_invite step goes without a note unless it says "withoutNote": false;
+                                         on a draft that has sent nothing, its enrolled leads' plans are copied again,
+                                         written copy kept where a step keeps its channel (a person only)
   plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread"}: one step's, frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
                                          newThread (a follow-up email; a person only): false answers in the lead's first thread
@@ -697,6 +699,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          OAuth server, for an agent platform that asks for an id and a
                                          secret (an admin only); the secret is shown once
   oauth-client list | oauth-client remove <client-id>   remove ends every connection made through it
+  platform                              every organisation side by side — people, projects, running strategies,
+                                         sent in 7 days, meetings booked in 30 — and the platform admins (platform admin)
+  admins | admin add <email> [--name <n>] | admin remove <user-id|email>   platform admins reach every
+                                         organisation without being added to it; nobody removes themselves (platform admin)
   user add --email <e> --name <n> [--admin] | users
   user set <id> [--email <e>] [--name <n>] [--admin|--no-admin]   correct a person's record (an admin only);
                                          the email is what Google sign-in matches
@@ -3841,6 +3847,33 @@ async function main(argv: string[]): Promise<void> {
       break
     case 'users':
       return out(await call(config, 'GET', '/users'))
+    case 'platform':
+      return out(await call(config, 'GET', '/platform'))
+    case 'admins':
+      return out(await call(config, 'GET', '/admins'))
+    case 'admin': {
+      if (sub === 'add') {
+        if (!arg) throw new BhError('Whom?', { hint: 'bh admin add <email> [--name <n>]' }, 2)
+        return out(
+          await call(config, 'POST', '/admins', {
+            email: arg,
+            ...(o.name ? { name: o.name } : {}),
+          }),
+        )
+      }
+      if (sub === 'remove') {
+        if (!arg) throw new BhError('Whom?', { hint: 'bh admin remove <user-id|email>' }, 2)
+        let id = arg
+        if (arg.includes('@')) {
+          const admins = (await call(config, 'GET', '/admins')) as { id: string; email: string }[]
+          const found = admins.find((a) => a.email === arg.toLowerCase())
+          if (!found) throw new BhError(`${arg} is not a platform admin`, { hint: 'bh admins' }, 2)
+          id = found.id
+        }
+        return out(await call(config, 'DELETE', `/admins/${id}`))
+      }
+      break
+    }
     case 'system-mail': {
       if (sub === 'domains') return out(await call(config, 'GET', '/system-mail/domains'))
       if (sub === 'domain') {

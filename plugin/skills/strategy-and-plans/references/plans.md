@@ -80,6 +80,9 @@ Asks for nothing but the connection; does not pitch; does not mention the email.
   --file step.json` with `{"guidance": "…"}`. Messages not yet written follow it; written ones keep
   their copy (rewrite them through `bh copy`). Step ids are in `bh strategy show`.
 
+- A draft with leads enrolled and nothing sent: `bh plan set` again with the whole new file (a
+  person only). Every lead's plan is copied again; written copy stays where a step keeps its
+  channel, and `bh copy queue` lists what the new or changed steps need.
 - Templates frozen, a lead's plan wrong: there is no `bh` command to edit one lead's messages;
   open a task for a person (`bh task open`) naming the enrollment and the change.
 - A new shape of plan: create a new strategy and enroll into it (one contact, one live strategy).
