@@ -3838,6 +3838,10 @@ CREATE TABLE public.users (
     slack_workspace_id uuid,
     preview_of uuid,
     tasks_digested_at timestamp with time zone,
+    admin_set_at timestamp with time zone,
+    admin_set_by uuid,
+    admin_set_via public.actor_via,
+    CONSTRAINT users_admin_set_check CHECK ((num_nonnulls(admin_set_at, admin_set_via) = ANY (ARRAY[0, 2]))),
     CONSTRAINT users_client_not_admin CHECK (((kind = 'staff'::text) OR (NOT is_admin))),
     CONSTRAINT users_kind_check CHECK ((kind = ANY (ARRAY['staff'::text, 'client'::text, 'member'::text]))),
     CONSTRAINT users_preview_is_client CHECK (((preview_of IS NULL) OR (kind = 'client'::text))),
@@ -10556,6 +10560,14 @@ ALTER TABLE ONLY public.triage_holds
 
 
 --
+-- Name: users users_admin_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_admin_set_by_fkey FOREIGN KEY (admin_set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: users users_preview_of_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12767,4 +12779,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261030202636'),
     ('20261101172829'),
     ('20261102203830'),
-    ('20261102223614');
+    ('20261102223614'),
+    ('20261106195223');
