@@ -2030,7 +2030,7 @@ CREATE TABLE public.mailbox_orders (
     CONSTRAINT mailbox_orders_mailbox_check CHECK (((mailbox_id IS NOT NULL) = (status = 'connected'::text))),
     CONSTRAINT mailbox_orders_owner CHECK (((project_id IS NOT NULL) OR (sender_id IS NOT NULL))),
     CONSTRAINT mailbox_orders_settled_check CHECK (((settled_at IS NULL) = ((status <> 'connected'::text) AND (status <> 'failed'::text)))),
-    CONSTRAINT mailbox_orders_status_check CHECK ((status = ANY (ARRAY['ordered'::text, 'creating'::text, 'created'::text, 'connecting'::text, 'connected'::text, 'failed'::text]))),
+    CONSTRAINT mailbox_orders_status_check CHECK ((status = ANY (ARRAY['ordered'::text, 'held'::text, 'creating'::text, 'created'::text, 'connecting'::text, 'connected'::text, 'failed'::text]))),
     CONSTRAINT mailbox_orders_supplier_check CHECK ((supplier = ANY (ARRAY['zapmail'::text, 'workspace'::text, 'microsoft'::text])))
 );
 
@@ -12815,4 +12815,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261106195223'),
     ('20261106205547'),
     ('20261106211500'),
-    ('20261106213418');
+    ('20261106213418'),
+    ('20261107104123');
