@@ -2798,6 +2798,7 @@ CREATE TABLE public.projects (
     reply_bcc text[] DEFAULT '{}'::text[] NOT NULL,
     reply_bcc_set_by uuid,
     reply_bcc_set_via public.actor_via,
+    dialer_off boolean DEFAULT false NOT NULL,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
@@ -12893,4 +12894,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261106211500'),
     ('20261106213418'),
     ('20261107104123'),
-    ('20261107105531');
+    ('20261107105531'),
+    ('20261107123449');
