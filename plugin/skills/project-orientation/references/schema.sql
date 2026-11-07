@@ -1112,6 +1112,30 @@ CREATE TABLE public.copy_tests (
 
 
 --
+-- Name: crm_connections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.crm_connections (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid NOT NULL,
+    provider text NOT NULL,
+    account text NOT NULL,
+    account_name text,
+    account_user text,
+    credential bytea,
+    connected_by uuid,
+    connected_via public.actor_via NOT NULL,
+    connected_at timestamp with time zone DEFAULT now() NOT NULL,
+    dnc_synced_at timestamp with time zone,
+    dnc_sync jsonb,
+    disconnected_at timestamp with time zone,
+    disconnected_by uuid,
+    disconnected_via public.actor_via,
+    CONSTRAINT crm_connections_provider_check CHECK ((provider = ANY (ARRAY['pipedrive'::text, 'hubspot'::text])))
+);
+
+
+--
 -- Name: daily_sends; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1192,7 +1216,7 @@ CREATE TABLE public.dnc (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     removed_at timestamp with time zone,
     CONSTRAINT dnc_kind_check CHECK ((kind = ANY (ARRAY['email'::text, 'domain'::text, 'phone'::text]))),
-    CONSTRAINT dnc_reason_check CHECK ((reason = ANY (ARRAY['unsubscribed'::text, 'complaint'::text, 'bounced'::text, 'competitor'::text, 'existing_customer'::text, 'client_request'::text, 'registry'::text, 'other'::text])))
+    CONSTRAINT dnc_reason_check CHECK ((reason = ANY (ARRAY['unsubscribed'::text, 'complaint'::text, 'bounced'::text, 'competitor'::text, 'existing_customer'::text, 'client_request'::text, 'registry'::text, 'crm'::text, 'other'::text])))
 );
 
 
@@ -4338,6 +4362,14 @@ ALTER TABLE ONLY public.copy_tests
 
 
 --
+-- Name: crm_connections crm_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crm_connections
+    ADD CONSTRAINT crm_connections_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: daily_sends daily_sends_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6810,6 +6842,13 @@ CREATE UNIQUE INDEX ux_copy_tests__rfc ON public.copy_tests USING btree (rfc_mes
 
 
 --
+-- Name: ux_crm_connections__live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_crm_connections__live ON public.crm_connections USING btree (project_id, provider) WHERE (disconnected_at IS NULL);
+
+
+--
 -- Name: ux_dnc__live; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7981,6 +8020,30 @@ ALTER TABLE ONLY public.copy_tests
 
 ALTER TABLE ONLY public.copy_tests
     ADD CONSTRAINT copy_tests_sent_by_fkey FOREIGN KEY (sent_by) REFERENCES public.users(id);
+
+
+--
+-- Name: crm_connections crm_connections_connected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crm_connections
+    ADD CONSTRAINT crm_connections_connected_by_fkey FOREIGN KEY (connected_by) REFERENCES public.users(id);
+
+
+--
+-- Name: crm_connections crm_connections_disconnected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crm_connections
+    ADD CONSTRAINT crm_connections_disconnected_by_fkey FOREIGN KEY (disconnected_by) REFERENCES public.users(id);
+
+
+--
+-- Name: crm_connections crm_connections_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crm_connections
+    ADD CONSTRAINT crm_connections_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 
 
 --
@@ -10952,6 +11015,12 @@ ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.copy_tests ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: crm_connections; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.crm_connections ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: daily_sends; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -11563,6 +11632,13 @@ CREATE POLICY organisation_fence ON public.contacts USING ((project_id = ANY (( 
 CREATE POLICY organisation_fence ON public.copy_tests USING ((EXISTS ( SELECT 1
    FROM public.mailboxes x
   WHERE (x.id = copy_tests.mailbox_id))));
+
+
+--
+-- Name: crm_connections organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.crm_connections USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
 
 
 --
@@ -12816,4 +12892,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261106205547'),
     ('20261106211500'),
     ('20261106213418'),
-    ('20261107104123');
+    ('20261107104123'),
+    ('20261107105531');

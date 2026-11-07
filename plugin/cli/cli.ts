@@ -262,6 +262,17 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   dnc check <address|domain|number>… | dnc check --file <csv>
                                          which of them the list blocks (a domain blocks its subdomains) —
                                          before paying a provider to enrich or find anyone there
+  crm                                    the client's CRMs (pipedrive) and the project's connection to each
+  crm connect <crm> --token-stdin        connect it with the client's API key, read from stdin (a person; the
+                                         key is checked with the CRM, sealed on the server, never shown again)
+  crm disconnect <crm>                   forget the key (a person)
+  crm call <crm> <METHOD> <path?query> [--body <json> | --body-file <path|->]
+                                         its API as documented, the key added on the server: {status, body};
+                                         a write changes the client's own records (a person, recorded)
+  crm dnc <crm> [--dry-run] [--no-emails] [--no-domains] [--no-phones]
+                                         everyone in the CRM onto dnc, reason crm: addresses, their company
+                                         domains (not free mail, not the client's own) and numbers;
+                                         --dry-run counts and shows a sample, writing nothing
   enroll <strategy-id> --file <json|jsonl|-> [--dry-run]    [{"contactId","segmentId","personaId"}]
   stand <strategy-id> --contact <id> --status candidate|held|rejected [--persona <id>] [--reason <t>]
   stand <strategy-id> --file <json|jsonl|->            [{"contactId","status","personaId","reason"}]
@@ -1286,6 +1297,10 @@ async function main(argv: string[]): Promise<void> {
       rank: { type: 'string' },
       dnc: { type: 'boolean' },
       label: { type: 'string' },
+      'token-stdin': { type: 'boolean' },
+      'no-emails': { type: 'boolean' },
+      'no-domains': { type: 'boolean' },
+      'no-phones': { type: 'boolean' },
     },
   })
   const config = await loadConfig()
@@ -2424,6 +2439,57 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'DELETE', `/limits/${arg}`))
       }
       return out(await call(config, 'GET', '/limits'))
+    case 'crm': {
+      const crm = arg
+      const base = () => `/projects/${p()}/crm/${encodeURIComponent(need(crm))}`
+      if (!sub) return out(await call(config, 'GET', `/projects/${p()}/crm`))
+      if (sub === 'connect') {
+        if (!o['token-stdin'])
+          throw new BhError(
+            'Where is the key?',
+            {
+              hint: "pipe it in, never on the command line: op read '…' | bh crm connect pipedrive --token-stdin",
+            },
+            2,
+          )
+        const token = (await readText('-')).trim()
+        return out(await call(config, 'POST', base(), { token }))
+      }
+      if (sub === 'disconnect') return out(await call(config, 'DELETE', base()))
+      if (sub === 'call') {
+        const [, , , method, target] = pos
+        if (!method || !target)
+          throw new BhError(
+            'Which call?',
+            { hint: 'bh crm call pipedrive GET /api/v2/persons?limit=10' },
+            2,
+          )
+        const url = new URL(target, 'https://crm.invalid')
+        const raw = o['body-file']
+          ? await readInput(o['body-file'])
+          : o.body
+            ? JSON.parse(o.body)
+            : undefined
+        return out(
+          await call(config, 'POST', `${base()}/call`, {
+            method,
+            path: url.pathname,
+            ...(url.search ? { query: Object.fromEntries(url.searchParams) } : {}),
+            ...(raw === undefined ? {} : { body: raw }),
+          }),
+        )
+      }
+      if (sub === 'dnc')
+        return out(
+          await call(config, 'POST', `${base()}/dnc`, {
+            emails: !o['no-emails'],
+            domains: !o['no-domains'],
+            phones: !o['no-phones'],
+            dryRun: Boolean(o['dry-run']),
+          }),
+        )
+      break
+    }
     case 'call': {
       const [, name, method, path] = pos
       if (name === 'show') return out(await call(config, 'GET', `/provider-calls/${method}`))
