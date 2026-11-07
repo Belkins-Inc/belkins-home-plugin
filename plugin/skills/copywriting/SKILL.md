@@ -73,7 +73,7 @@ A message is rewritable while it is `needs_copy` or `ready`; once `sending`/`sen
 - email: body under 20 characters (trimmed) or over 2 500 — "the body is shorter than 20
   characters" / "longer than 2500"; subject missing or under 3 characters — "an email needs a
   subject"; subject over 90 — "the subject is longer than 90 characters".
-- `linkedin_invite`: body 1–300 characters on a step set `"withoutNote": false`; refused outright
+- `linkedin_invite`: body 1–200 characters on a step set `"withoutNote": false` (1–300 when the lead's LinkedIn account has Premium; over that: "the note is longer than 200 characters, the most LinkedIn takes from an account without Premium"); refused outright
   on any other ("the step sends its invitation without a note"), as invitations go bare by default; `linkedin_message`: body 1–1 900 characters; either with
   a subject — "a LinkedIn message has no subject".
 - any channel: "a placeholder was left in the copy" when body or subject contains `{{` or `}}`,
@@ -178,7 +178,7 @@ idea; reply rates are read by angle.
 - Writing step 2 without step 1 in view; four openings instead of one story.
 - A bracket like `[link]` or `[Company]`, or a `{{first_name}}` token — refused, or worse, sent.
 - Signing the email with the sender's name on top of the engine's signature.
-- A LinkedIn invite over 300 characters, or with a subject.
+- A LinkedIn invite over 200 characters (300 from an account with Premium), or with a subject.
 - An observation invented because the lead's facts were empty.
 - Bulk copy before the person approved a sample; the edits then land on hundreds of messages.
 - A question with "or" in it, or a second question "to be safe".

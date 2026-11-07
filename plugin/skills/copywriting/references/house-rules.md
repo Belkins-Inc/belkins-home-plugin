@@ -130,7 +130,7 @@ Valedictions: "Best regards", "Kind regards", "Warm regards", "Warmest regards",
 
 ## LinkedIn
 
-- `linkedin_invite`: ≤ 300 characters (LinkedIn refuses more; the engine refuses too). Two short
+- `linkedin_invite`: ≤ 200 characters, ≤ 300 when the account has Premium (LinkedIn refuses more; the engine refuses too). Two short
   sentences. No subject, no greeting line, no signature, no pitch, no ask beyond connecting.
   Invitations go without a note unless their step is set `"withoutNote": false`; a bare one has
   nothing to write.

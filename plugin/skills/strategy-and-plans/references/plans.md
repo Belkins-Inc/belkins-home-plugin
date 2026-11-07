@@ -58,7 +58,7 @@ A lead already connected to the sending account gets no invite: the step is skip
 delays from then and an `invite_not_accepted` fallback is skipped (`bh behaviour linkedin`).
 
 Invitations go without a note by default. Only when the person asks for notes does the invite
-step carry `"withoutNote": false` and a guidance such as "Connection note, under 300 characters.
+step carry `"withoutNote": false` and a guidance such as "Connection note, under 200 characters.
 Asks for nothing but the connection; does not pitch; does not mention the email."
 
 ## linkedin_only
