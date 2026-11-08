@@ -1658,6 +1658,8 @@ CREATE TABLE public.google_orgs (
     ordered_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     console_rejections integer DEFAULT 0 NOT NULL,
+    closeout_claimed_at timestamp with time zone,
+    domain_registered_at timestamp with time zone,
     CONSTRAINT google_orgs_check CHECK (((purpose = 'seeds'::text) = (seeds IS NOT NULL))),
     CONSTRAINT google_orgs_check1 CHECK (((purpose = 'seeds'::text) OR (key_tenant_id IS NOT NULL))),
     CONSTRAINT google_orgs_licences_check CHECK (((licences >= 1) AND (licences <= 300))),
@@ -12895,4 +12897,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261106213418'),
     ('20261107104123'),
     ('20261107105531'),
-    ('20261107123449');
+    ('20261107123449'),
+    ('20261108101442');

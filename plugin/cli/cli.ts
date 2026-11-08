@@ -113,7 +113,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          the customer the terms link and carries on (platform admin)
   google-orgs                           Google organisations of ours the engine makes as reseller, and how far each is
   google-orgs make --for seeds|sending [<domain>] [--company <name>] [--seeds <n>] [--licences <n>]
-       [--key-from <tenant>] [--ip <address>]   buys the domain (one is picked when none is given) and Business
+       [--key-from <tenant>] [--ip <address>]   buys the domain (none given: an aged closeout of 5+ years for
+                                         seeds, a picked new name for sending) and Business
                                          Starter, signs in as its admin, grants delegation and DKIM, then makes it a
                                          seed organisation or a sending tenant in the default pool (platform admin)
   google-orgs update <domain> [--ip <address>|none] [--retry]   the IP its admin signs in through; --retry: the
