@@ -134,6 +134,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   dialer key <dialer-org-id>            what our key opens there: scopes, writes, workspaces, expiry (platform admin)
   dialer read <dialer-org-id> <path[?query]>   reads what the dialer holds there, e.g. workspaces/<id>/numbers, coverage (platform admin)
   dialer invite <email,…> [--role operator|manager] --project <p>   invites people to the project's dialer workspace (platform admin)
+  dialer numbers buy <1-10> [--country US|CA] [--region NY] [--area-code 212] [--city <c>] --project <p>   caller numbers for the project's workspace, a month of rent each from the dialer budget (platform admin, a person)
   dialer agents <email,…> --project <p>  who works the project's queue; replaces the set (platform admin)
   dialer orgs                           the dialer organizations our key can see, and the organisation linked to each (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
@@ -1130,6 +1131,7 @@ async function main(argv: string[]): Promise<void> {
       timezone: { type: 'string' },
       limit: { type: 'string' },
       hours: { type: 'string' },
+      'area-code': { type: 'string' },
       kind: { type: 'string' },
       title: { type: 'string' },
       body: { type: 'string' },
@@ -1924,6 +1926,26 @@ async function main(argv: string[]): Promise<void> {
               .flatMap((a) => a.split(','))
               .filter(Boolean),
             ...(o.role ? { role: o.role } : {}),
+          }),
+        )
+      }
+      if (sub === 'numbers') {
+        const count = Number(pos[3])
+        if (arg !== 'buy' || !Number.isInteger(count) || count < 1)
+          throw new BhError(
+            'How many numbers to buy?',
+            {
+              hint: 'bh dialer numbers buy <1-10> [--country US|CA] [--region NY] [--area-code 212] [--city Austin] --project <project>',
+            },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/projects/${p()}/dialer/numbers`, {
+            count,
+            ...(o.country ? { country: o.country } : {}),
+            ...(o.region ? { region: o.region } : {}),
+            ...(o['area-code'] ? { areaCode: o['area-code'] } : {}),
+            ...(o.city ? { locality: o.city } : {}),
           }),
         )
       }
