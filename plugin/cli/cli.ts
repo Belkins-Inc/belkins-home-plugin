@@ -1896,7 +1896,7 @@ async function main(argv: string[]): Promise<void> {
         )
       }
       if (sub === 'read') {
-        const what = pos[2]
+        const what = pos[3]
         if (!arg || !what)
           throw new BhError(
             'Which dialer organization, and what in it?',
