@@ -120,11 +120,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   google-org record <org> --customer-id <C0…>   Google's customer, made in Partner Sales Console: the engine gives
                                          the customer the terms link and carries on (platform admin)
   google-orgs                           Google organisations of ours the engine makes as reseller, and how far each is
-  google-orgs make --for seeds|sending [<domain>] [--company <name>] [--seeds <n>] [--licences <n>]
+  google-orgs make --for seeds|sending|network [<domain>] [--company <name>] [--seeds <n>] [--licences <n>]
        [--key-from <tenant>] [--ip <address>]   buys the domain (none given: an aged closeout of 5+ years for
                                          seeds, a picked new name for sending) and Business
                                          Starter, signs in as its admin, grants delegation and DKIM, then makes it a
-                                         seed organisation or a sending tenant in the default pool (platform admin)
+                                         seed organisation, a clients tenant in the default pool (sending) or a pod's
+                                         tenant for the network, out of the pool and capped at 250 users (platform admin)
   google-orgs update <domain> [--ip <address>|none] [--retry]   the IP its admin signs in through; --retry: the
                                          console service tries now, not after a refused sign-in's wait (platform admin)
   org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
@@ -511,21 +512,24 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          (the larger counts against --max-users), and whether Google refused it a
                                          user for want of a licence (fullAt) (an admin)
   tenant add --name <n> --admin-email <super admin> --key <service account JSON file> | --key-from <tenant>
-             [--max-domains <n>] [--max-users <n>] [--default-pool yes|no]
+             [--max-domains <n>] [--max-users <n>] [--role clients|network] [--default-pool yes|no]
                                          the key is proved against the tenant before it is kept (an admin);
                                          --key-from shares the key another tenant holds, opened in the engine,
                                          --max-users caps its users (default 250; Google's Business cap is 300),
-                                         --default-pool no takes only domains approved into it with --tenant
+                                         --role: clients' domains (default) or a pod's network companies — never
+                                         both, and a network one is out of the default pool; --default-pool no
+                                         takes only domains approved into it with --tenant
   tenant update <id> [--status active|paused] [--max-domains <n>] [--max-users <n>] [--default-pool yes|no]
-                     [--admin-email <e>] [--key <file>] [--seat-usd <n>]   (an admin); --seat-usd is what
+                     [--role clients|network] [--admin-email <e>] [--key <file>] [--seat-usd <n>]   (an admin); --seat-usd is what
                                          a mailbox's seat costs a month, which Spend counts
   tenant add --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id> --key <private key PEM>
-             --cert <certificate PEM> [--admin-email <e>] [--max-domains <n>] [--default-pool yes|no]
+             --cert <certificate PEM> [--admin-email <e>] [--max-domains <n>] [--role clients|network]
+             [--default-pool yes|no]
                                          a Microsoft 365 tenant: the app's certificate is proved against Graph and
                                          Exchange before it is kept; --admin-email records its administrator (an admin)
   tenant seats <id> --provider microsoft   its licences: bought and used; new mailboxes wait for a free one
   tenant update <id> --provider microsoft [--status active|paused] [--max-domains <n>] [--default-pool yes|no]
-                     [--admin-email <e>] [--seat-usd <n>]
+                     [--role clients|network] [--admin-email <e>] [--seat-usd <n>]
   tenant users <id>                      every user Google holds in a Google tenant, last sign-in, and the mailbox
                                          or order the engine holds of it; ones it holds nothing of come first,
                                          the longest unused first: where seats are freed (an admin)
@@ -857,6 +861,13 @@ function defaultPool(value: string | undefined): { defaultPool?: boolean } {
   if (['yes', 'true'].includes(value)) return { defaultPool: true }
   if (['no', 'false'].includes(value)) return { defaultPool: false }
   throw new BhError(`--default-pool takes yes or no, not ${value}`, {}, 2)
+}
+
+/** `--role clients|network`: what a tenant is for — clients' domains, or a pod's network companies. */
+function tenantRole(value: string | undefined): { role?: 'clients' | 'network' } {
+  if (value === undefined) return {}
+  if (value === 'clients' || value === 'network') return { role: value }
+  throw new BhError(`--role takes clients or network, not ${value}`, {}, 2)
 }
 
 /** A closeout search's filters as a query string; what is not given is left to the engine. */
@@ -2005,7 +2016,7 @@ async function main(argv: string[]): Promise<void> {
       return out(await call(config, 'GET', `/projects/${p()}/subscription`))
     case 'google-orgs': {
       if (!sub) return out(await call(config, 'GET', '/google-orgs'))
-      if (sub === 'make' && (o.for === 'seeds' || o.for === 'sending'))
+      if (sub === 'make' && (o.for === 'seeds' || o.for === 'sending' || o.for === 'network'))
         return out(
           await call(config, 'POST', '/google-orgs', {
             purpose: o.for,
@@ -3277,6 +3288,7 @@ async function main(argv: string[]): Promise<void> {
       const room = {
         ...(o['max-domains'] ? { maxDomains: Number(o['max-domains']) } : {}),
         ...defaultPool(o['default-pool']),
+        ...tenantRole(o.role),
       }
       const maxUsers = o['max-users'] ? { maxUsers: Number(o['max-users']) } : {}
       const seatUsd = o['seat-usd'] ? { seatUsd: Number(o['seat-usd']) } : {}

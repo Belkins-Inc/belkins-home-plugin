@@ -1664,7 +1664,7 @@ CREATE TABLE public.google_orgs (
     CONSTRAINT google_orgs_check CHECK (((purpose = 'seeds'::text) = (seeds IS NOT NULL))),
     CONSTRAINT google_orgs_check1 CHECK (((purpose = 'seeds'::text) OR (key_tenant_id IS NOT NULL))),
     CONSTRAINT google_orgs_licences_check CHECK (((licences >= 1) AND (licences <= 300))),
-    CONSTRAINT google_orgs_purpose_check CHECK ((purpose = ANY (ARRAY['seeds'::text, 'sending'::text]))),
+    CONSTRAINT google_orgs_purpose_check CHECK ((purpose = ANY (ARRAY['seeds'::text, 'sending'::text, 'network'::text]))),
     CONSTRAINT google_orgs_seeds_check CHECK (((seeds >= 0) AND (seeds <= 20))),
     CONSTRAINT google_orgs_state_check CHECK ((state = ANY (ARRAY['buying'::text, 'ordering'::text, 'verifying'::text, 'console'::text, 'ready'::text, 'failed'::text])))
 );
@@ -2195,7 +2195,10 @@ CREATE TABLE public.microsoft_tenants (
     graph_probe_token text,
     graph_probe_from public.citext,
     seat_usd numeric(8,2) DEFAULT 4.80 NOT NULL,
+    role text DEFAULT 'clients'::text NOT NULL,
     CONSTRAINT microsoft_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 900))),
+    CONSTRAINT microsoft_tenants_role_check CHECK ((role = ANY (ARRAY['clients'::text, 'network'::text]))),
+    CONSTRAINT microsoft_tenants_role_pool_check CHECK (((NOT default_pool) OR (role = 'clients'::text))),
     CONSTRAINT microsoft_tenants_seat_usd_check CHECK ((seat_usd >= (0)::numeric)),
     CONSTRAINT microsoft_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
 );
@@ -4139,10 +4142,14 @@ CREATE TABLE public.workspace_tenants (
     customer_recorded_by uuid,
     customer_recorded_via public.actor_via,
     ready_at timestamp with time zone,
+    role text DEFAULT 'clients'::text NOT NULL,
     CONSTRAINT workspace_tenants_console_state_check CHECK ((console_state = ANY (ARRAY['none'::text, 'live'::text, 'expired'::text]))),
     CONSTRAINT workspace_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 600))),
     CONSTRAINT workspace_tenants_max_users_check CHECK (((max_users >= 1) AND (max_users <= 5000))),
     CONSTRAINT workspace_tenants_owner_check CHECK ((((organisation_id IS NULL) AND (setup = 'ready'::text) AND (key IS NOT NULL)) OR ((organisation_id IS NOT NULL) AND (NOT default_pool) AND ((setup = 'ordering'::text) OR ((key IS NOT NULL) AND (google_customer_id IS NOT NULL)))))),
+    CONSTRAINT workspace_tenants_role_check CHECK ((role = ANY (ARRAY['clients'::text, 'network'::text, 'customer'::text]))),
+    CONSTRAINT workspace_tenants_role_owner_check CHECK (((role = 'customer'::text) = (organisation_id IS NOT NULL))),
+    CONSTRAINT workspace_tenants_role_pool_check CHECK (((NOT default_pool) OR (role = 'clients'::text))),
     CONSTRAINT workspace_tenants_seat_usd_check CHECK ((seat_usd >= (0)::numeric)),
     CONSTRAINT workspace_tenants_setup_check CHECK ((setup = ANY (ARRAY['ordering'::text, 'terms'::text, 'ready'::text]))),
     CONSTRAINT workspace_tenants_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text])))
@@ -13066,4 +13073,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109190000'),
     ('20261109200000'),
     ('20261109202832'),
-    ('20261109202901');
+    ('20261109202901'),
+    ('20261109210000');
