@@ -52,7 +52,8 @@ previous session did or did not do something — read it.
 | `openTasks` | Tasks for people, by due date | Check each: if its `done_when` is now true, close it (`bh task close <id> --note …`). Do not duplicate one. |
 | `queues.untriaged`, `oldestUntriagedAt` | Replies waiting for triage | Anything older than a few hours goes first: lost replies are the costliest failure seen. |
 | `queues.draftsToApprove` | Reply drafts waiting for a person | Old drafts → a task to the approver, `--priority urgent` if slots or dates are at stake. |
-| `queues.stalled` | Leads that cannot move | `bh sql` on `stalled_enrollments` for the reasons. |
+| `queues.stalled` | Leads that cannot move | `bh sql` on `stalled_enrollments` for the reasons. `mailbox_room`: a first email has waited over a day for its mailbox's room for new leads — the mailboxes have more leads than they start; more mailboxes, or enroll fewer. |
+| `queues.emailsBehindInvites` | Leads whose emails wait behind a LinkedIn invitation the account has not sent | They wait at most two send days, then the emails go on and the invitation stays queued. Many → the account is short of invitations for the leads routed to it (`bh behaviour linkedin`). |
 | `queues.needsCopy` | Steps with no copy | A lead waits while its step has no copy — write it (`copywriting` skill). |
 | `queues.activeLeads` | Leads in flight | Compare with the strategies' `target_active`. |
 | `channels` | Mailboxes and LinkedIn accounts with a `problem` | Disconnected or failing reads → a task to a person; sending and reading are stopped for that channel. |
