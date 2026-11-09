@@ -2907,6 +2907,7 @@ CREATE TABLE public.replies (
     notice text,
     calendar_ics text,
     files uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+    subject text,
     CONSTRAINT replies_check CHECK (((status <> ALL (ARRAY['approved'::text, 'sending'::text, 'sent'::text])) OR (approved_at IS NOT NULL))),
     CONSTRAINT replies_meeting_notice_check CHECK (((notice IS NULL) = (meeting_id IS NULL))),
     CONSTRAINT replies_notice_check CHECK ((notice = ANY (ARRAY['confirmation'::text, 'reminder_day'::text, 'reminder_hour'::text, 'moved'::text, 'cancelled'::text]))),
@@ -13061,4 +13062,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109160000'),
     ('20261109180000'),
     ('20261109190000'),
-    ('20261109200000');
+    ('20261109200000'),
+    ('20261109202832');

@@ -71,7 +71,13 @@ there are many:
      The note is one sentence for the salesperson: a time, a name, a condition. No advice.
 4. **Answer if it needs one** (references/answers.md says which classes get none):
    `bh reply draft <threadId> --body-file <path> --note "<for the approver>" [--send-at <iso>]
-   [--approve-by <iso>] [--sender <id>] [--cc <a,b>] [--bcc <c>]`. Left out, `--cc` is the
+   [--approve-by <iso>] [--sender <id>] [--cc <a,b>] [--bcc <c>] [--subject <s>]`. The answer
+   goes under "Re: " and the subject of the lead's last message (a lead who wrote a fresh email
+   under a subject of their own is answered under it); `bh replies` and `bh thread` show the
+   subject each draft goes under. `--subject` sends it under that one, exactly as written — use it
+   when the default carries something the project's rules keep out of a prospect's sight (a
+   client's name) or does not fit; `bh reply revise <replyId> --subject "<s>"` or `bh reply
+   approve <id> --subject "<s>"` change it later, `--subject ""` puts the default back. Left out, `--cc` is the
    lead's reply-all: everyone their newest message was written to or copied, but them and our
    mailboxes (`bh thread` shows it as `replyCc`, and each message's `cc`); keep it when the lead
    copied a colleague in. `--cc <a,b>` copies exactly those (a colleague of ours brought in, or
@@ -125,9 +131,9 @@ there are many:
 ## Approval: a person only
 
 - `bh replies` lists drafts; `bh replies --status approved|sent|failed` the rest.
-- `bh reply approve <id> [--body "<final text>"]` sends it (at `send_at`, or now). Only a person's
-  token can approve; read the thread and the note first, and edit the body in the same call if it
-  needs a change.
+- `bh reply approve <id> [--body "<final text>"] [--subject "<s>"]` sends it (at `send_at`, or
+  now). Only a person's token can approve; read the thread, the note and the subject it goes under
+  (`bh replies`) first, and edit the body or subject in the same call if it needs a change.
 - After approving, tell the person what the answer carries: it goes **from `from`** (the thread's
   mailbox — often not theirs, so it shows in that mailbox's Sent, not in their own) **to `to`** at
   `sendsAt` (a minute's undo first), and `link` opens the conversation. Home → Sent lists it for a

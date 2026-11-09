@@ -689,7 +689,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   triage undo <message-id>              take it back: an unsubscribe within 60 s, or back into the queue
                                          confirm or change what a reply means; no --class marks it handled
   reply draft <thread-id> --body <text> | --body-file <path> [--note <for the approver>] [--send-at <iso>]
-       [--approve-by <iso>] [--sender <id>] [--cc a@x.com,b@y.com] [--bcc c@z.com]
+       [--approve-by <iso>] [--sender <id>] [--cc a@x.com,b@y.com] [--bcc c@z.com] [--subject <s>]
+                                         --subject sends it under that subject, exactly as written (left out:
+                                         "Re: " and the subject of the lead's last message; "" for that)
                                          --cc copies people in the open (left out: whom the lead's message
                                          copied, bh thread's replyCc; "" for none), --bcc without the lead seeing them
                                          (left out: the project's, bh project update --reply-bcc; "" for none)
@@ -697,10 +699,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          wrote in this email thread; PDF, PNG, JPEG, .docx, .xlsx or .pptx, at most
                                          3 and 2 MB together, no macros, scripts or passwords
   replies [--status draft|approved|sent|failed|discarded]
-  reply approve <id> [--body <final text>] [--cc …] [--bcc …] (a person only) | reply discard <id>
+  reply approve <id> [--body <final text>] [--cc …] [--bcc …] [--subject <s>] (a person only) | reply discard <id>
   reply revise <id> --body <text> | --body-file <path> [--note <for the approver>] [--cc …] [--bcc …]
-       [--attach <file>]… | [--no-attach]
+       [--subject <s>] [--attach <file>]… | [--no-attach]
                                          a new version of a draft; --cc/--bcc replace its copies ("" for none),
+                                         --subject its subject (left out: it keeps it; "" for the lead's own),
                                          --attach its files (left out: it keeps them), --no-attach takes them off
   reply rewrite <id> --ask <what to change>   your own Claude rewrites it on its next pass (bh answers) | reply versions <id>
   reply ask <thread-id> [--ask <what to say>]  your own Claude writes the answer on its next pass (a person only)
@@ -2872,6 +2875,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o['approve-by'] ? { approveBy: o['approve-by'] } : {}),
             ...(o.sender ? { senderId: o.sender } : {}),
             ...copies(o),
+            ...(o.subject !== undefined ? { subject: o.subject } : {}),
             ...(await attached(o)),
           }),
         )
@@ -2881,6 +2885,7 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', `/replies/${arg}/approve`, {
             ...(o.body ? { body: o.body } : {}),
             ...copies(o),
+            ...(o.subject !== undefined ? { subject: o.subject } : {}),
           }),
         )
       if (sub === 'discard') return out(await call(config, 'POST', `/replies/${arg}/discard`, {}))
@@ -2893,6 +2898,7 @@ async function main(argv: string[]): Promise<void> {
             body: text,
             ...(o.note ? { note: o.note } : {}),
             ...copies(o),
+            ...(o.subject !== undefined ? { subject: o.subject } : {}),
             ...(await attached(o)),
           }),
         )

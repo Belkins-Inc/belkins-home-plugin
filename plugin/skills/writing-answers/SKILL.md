@@ -45,6 +45,8 @@ day: a lead who wants to talk waits for the next pass, not for the morning.
      (`bh reply draft <threadId> --body-file <path> --note "<for the approver>"`, with `--send-at`
      and `--approve-by` as `inbox-triage` says), or, when it needs none, `bh thread close
      <threadId> --note "<why>"`. Times and booking: references/answers.md, Meetings (`bh slots`).
+     It goes under "Re: " and the lead's last subject; when that subject says what the project's
+     rules keep out (a client's name), add `--subject "<s>"` with one that does not.
      A fact only the client has: a holding answer, and the question — tie the thread to one already
      waiting that asks the same (`bh questions`, `bh question link <id> --thread <threadId>`), else
      `bh question add --thread <threadId> --body "<question>"` (references/answers.md says how to
