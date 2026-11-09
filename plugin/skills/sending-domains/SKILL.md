@@ -81,9 +81,12 @@ bh domain closeouts --age-min 10 --price-max-cents 500 [--query <word>] [--limit
 bh domain approve <name> --closeout --max-cents <total> --redirect <url>
 ```
 
-- For the agency's own companies (`bh agency closeouts <org>`) only names that read as a
-  company's are listed (…group, …consulting, …inc); pick from those, never a person's name or a
-  word in another language. `--names any` shows the rest; `bh domain closeouts` shows every name.
+- For the agency's own companies (`bh agency closeouts <org>`), recommend names that read as a
+  company's. `companyName: true` marks a name ending in a company word (…group, …consulting,
+  …inc); `--names company` finds those across the whole pool (it is answered fifty at a time
+  otherwise). Prefer them, then plain English names a company could carry (`landpricing.com`);
+  put a person's name, a word in another language or a hobby site last, saying why. The person
+  decides; nothing is refused for its name.
 - `closeouts` lists the oldest first and leaves out names on a domain blocklist, with a Spamhaus
   abuse history, or that read as a typo of another site (`refused` says why). Read what is left
   yourself: drop adult, gambling, pharma and other brands' names, then show the person the list.

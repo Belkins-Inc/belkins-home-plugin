@@ -339,9 +339,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          (default yes for a person of an agency company)
   agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
   agency closeouts <org> [--query <word>] [--age-min <years>] [--price-max-cents <n>] [--tld <tld>] [--limit <n>]
-       [--names company|any]
-                                         aged expired domains at a fixed price, as domain closeouts; only names
-                                         that read as a company's (…group, …consulting, …inc) unless --names any
+       [--names any|company]
+                                         aged expired domains at a fixed price, as domain closeouts
   agency approve <org> <name>… --max-cents <n> [--redirect <url>] [--platform google|microsoft] [--tenant <name|id>]
        [--company <name|id>] [--closeout]
                                          buy them for the agency (its admin only); --platform picks where the
@@ -459,7 +458,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
        [--names any|company]
                                          aged expired domains at a fixed price, oldest first, without the ones on a
                                          domain blocklist or with a Spamhaus abuse history (refused says why);
-                                         priceCents is the closeout alone, the first year comes on top
+                                         priceCents is the closeout alone, the first year comes on top;
+                                         companyName marks a name ending in a company word (…group, …inc),
+                                         --names company finds only those across the whole pool
   domain approve <name> [<name>…] --max-cents <n> [--redirect <client site url>] [--platform google|microsoft]
                  [--tenant <name|id>] [--closeout]   buy them (a person only); --closeout buys
                                          closeouts: claimed, in our account days later, then as below:
