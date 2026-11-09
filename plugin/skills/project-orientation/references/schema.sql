@@ -2113,6 +2113,8 @@ CREATE TABLE public.mailboxes (
     photo_id uuid,
     photo_error text,
     photo_tried_at timestamp with time zone,
+    mint_refusals integer DEFAULT 0 NOT NULL,
+    mint_refused_at timestamp with time zone,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 60))),
     CONSTRAINT mailboxes_placement_state_check CHECK ((placement_state = ANY (ARRAY['good'::text, 'unknown'::text, 'hold'::text, 'bad'::text]))),
@@ -13063,4 +13065,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109180000'),
     ('20261109190000'),
     ('20261109200000'),
-    ('20261109202832');
+    ('20261109202832'),
+    ('20261109202901');
