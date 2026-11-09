@@ -177,8 +177,9 @@ real limits:
 - **The engine's protection** — when a domain's seed notes slip into spam, its ladder stops
   climbing; when they fall below 70% in the inbox, the engine holds the domain's outreach, opens an
   urgent task for the project's owner and lets outreach go again once the notes are back for three
-  days. A held mailbox shows `outreach_held_at`. Where each one stands:
-  `bh sql "select address, daily_limit, warmed, sending_days, placement_state, outreach_held_at from mailboxes where sender_id in ('<sender-id>')"`.
+  days. Where each one stands, held ones with `outreachHeldAt` and why: `bh mailboxes`. New leads
+  go to mailboxes that send outreach; `bh strategy repick-mailboxes <id>` moves leads that sent
+  nothing off a mailbox held since they were enrolled.
 - **LinkedIn**: each account sends up to 15 invites and 40 messages a day by default
   (`daily_invite_limit`, `daily_message_limit`, changed with `bh linkedin update`), on send days.
   An account with the ramp on (the default for one attached to a sender of an agency's company)

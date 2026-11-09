@@ -179,7 +179,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   lead stop <enrollment-id> --reason <t> end a lead for good; frees the contact for another strategy (a person only)
   strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent
   strategy repick-mailboxes <id> [--dry-run]   give each lead that has sent nothing yet a mailbox of its sender
-                                         that serves its provider (mailbox update --recipients); a person only
+                                         that serves its provider (mailbox update --recipients) and sends outreach
+                                         on its first day: off held, badly placed and still warming-alone
+                                         mailboxes when the sender has another; each move says why; a person only
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
                                          a linkedin_invite step goes without a note unless it says "withoutNote": false;
@@ -287,6 +289,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   enroll <strategy-id> --file <json|jsonl|-> [--dry-run]    [{"contactId","segmentId","personaId"}]
   stand <strategy-id> --contact <id> --status candidate|held|rejected [--persona <id>] [--reason <t>]
   stand <strategy-id> --file <json|jsonl|->            [{"contactId","status","personaId","reason"}]
+                                         a person live in the strategy stays enrolled (skipped, with why);
+                                         --status enrolled puts back the row of one who is live
   worked <strategy-id> --file <json|jsonl|->           [{"domain","status":"pending|contacts_found|no_match|enrolled|exhausted","contactsFound"}]
                                          what a search inside a company came to; the engine records the rest as people stand
   copy queue <strategy-id> [--limit <n>] | copy write --file <json|jsonl|->   [{"messageId","subject","body","angle"}]
@@ -431,7 +435,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          host bot's comings and goings, the transcript, Meet's Docs
   meeting update <id> [--status held|no_show] [--outcome qualified|not_qualified|opportunity|won|lost]
                   [--feedback <client's words>] [--notes <t>]      (a person only)
-  mailboxes
+  mailboxes                              each mailbox, with its ladder day, placement and outreachHeldAt (and why)
   mailbox connect --provider google|microsoft [--sender <id>] [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          prints the URL to open in a browser
   mailbox import --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
