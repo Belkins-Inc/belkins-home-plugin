@@ -3987,6 +3987,7 @@ CREATE TABLE public.warmup_replies (
     acted_at timestamp with time zone,
     act_error text,
     answer_send_id uuid,
+    archived_at timestamp with time zone,
     CONSTRAINT warmup_replies_step_check CHECK ((step >= 2))
 );
 
@@ -6691,6 +6692,13 @@ CREATE INDEX ix_warmup_replies__due ON public.warmup_replies USING btree (mailbo
 --
 
 CREATE INDEX ix_warmup_replies__send ON public.warmup_replies USING btree (send_id);
+
+
+--
+-- Name: ix_warmup_replies__unarchived; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_replies__unarchived ON public.warmup_replies USING btree (mailbox_id) WHERE ((archived_at IS NULL) AND (provider_message_id IS NOT NULL));
 
 
 --
@@ -13050,4 +13058,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109133109'),
     ('20261109145528'),
     ('20261109160000'),
-    ('20261109180000');
+    ('20261109180000'),
+    ('20261109190000');
