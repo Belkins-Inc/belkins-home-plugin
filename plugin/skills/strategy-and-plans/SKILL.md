@@ -166,6 +166,11 @@ real limits:
   20), then 3 a day rising by 2 every other day to 15, about 126 emails over those two weeks. It is
   warmed only when its domain's seed notes are in the inbox, so plan on a new mailbox carrying a
   test batch in its first two weeks and its full share from its fifth. Buy domains about four weeks before a client needs volume (`sending-domains`).
+- **Warming ahead, or for another platform** — a mailbox climbs whether or not anything is
+  launched, and its warm-up notes carry the strategy's text once steps are written for leads or the
+  strategy has sample emails (`bh copy sample`, `copywriting` skill). So prepare the strategy and its
+  samples while the mailboxes warm, and launch when they are ready; when outreach will go out through
+  another platform, keep the strategy a draft with samples and never launch it.
 - **A young domain** — under 60 days old, a mailbox sends at most 30 a day in all (22 outreach once
   warmed) and the domain at most 40 outreach emails a day across all its mailboxes; a mailbox
   marked warmed on a domain under 14 days old sends only a trickle, 1–3 a day. More volume early is more domains, not more mailboxes on one.

@@ -2626,6 +2626,7 @@ CREATE TABLE public.placement_notes (
     body text,
     queued_at timestamp with time zone DEFAULT now() NOT NULL,
     copy_message_id uuid,
+    copy_sample_id uuid,
     CONSTRAINT placement_notes_sent_check CHECK ((((status = 'queued'::text) = (sent_at IS NULL)) OR (status = 'cancelled'::text))),
     CONSTRAINT placement_notes_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'sent'::text, 'failed'::text, 'cancelled'::text]))),
     CONSTRAINT placement_notes_verdict_check CHECK ((verdict = ANY (ARRAY['inbox'::text, 'tab'::text, 'spam'::text, 'quarantined'::text, 'rejected'::text, 'missing'::text])))
@@ -3605,6 +3606,24 @@ CREATE TABLE public.strategy_plans (
 
 
 --
+-- Name: strategy_samples; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.strategy_samples (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    strategy_id uuid NOT NULL,
+    "position" integer NOT NULL,
+    new_thread boolean DEFAULT false NOT NULL,
+    subject text NOT NULL,
+    body text NOT NULL,
+    written_by uuid,
+    written_via public.actor_via NOT NULL,
+    written_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT strategy_samples_position_check CHECK (("position" >= 1))
+);
+
+
+--
 -- Name: strategy_segments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4068,6 +4087,7 @@ CREATE TABLE public.warmup_sends (
     refs text[],
     correspondent boolean,
     first_contact boolean,
+    copy_sample_id uuid,
     CONSTRAINT warmup_sends_answer_placement_check CHECK ((answer_placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_placement_check CHECK ((placement = ANY (ARRAY['inbox'::text, 'spam'::text, 'tabs'::text]))),
     CONSTRAINT warmup_sends_status_check CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text])))
@@ -5452,6 +5472,14 @@ ALTER TABLE ONLY public.strategy_plans
 
 
 --
+-- Name: strategy_samples strategy_samples_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.strategy_samples
+    ADD CONSTRAINT strategy_samples_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: strategy_segments strategy_segments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6302,6 +6330,13 @@ CREATE INDEX ix_placement_notes__copy ON public.placement_notes USING btree (cop
 
 
 --
+-- Name: ix_placement_notes__copy_sample; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_placement_notes__copy_sample ON public.placement_notes USING btree (copy_sample_id) WHERE (copy_sample_id IS NOT NULL);
+
+
+--
 -- Name: ix_placement_notes__pending; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6533,6 +6568,13 @@ CREATE INDEX ix_strategy_contacts__persona ON public.strategy_contacts USING btr
 
 
 --
+-- Name: ix_strategy_samples__strategy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_strategy_samples__strategy ON public.strategy_samples USING btree (strategy_id, "position");
+
+
+--
 -- Name: ix_stripe_events__project; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6663,6 +6705,13 @@ CREATE INDEX ix_warmup_seed_tenants__egress ON public.warmup_seed_tenants USING 
 --
 
 CREATE INDEX ix_warmup_sends__copy ON public.warmup_sends USING btree (copy_message_id) WHERE (copy_message_id IS NOT NULL);
+
+
+--
+-- Name: ix_warmup_sends__copy_sample; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_warmup_sends__copy_sample ON public.warmup_sends USING btree (copy_sample_id) WHERE (copy_sample_id IS NOT NULL);
 
 
 --
@@ -9313,6 +9362,14 @@ ALTER TABLE ONLY public.placement_notes
 
 
 --
+-- Name: placement_notes placement_notes_copy_sample_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.placement_notes
+    ADD CONSTRAINT placement_notes_copy_sample_id_fkey FOREIGN KEY (copy_sample_id) REFERENCES public.strategy_samples(id) ON DELETE SET NULL;
+
+
+--
 -- Name: placement_notes placement_notes_mailbox_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10369,6 +10426,22 @@ ALTER TABLE ONLY public.strategy_plans
 
 
 --
+-- Name: strategy_samples strategy_samples_strategy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.strategy_samples
+    ADD CONSTRAINT strategy_samples_strategy_id_fkey FOREIGN KEY (strategy_id) REFERENCES public.strategies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: strategy_samples strategy_samples_written_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.strategy_samples
+    ADD CONSTRAINT strategy_samples_written_by_fkey FOREIGN KEY (written_by) REFERENCES public.users(id);
+
+
+--
 -- Name: strategy_segments strategy_segments_segment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10862,6 +10935,14 @@ ALTER TABLE ONLY public.warmup_seeds
 
 ALTER TABLE ONLY public.warmup_sends
     ADD CONSTRAINT warmup_sends_copy_message_id_fkey FOREIGN KEY (copy_message_id) REFERENCES public.messages(id) ON DELETE SET NULL;
+
+
+--
+-- Name: warmup_sends warmup_sends_copy_sample_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.warmup_sends
+    ADD CONSTRAINT warmup_sends_copy_sample_id_fkey FOREIGN KEY (copy_sample_id) REFERENCES public.strategy_samples(id) ON DELETE SET NULL;
 
 
 --
@@ -12180,6 +12261,15 @@ CREATE POLICY organisation_fence ON public.strategy_plans USING ((EXISTS ( SELEC
 
 
 --
+-- Name: strategy_samples organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.strategy_samples USING ((EXISTS ( SELECT 1
+   FROM public.strategies x
+  WHERE (x.id = strategy_samples.strategy_id))));
+
+
+--
 -- Name: strategy_segments organisation_fence; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -12585,6 +12675,12 @@ ALTER TABLE public.strategy_personas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.strategy_plans ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: strategy_samples; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.strategy_samples ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: strategy_segments; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -12953,4 +13049,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261108101442'),
     ('20261109133109'),
     ('20261109145528'),
-    ('20261109160000');
+    ('20261109160000'),
+    ('20261109180000');

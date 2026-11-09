@@ -290,6 +290,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   copy queue <strategy-id> [--limit <n>] | copy write --file <json|jsonl|->   [{"messageId","subject","body","angle"}]
   copy check --file <json|jsonl|->      the same file, checked against the house rules and written nowhere;
                                          every problem per messageId, exit 1 when there is one
+  copy sample <strategy-id> --file <json|jsonl|-> [--replace]   [{"position","subject","body","newThread"}]
+                                         sample emails of the strategy's steps, written for no lead: warm-up and
+                                         placement tests carry them before launch, or when we send through another
+                                         platform; --replace takes the earlier ones out
+  copy samples <strategy-id> | copy sample-remove <strategy-id> <sample-id>
   copy test <message-id> --to <email>   send one written email step, as the lead would get it (their mailbox and
                                          sender), to your own address before launch; a person only, 10 a mailbox a day
   preview <message-id>
@@ -1224,6 +1229,7 @@ async function main(argv: string[]): Promise<void> {
       mailbox: { type: 'string' },
       'message-id': { type: 'string' },
       'dry-run': { type: 'boolean' },
+      replace: { type: 'boolean' },
       q: { type: 'string' },
       waiting: { type: 'string' },
       state: { type: 'string' },
@@ -2406,6 +2412,33 @@ async function main(argv: string[]): Promise<void> {
             2,
           )
         return out(await call(config, 'POST', `/messages/${arg}/test`, { to: o.to }))
+      }
+      if (sub === 'samples') {
+        if (!arg) throw new BhError('Which strategy?', { hint: 'bh copy samples <strategy-id>' }, 2)
+        return out(await call(config, 'GET', `/strategies/${arg}/samples`))
+      }
+      if (sub === 'sample') {
+        if (!arg)
+          throw new BhError(
+            'Which strategy?',
+            { hint: 'bh copy sample <strategy-id> --file samples.json [--replace]' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/strategies/${arg}/samples`, {
+            samples: await readRows(need(o.file)),
+            replace: Boolean(o.replace),
+          }),
+        )
+      }
+      if (sub === 'sample-remove') {
+        if (!arg || !pos[3])
+          throw new BhError(
+            'Which strategy, which sample?',
+            { hint: 'bh copy sample-remove <strategy-id> <sample-id>' },
+            2,
+          )
+        return out(await call(config, 'DELETE', `/strategies/${arg}/samples/${pos[3]}`))
       }
       if (sub === 'check') {
         const checked = (await call(config, 'POST', '/copy/check', {

@@ -1,6 +1,6 @@
 ---
 name: copywriting
-description: How to write the copy of every step of every enrolled lead's plan (email, LinkedIn invite, LinkedIn message), including referral and re-engagement copy, with bh copy queue / bh copy check / bh copy write / bh preview. Use whenever a strategy has messages that need copy, after enrolling, when a lead is stuck on "no copy", or when a re-engagement or referral enrollment waits for its first message.
+description: How to write the copy of every step of every enrolled lead's plan (email, LinkedIn invite, LinkedIn message), including referral and re-engagement copy, with bh copy queue / bh copy check / bh copy write / bh preview, and a strategy's sample emails for warm-up (bh copy sample). Use whenever a strategy has messages that need copy, after enrolling, when a lead is stuck on "no copy", when a re-engagement or referral enrollment waits for its first message, or when mailboxes must warm on a strategy's text before launch or for outreach sent through another platform.
 ---
 
 # Copywriting
@@ -139,6 +139,30 @@ you hold. Full rules, lists and examples: [references/house-rules.md](references
   email never mentions LinkedIn, a LinkedIn message never relies on an email having arrived, and a
   step after a conditional one references neither. (Not checked by the engine yet, so check it
   yourself.)
+
+## Sample emails for warm-up (no lead needed)
+
+Every other warm-up note, and the placement tests, carry the project's copy so the seeds rescue and
+answer the text we actually send. Steps written for leads count, launched or not. When there are
+none — the strategy is prepared ahead and its leads are not found yet, or we only warm the mailboxes
+and outreach goes out through another platform, so nobody is ever enrolled here — write the
+strategy's **sample emails** instead. Nothing is launched and no lead is touched.
+
+1. One sample per email step at least (more variants rotate better, up to 50 a strategy):
+   `[{"position": 1, "subject": "…", "body": "…"}, {"position": 2, "subject": "…", "body": "…"}]`.
+   `position` is the step; a later one goes out as `Re:` the first sample's subject unless
+   `"newThread": true`. Write for one plausible made-up lead of the segment (a first name, their
+   company's situation), exactly as a real step: same rules, same checks, no placeholders. When the
+   copy lives in the other platform, take its sequence as it is sent there, a lead's tokens filled in.
+2. `bh copy sample <strategy-id> --file samples.json` (all or nothing, checked as `bh copy write`);
+   `--replace` swaps the strategy's earlier samples for the new set.
+3. `bh copy samples <strategy-id>` lists them with how many warm-up and placement notes carried each;
+   `bh copy sample-remove <strategy-id> <sample-id>` takes one out. Rewrite them when the sequence
+   changes: they are not tied to the plan templates.
+
+Samples go only to our seeds and do not count toward launch: launch still waits on every lead's own
+copy. A mailbox carries its projects' copy from its fourth sending day; a network mailbox no
+project has taken carries none.
 
 ## LinkedIn
 
