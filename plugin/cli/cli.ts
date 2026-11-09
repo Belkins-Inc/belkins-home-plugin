@@ -589,7 +589,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          as text; --all lists every envelope instead, each marked digest or not
                                          (an admin: a seed's mail is every organisation's)
   placement mailbox <our address> [--days <n>] [--limit <n>]   its rate per environment over the days (30) and
-                                         the notes behind it: kind, seed, subject, body, verdict, scores
+                                         the notes behind it: kind, seed, subject, body, verdict, scores; its
+                                         warm-up notes to our warm-up seeds and where they landed; its hold
   placement domain <domain> [--days <n>] [--limit <n>]   the same for every mailbox on a domain
   placement codes [--days <n>] [--env m365|m365_defender|m365_proofpoint] [--source sfs|eng|atp|field|detection]
                   [--code <code>] [--moved]   Microsoft's codes on the notes of the last days (30): Junk with and
