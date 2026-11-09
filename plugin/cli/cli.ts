@@ -132,6 +132,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   dialer users <dialer-org-id>          its people, their roles and workspaces: who can work a queue (platform admin)
   dialer queue <name> [--hours 08:00-18:00] --project <p>   makes the project's queue in its workspace and attaches its lists (platform admin)
   dialer key <dialer-org-id>            what our key opens there: scopes, writes, workspaces, expiry (platform admin)
+  dialer read <dialer-org-id> <path[?query]>   reads what the dialer holds there, e.g. workspaces/<id>/numbers, coverage (platform admin)
   dialer invite <email,…> [--role operator|manager] --project <p>   invites people to the project's dialer workspace (platform admin)
   dialer agents <email,…> --project <p>  who works the project's queue; replaces the set (platform admin)
   dialer orgs                           the dialer organizations our key can see, and the organisation linked to each (platform admin)
@@ -1892,6 +1893,21 @@ async function main(argv: string[]): Promise<void> {
         if (!arg) throw new BhError('Which dialer organization?', { hint: 'bh dialer orgs' }, 2)
         return out(
           await call(config, 'GET', `/dialer/organizations/${encodeURIComponent(arg)}/key`),
+        )
+      }
+      if (sub === 'read') {
+        const what = pos[2]
+        if (!arg || !what)
+          throw new BhError(
+            'Which dialer organization, and what in it?',
+            { hint: 'bh dialer read <dialer-org-id> workspaces/<id>/numbers' },
+            2,
+          )
+        const [path, query] = what.replace(/^\/+/, '').split('?', 2)
+        const qs = new URLSearchParams(query ?? '')
+        qs.set('path', path!)
+        return out(
+          await call(config, 'GET', `/dialer/organizations/${encodeURIComponent(arg)}/read?${qs}`),
         )
       }
       if (sub === 'invite') {
