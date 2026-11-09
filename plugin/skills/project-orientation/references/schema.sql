@@ -1373,6 +1373,7 @@ CREATE TABLE public.messages (
     bounce_kind text,
     bounce_class text,
     skip_code text,
+    accept_checked_at timestamp with time zone,
     CONSTRAINT messages_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
     CONSTRAINT messages_bounce_class_check CHECK ((bounce_class = ANY (ARRAY['no_such_user'::text, 'mailbox_full'::text, 'temporary'::text, 'blocked'::text, 'other'::text]))),
     CONSTRAINT messages_bounce_kind_check CHECK ((bounce_kind = ANY (ARRAY['hard'::text, 'soft'::text]))),
@@ -2016,6 +2017,19 @@ CREATE TABLE public.linkedin_proxies (
     CONSTRAINT linkedin_proxies_country_check CHECK ((country ~ '^[A-Z]{2}$'::text)),
     CONSTRAINT linkedin_proxies_port_check CHECK (((port >= 1) AND (port <= 65535))),
     CONSTRAINT linkedin_proxies_usd_month_check CHECK ((usd_month >= (0)::numeric))
+);
+
+
+--
+-- Name: linkedin_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_requests (
+    linkedin_account_id uuid NOT NULL,
+    day date NOT NULL,
+    requests integer DEFAULT 0 NOT NULL,
+    sends integer DEFAULT 0 NOT NULL,
+    refused integer DEFAULT 0 NOT NULL
 );
 
 
@@ -4697,6 +4711,14 @@ ALTER TABLE ONLY public.linkedin_proxies
 
 ALTER TABLE ONLY public.linkedin_proxies
     ADD CONSTRAINT linkedin_proxies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: linkedin_requests linkedin_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_requests
+    ADD CONSTRAINT linkedin_requests_pkey PRIMARY KEY (linkedin_account_id, day);
 
 
 --
@@ -8733,6 +8755,14 @@ ALTER TABLE ONLY public.linkedin_proxies
 
 
 --
+-- Name: linkedin_requests linkedin_requests_linkedin_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_requests
+    ADD CONSTRAINT linkedin_requests_linkedin_account_id_fkey FOREIGN KEY (linkedin_account_id) REFERENCES public.linkedin_accounts(id) ON DELETE CASCADE;
+
+
+--
 -- Name: mailbox_orders mailbox_orders_domain_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11519,6 +11549,12 @@ ALTER TABLE public.linkedin_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.linkedin_proxies ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: linkedin_requests; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_requests ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: mailbox_orders; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -11891,6 +11927,15 @@ CREATE POLICY organisation_fence ON public.linkedin_post_images USING ((EXISTS (
 CREATE POLICY organisation_fence ON public.linkedin_posts USING (((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])) OR (EXISTS ( SELECT 1
    FROM public.sending_companies x
   WHERE (x.id = linkedin_posts.company_id)))));
+
+
+--
+-- Name: linkedin_requests organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.linkedin_requests USING ((EXISTS ( SELECT 1
+   FROM public.linkedin_accounts x
+  WHERE (x.id = linkedin_requests.linkedin_account_id))));
 
 
 --
@@ -13074,4 +13119,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109200000'),
     ('20261109202832'),
     ('20261109202901'),
+    ('20261109204454'),
     ('20261109210000');
