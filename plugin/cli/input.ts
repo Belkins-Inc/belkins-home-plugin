@@ -148,3 +148,32 @@ function hidden(question: string): Promise<string> {
     })
   })
 }
+
+/**
+ * A provider path as `bh call` sends it. Git Bash on Windows (MSYS) rewrites an argument that
+ * starts with "/" into a path under its own root before node sees it: `/search/x` arrives as
+ * `C:/Program Files/Git/search/x`, and BetterContact's `/` as `C:/Program Files/Git/`. That root
+ * is taken off again (EXEPATH when Git Bash set it, else up to a `Git` folder). A path written
+ * without its leading slash — the way round the rewrite — gets one.
+ */
+export function providerPath(
+  arg: string,
+  env: Record<string, string | undefined> = process.env,
+): string {
+  if (/^[a-z]:[\\/]/i.test(arg)) {
+    const path = arg.replaceAll('\\', '/')
+    const root = env.EXEPATH?.replaceAll('\\', '/').replace(/\/+$/, '')
+    if (root && `${path.toLowerCase()}/`.startsWith(`${root.toLowerCase()}/`))
+      return path.slice(root.length) || '/'
+    const git = /^[a-z]:\/(?:[^/]+\/)*?git(\/.*)?$/i.exec(path)
+    if (git) return git[1] ?? '/'
+    throw new BhError(
+      `${arg} is a Windows path, not a provider path`,
+      {
+        hint: 'Git Bash rewrote the leading "/": write the path without it, e.g. search/database/companies/',
+      },
+      2,
+    )
+  }
+  return arg.startsWith('/') ? arg : `/${arg}`
+}

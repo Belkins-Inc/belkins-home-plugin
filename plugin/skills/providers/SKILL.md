@@ -8,6 +8,8 @@ description: How to call the paid data providers (Apollo, Generect, BetterContac
 Every paid provider is reached through the engine: `bh call <provider> <METHOD> <path?query>`.
 The keys live on the server only — never curl a provider, never ask for a key. The engine adds the
 key, forwards the request as written, records the call in `provider_calls` and its cost in `spend`.
+The examples below work as written in Git Bash on Windows too: `bh` undoes the rewrite Git Bash
+makes of a leading `/`, and a path may also be written without it.
 
 ## Before the first call of a session
 

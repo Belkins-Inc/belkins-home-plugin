@@ -18,7 +18,15 @@ import {
   saveConfig,
   saveSessionProject,
 } from './config.ts'
-import { readBlocks, readInput, readRows, readSecrets, readText, withImages } from './input.ts'
+import {
+  providerPath,
+  readBlocks,
+  readInput,
+  readRows,
+  readSecrets,
+  readText,
+  withImages,
+} from './input.ts'
 import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
 import { setup } from './setup.ts'
 
@@ -698,7 +706,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   limits set <tool> --below <n>|off      alert #home-alerts below this (an admin); limits reset <tool> to the default
   call <provider> <METHOD> <path?query> [--body <json> | --body-file <path|->] [--again]
        [--strategy <id>] [--segment <id>] [--source <id>] [--search <id>] [--company <id>] [--contact <id>]
-                                         the provider's answer on stdout, untouched; cost on stderr
+                                         the provider's answer on stdout, untouched; cost on stderr;
+                                         the leading "/" may be left out (Git Bash rewrites it; bh undoes that too)
   call show <call-id>                    an earlier call with what the provider answered (use it again instead of paying again),
                                          and what it delivered later (Apollo's phones) under deliveries
   cache person <linkedin-url>            what was bought about a person, any project, free; a Generect enrichment by URL
@@ -2494,7 +2503,7 @@ async function main(argv: string[]): Promise<void> {
     case 'call': {
       const [, name, method, path] = pos
       if (name === 'show') return out(await call(config, 'GET', `/provider-calls/${method}`))
-      if (!name || !method || !path)
+      if (!name || !method || path === undefined)
         throw new BhError(
           'Which call?',
           { hint: "bh call generect POST /search/database/companies/ --body '{…}'" },
@@ -2520,7 +2529,7 @@ async function main(argv: string[]): Promise<void> {
       const answer = (await call(config, 'POST', `/providers/${name}/call`, {
         project: current?.slug,
         method,
-        path,
+        path: providerPath(path),
         ...(raw === undefined ? {} : { body: raw }),
         ...(o.again ? { again: true } : {}),
         ...(Object.keys(refs).length ? { refs } : {}),
