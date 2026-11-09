@@ -1327,7 +1327,7 @@ CREATE TABLE public.enrollments (
     CONSTRAINT enrollments_check2 CHECK (((kind = 'first'::text) OR (follows_enrollment_id IS NOT NULL))),
     CONSTRAINT enrollments_check3 CHECK (((status = 'paused'::text) = (pause_reason IS NOT NULL))),
     CONSTRAINT enrollments_kind_check CHECK ((kind = ANY (ARRAY['first'::text, 're_engagement'::text, 'referral'::text]))),
-    CONSTRAINT enrollments_pause_reason_check CHECK ((pause_reason = ANY (ARRAY['out_of_office'::text, 'company_meeting'::text, 'manual'::text, 'held_back'::text, 'call_follow_up'::text]))),
+    CONSTRAINT enrollments_pause_reason_check CHECK ((pause_reason = ANY (ARRAY['out_of_office'::text, 'company_meeting'::text, 'manual'::text, 'held_back'::text, 'call_follow_up'::text, 'colleague_replied'::text]))),
     CONSTRAINT enrollments_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'active'::text, 'paused'::text, 'completed'::text, 'stopped'::text]))),
     CONSTRAINT enrollments_stop_reason_check CHECK ((stop_reason = ANY (ARRAY['replied'::text, 'unsubscribed'::text, 'dnc'::text, 'no_channel_left'::text, 'sender_gone'::text, 'manual'::text, 'wrong_person'::text]))),
     CONSTRAINT enrollments_stuck_code_check CHECK ((stuck_code = ANY (ARRAY['no_copy'::text, 'linkedin_not_configured'::text, 'mailbox_disconnected'::text, 'linkedin_disconnected'::text, 'mailbox_room'::text, 'other'::text]))),
@@ -13130,4 +13130,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109204435'),
     ('20261109204454'),
     ('20261109210000'),
-    ('20261109213000');
+    ('20261109213000'),
+    ('20261109233647');

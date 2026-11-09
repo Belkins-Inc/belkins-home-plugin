@@ -57,6 +57,15 @@ there are many:
    form): `bh thread attachment <messageId> <n>` saves file `n` here to read it. `bh thread
    attachments <messageId>` reads the list from the mailbox when `attachments` is null (stored
    before files were kept).
+   **Look at `colleagues` every time.** A reply stops only the lead who wrote; the company's other
+   leads in a plan go on, and the engine never pauses them on its own. `colleagues` lists them
+   (strategy, steps sent, `nextAt`); `inThread` / `inDraft` mark those the conversation or our
+   waiting answer copies: their next cold step would land in the middle of the conversation. Do
+   not pause them yourself. Ask the person in the session ("Mia at the company is in Cc and gets
+   step 1 tomorrow — pause the 2 colleagues still running?") and, on a yes,
+   `bh thread pause-colleagues <threadId> [--only <enrollment-id,…>]` (reason `colleague_replied`;
+   `bh lead unpause <enrollment-id>` undoes one). Drafting for someone else's approval, say it in
+   the draft's `--note` instead: "2 colleagues still running, 1 in Cc (step 1 due Tue)".
 2. **Decide the class** against references/classes.md. Resolve dates against the reply's day in the
    lead's time zone: `--follow-up` for `not_now` (the first day of a named month or quarter, the next
    occurrence), `--return` for `out_of_office` (the first day back).
@@ -173,6 +182,10 @@ person who launched the strategy:
 
 The engine already opened an urgent task for every positive reply it classified; do not duplicate
 it. Its owner's Claude writes the answer.
+
+A run never pauses a colleague (`bh thread pause-colleagues` refuses its token). When `bh thread`
+shows `colleagues` marked `inThread` or `inDraft` that are still running or scheduled, say so in
+the triage note ("colleague in Cc still running, step 1 due <day>") so whoever answers decides.
 
 ### Referrals in a server run
 

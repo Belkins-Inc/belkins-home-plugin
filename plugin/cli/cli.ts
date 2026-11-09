@@ -179,7 +179,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          --label: the lead or its company carries it
   lead show <enrollment-id>              one lead's plan step by step
   lead resume <enrollment-id>            put back a lead a reply stopped when the reply needed nothing (a person only)
-  lead pause <enrollment-id> | lead unpause <enrollment-id>   hold a lead by hand, and let it go on (a person only)
+  lead pause <enrollment-id> | lead unpause <enrollment-id>   hold a lead by hand, and let it go on (a person only;
+                                         unpause also lets go one paused with thread pause-colleagues)
   lead stop <enrollment-id> --reason <t> end a lead for good; frees the contact for another strategy (a person only)
   strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent
   strategy repick-mailboxes <id> [--dry-run]   give each lead that has sent nothing yet a mailbox of its sender
@@ -690,7 +691,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          answer reaches the inbox only through the reader. --reply answers
                                          the newest message --to sent --from
   inbox placement --mailbox <our address> --message-id <id>   where it landed: INBOX, SPAM, a tab
-  thread <id>                            the whole conversation, with our replies
+  thread <id>                            the whole conversation, with our replies; "colleagues": the company's
+                                         other leads still in a plan (inThread / inDraft: the thread or our
+                                         waiting answer copies them)
+  thread pause-colleagues <id> [--only <enrollment-id,…>]   pause those still running or scheduled, reason
+                                         colleague_replied; lead unpause lets one go on (a person only)
   thread close <id> --note <why>         no answer needed: it leaves Needs reply until the lead
                                          writes again; the note says why, for whoever reads the
                                          thread later (again on a closed thread: replaces the note)
@@ -1187,6 +1192,7 @@ async function main(argv: string[]): Promise<void> {
       'done-when': { type: 'string' },
       status: { type: 'string' },
       note: { type: 'string' },
+      only: { type: 'string' },
       summary: { type: 'string' },
       for: { type: 'string' },
       email: { type: 'string' },
@@ -2818,6 +2824,22 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'POST', `/threads/${arg}/close`, { note: o.note }))
       }
       if (sub === 'reopen') return out(await call(config, 'POST', `/threads/${arg}/reopen`, {}))
+      if (sub === 'pause-colleagues') {
+        if (!arg)
+          throw new BhError(
+            'Which thread?',
+            { hint: 'bh thread pause-colleagues <thread-id>; bh thread <thread-id> lists them' },
+            2,
+          )
+        return out(
+          await call(
+            config,
+            'POST',
+            `/threads/${arg}/pause-colleagues`,
+            o.only ? { ids: o.only.split(',').map((s) => s.trim()) } : {},
+          ),
+        )
+      }
       if (sub === 'attachments') {
         if (!arg)
           throw new BhError('Which message?', { hint: 'bh thread <thread-id> lists them' }, 2)
