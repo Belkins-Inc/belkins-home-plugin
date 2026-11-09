@@ -5,7 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { parseArgs } from 'node:util'
 
-import { merge, refusedIn, sendRows } from './batch.ts'
+import { merge, refusedIn, sendRows, warnedIn } from './batch.ts'
 import { consoleLogin, meetbotLogin } from './console-login.ts'
 import { BhError, call, callFile, callText } from './client.ts'
 import { readDncCsv } from './csv.ts'
@@ -1392,6 +1392,9 @@ async function main(argv: string[]): Promise<void> {
       process.stderr.write(`refused: ${refused} ${refused === 1 ? 'row' : 'rows'}, see "refused"\n`)
       process.exitCode = 1
     }
+    const warned = warnedIn(answer)
+    if (warned)
+      process.stderr.write(`warned: ${warned} ${warned === 1 ? 'row' : 'rows'}, see "warnings"\n`)
   }
 
   /** The engine names a domain by id; people and agents name it by itself, in this project. */

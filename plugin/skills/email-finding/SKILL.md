@@ -36,7 +36,9 @@ bh dnc check <domain|address>…            # or --file <csv>: which of them do-
 ```
 
 Do not buy an address for a contact at a DNC domain, or for one already `rejected` in the strategy:
-run the batch's company domains through `bh dnc check` first and drop what it names.
+run the batch's company domains through `bh dnc check` first and drop what it names. Run the
+addresses you found through `bh dnc check` too before writing them: an address on a parent group's
+or another employer's domain passes a check of the company's own domain.
 
 ## A. Addresses for new contacts
 
@@ -70,6 +72,9 @@ run the batch's company domains through `bh dnc check` first and drop what it na
    the status itself.) **Only `deliverable` settles the contact**: write it
    (`"source":"apollo"`, step 7). Everyone else — no match, no email, catch-all, unknown,
    undeliverable — goes on to BetterContact; do not write Apollo's address for them.
+   **Deliverable is not enough when the address is at another organisation** (section A2): Bouncer
+   says only that the mailbox exists, and Apollo often answers with a person's address at a new or
+   second employer.
 5. **Submit the rest to BetterContact** (≤ 100 per batch; `custom_fields.contact` = the contact id;
    LinkedIn URL, name, domain, company name). Keep the request id: write it down with
    `bh note add --kind todo --title "Collect BetterContact batch <id>" --body "<strategy>, <n> contacts"`
@@ -88,12 +93,39 @@ run the batch's company domains through `bh dnc check` first and drop what it na
 
    `source` is the provider the address came from (`apollo`, `bettercontact`, `fullenrich`).
    Store `invalid` addresses too (with `emailStatus: "invalid"`) so nobody buys them again.
+   The engine matches the URL by the profile it names (http or https, `www.`, a trailing slash or a
+   query do not make another contact). A row whose address belongs to nobody but whose profile
+   belongs to a contact with another live address is saved as a **new** contact without the
+   profile, and its answer carries a warning: two people on one profile is a provider's error —
+   find out which one the profile is before enrolling either.
    The contact keeps its company even when the address is on another domain (a group domain like
    `global.ntt` for a contact at `services.global.ntt`); only `companyDomain` moves it.
 8. **Not found** by either →
    `"facts":{"email_search":{"value":"not_found","source":"apollo,bettercontact","note":"2026-10-07"}}`.
    There is no third try: FullEnrich is off (the engine refuses a submission with
    `409 provider_off`). The contact goes LinkedIn-only.
+
+## A2. An address at another organisation's domain
+
+Before writing an address as `valid`, compare its domain with the company's domain. It belongs to
+the company when it is the company's domain, a subdomain of it, or a domain the company's domain is
+a subdomain of (`global.ntt` for `services.global.ntt`) — or a domain recorded as the same
+organisation in the company's `related_domains` fact (a parent group, a sister brand, a former
+domain). Anything else — a bank's, a university's, a city council's, another company's address for
+a person at a consumer brand — is not the contact's work address:
+
+1. Do not write it as the contact's address. Look for one at the company's own domain: the next
+   provider in the waterfall, and Bouncer must call it deliverable.
+2. Found none → no email for this contact: it goes LinkedIn-only (or nowhere without a profile).
+   Record why, so nobody buys it again and someone checks where the person works now:
+   `"facts":{"email_search":{"value":"other_domain","source":"apollo","note":"lena@bank.example, not at the company, 2026-11-09"},"employer_check":{"value":"needed","source":"email-finding"}}`.
+3. The domain really is the same organisation (you checked: the company's site, its LinkedIn page,
+   a group page) → record it on the company first, then write the address:
+   `bh companies upsert` with `{"domain":"<company>","facts":{"related_domains":{"value":["<group domain>"],"source":"web","note":"parent group, <url>"}}}`.
+
+The engine saves such an address anyway and says so: each row of the `bh contacts upsert` answer
+whose address is not at its company carries a `warnings` entry. Read the warnings; a warned row you
+did not mean is a contact to fix now (`bh behaviour contacts`).
 
 Why Apollo goes first and Bouncer decides (measured 2026-10-07 against what our sends delivered and
 bounced): Apollo agreed with 99 of 127 addresses BetterContact had found and we had delivered to, at
@@ -190,6 +222,9 @@ new BetterContact search is a person's session.
 ## Common mistakes
 
 - Upserting an address without the contact's LinkedIn URL — a second contact is created.
+- Writing the first deliverable address without comparing its domain with the company's (A2).
+- Ignoring `warnings` in the upsert answer: a profile that stayed with another contact, or an
+  address at another organisation's domain.
 - Holding an `unknown` or catch-all contact for a deep check — Scrubby is off; it goes by LinkedIn.
 - Paying to search a contact whose last name is an initial.
 - Choosing between two spellings on a catch-all domain because both "verified".

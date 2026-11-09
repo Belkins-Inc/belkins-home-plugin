@@ -1087,6 +1087,7 @@ CREATE TABLE public.contacts (
     deal_stage_by uuid,
     deal_stage_via public.actor_via,
     erasure_id uuid,
+    linkedin_key text,
     CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL) OR (erasure_id IS NOT NULL))),
     CONSTRAINT contacts_deal_stage_check CHECK ((deal_stage = ANY (ARRAY['opportunity'::text, 'proposal'::text, 'won'::text, 'lost'::text]))),
     CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text])))
@@ -5990,6 +5991,13 @@ CREATE INDEX ix_contacts__company ON public.contacts USING btree (company_id) WH
 --
 
 CREATE INDEX ix_contacts__esp_unknown ON public.contacts USING btree (email) WHERE ((esp IS NULL) AND (email IS NOT NULL));
+
+
+--
+-- Name: ix_contacts__linkedin_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_contacts__linkedin_key ON public.contacts USING btree (project_id, linkedin_key) WHERE (linkedin_key IS NOT NULL);
 
 
 --
@@ -13120,4 +13128,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109202832'),
     ('20261109202901'),
     ('20261109204454'),
-    ('20261109210000');
+    ('20261109210000'),
+    ('20261109213000');

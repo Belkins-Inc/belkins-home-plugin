@@ -85,3 +85,12 @@ export function refusedIn(answer: unknown): number {
   const refused = (answer as { refused?: unknown } | null)?.refused
   return typeof refused === 'number' ? refused : 0
 }
+
+/** How many rows of an answer carry `warnings`: saved, with something the caller should look at. */
+export function warnedIn(answer: unknown): number {
+  if (!Array.isArray(answer)) return 0
+  return answer.filter(
+    (r) =>
+      r !== null && typeof r === 'object' && Array.isArray((r as { warnings?: unknown }).warnings),
+  ).length
+}
