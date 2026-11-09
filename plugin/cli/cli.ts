@@ -339,7 +339,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          (default yes for a person of an agency company)
   agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
   agency closeouts <org> [--query <word>] [--age-min <years>] [--price-max-cents <n>] [--tld <tld>] [--limit <n>]
-                                         aged expired domains at a fixed price, as domain closeouts
+       [--names company|any]
+                                         aged expired domains at a fixed price, as domain closeouts; only names
+                                         that read as a company's (…group, …consulting, …inc) unless --names any
   agency approve <org> <name>… --max-cents <n> [--redirect <url>] [--platform google|microsoft] [--tenant <name|id>]
        [--company <name|id>] [--closeout]
                                          buy them for the agency (its admin only); --platform picks where the
@@ -454,6 +456,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
   domain quote <name> [<name>…]          availability and price at the registrar (free)
   domain closeouts [--query <word>] [--age-min <years, 5>] [--price-max-cents <n>] [--tld <com>] [--limit <n, 20>]
+       [--names any|company]
                                          aged expired domains at a fixed price, oldest first, without the ones on a
                                          domain blocklist or with a Spamhaus abuse history (refused says why);
                                          priceCents is the closeout alone, the first year comes on top
@@ -854,6 +857,7 @@ function closeoutQuery(o: Record<string, unknown>): URLSearchParams {
     ['priceMaxCents', o['price-max-cents']],
     ['tld', o.tld],
     ['limit', o.limit],
+    ['names', o.names],
   ]
   for (const [k, v] of pairs) if (typeof v === 'string' && v) q.set(k, v)
   return q
@@ -1171,6 +1175,7 @@ async function main(argv: string[]): Promise<void> {
       closeout: { type: 'boolean' },
       'age-min': { type: 'string' },
       'price-max-cents': { type: 'string' },
+      names: { type: 'string' },
       tld: { type: 'string' },
       redirect: { type: 'string' },
       auth: { type: 'string' },
