@@ -3044,6 +3044,21 @@ CREATE TABLE public.searches (
 
 
 --
+-- Name: seed_domains; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.seed_domains (
+    domain text NOT NULL,
+    registered_at timestamp with time zone NOT NULL,
+    cents bigint NOT NULL,
+    claimed_at timestamp with time zone DEFAULT now() NOT NULL,
+    arrived_at timestamp with time zone,
+    org_id uuid,
+    taken_at timestamp with time zone
+);
+
+
+--
 -- Name: seed_network_growth; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5170,6 +5185,22 @@ ALTER TABLE ONLY public.schema_migrations
 
 ALTER TABLE ONLY public.searches
     ADD CONSTRAINT searches_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: seed_domains seed_domains_org_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seed_domains
+    ADD CONSTRAINT seed_domains_org_id_key UNIQUE (org_id);
+
+
+--
+-- Name: seed_domains seed_domains_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seed_domains
+    ADD CONSTRAINT seed_domains_pkey PRIMARY KEY (domain);
 
 
 --
@@ -9818,6 +9849,14 @@ ALTER TABLE ONLY public.searches
 
 
 --
+-- Name: seed_domains seed_domains_org_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seed_domains
+    ADD CONSTRAINT seed_domains_org_id_fkey FOREIGN KEY (org_id) REFERENCES public.google_orgs(id) ON DELETE SET NULL;
+
+
+--
 -- Name: seed_network_growth seed_network_growth_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11199,6 +11238,13 @@ CREATE POLICY engine ON public.rate_limit_hits TO bhn_tenant USING (true) WITH C
 
 
 --
+-- Name: seed_domains engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.seed_domains TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
 -- Name: seed_network_growth engine; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -12407,6 +12453,12 @@ ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.searches ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: seed_domains; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.seed_domains ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: seed_network_growth; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -12900,4 +12952,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261107123449'),
     ('20261108101442'),
     ('20261109133109'),
-    ('20261109145528');
+    ('20261109145528'),
+    ('20261109160000');
