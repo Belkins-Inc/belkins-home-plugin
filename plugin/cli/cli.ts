@@ -489,6 +489,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          freed in its tenant); a user already made is not made again (a person only)
   mailbox hold <order-id>                an order nothing was made for yet is set aside: not made, and it takes no
                                          seat in its tenant, until mailbox retry (a person only)
+  mailbox cancel <order-id>              an order nothing was made for yet (ordered or held) is called off for good:
+                                         no seat, no licence, and its sender can be removed (a person only)
   tenants                                our Google Workspace and Microsoft 365 tenants, with the domains and mailboxes
                                          in each; a Google one's users as the engine counts them and as Google does
                                          (the larger counts against --max-users), and whether Google refused it a
@@ -3330,7 +3332,7 @@ async function main(argv: string[]): Promise<void> {
         )
       }
       if (sub === 'orders') return out(await call(config, 'GET', `/projects/${p()}/mailbox-orders`))
-      if (sub === 'retry' || sub === 'hold') {
+      if (sub === 'retry' || sub === 'hold' || sub === 'cancel') {
         if (!arg)
           throw new BhError('Which order?', { hint: 'bh mailbox orders lists them, with ids' }, 2)
         return out(await call(config, 'POST', `/mailbox-orders/${arg}/${sub}`, {}))

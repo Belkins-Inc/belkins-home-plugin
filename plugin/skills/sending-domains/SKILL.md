@@ -137,6 +137,9 @@ When something stops:
   tenant; the orders go ahead by themselves once Google takes a user again.
 - **A failed mailbox order** whose cause is fixed goes back in the queue with `bh mailbox retry
   <order-id>` (the id is in `bh mailbox orders`); a user already made is not made again.
+- **An order nobody wants any more** (wrong sender or persona, ordered by mistake): a person calls it
+  off with `bh mailbox cancel <order-id>` while it is still `ordered` or `held`: no seat, no licence,
+  and its sender can then be removed. A mailbox already made is archived instead.
 - **Microsoft mailboxes waiting.** The tenant is out of licences: `bh tenant seats <id> --provider
 microsoft` shows it. The engine buys them itself on the tenant's bill; it asks a person only when
 it may not (the app lacks the billing role) or Microsoft refuses — the task says which.
