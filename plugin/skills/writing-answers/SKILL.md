@@ -33,8 +33,9 @@ day: a lead who wants to talk waits for the next pass, not for the morning.
 ## A pass
 
 1. `bh answers`: what waits for this person, urgent first. Nothing → end with "Nothing waiting".
-2. For each project in it, in that order: `bh use <project>`, then read what every answer is
-   written from — `bh brief`, the rules and client feedback (`bh note list --kind rule`,
+2. For each project in it, in that order — naming it on every command, `--project <project>`
+   (a pass works several projects, so `bh use` holds none) — read what every answer is
+   written from: `bh brief`, the rules and client feedback (`bh note list --kind rule`,
    `--kind client_feedback`), the client's answers (`bh questions --status answered`), and
    `inbox-triage`'s [references/answers.md](../inbox-triage/references/answers.md). Your own memory of
    this project and of how this person writes counts as much: use it.
@@ -59,7 +60,8 @@ day: a lead who wants to talk waits for the next pass, not for the morning.
      answer went already.
    - `copy` — a follow-up plan (re-engagement, referral) has `steps` messages with no copy:
      `copywriting` skill (`bh copy queue <strategyId>`, `bh copy write`), with the lead's thread as
-     context.
+     context. A step someone else wrote in the meantime (the teammate who referred the lead, say)
+     is refused with who and when: leave theirs, never `--replace` it on a pass.
    Writing or revising in a thread settles what waited there; an item still listed on the next pass
    was not done.
 4. **Never approve, send or discard.** Your token is a person's and could: the person approves in

@@ -17,6 +17,7 @@ import {
   loadSessionProject,
   saveConfig,
   saveSessionProject,
+  type SessionPick,
 } from './config.ts'
 import {
   providerPath,
@@ -93,7 +94,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   login --api <url> --token <token>     save a token made by hand
   use [<project>]                       the project this Claude Code session acts on; with no slug, which one
                                          and why. Each session keeps its own and none is ever defaulted;
-                                         outside a session, --project or BH_PROJECT; either beats bh use
+                                         outside a session, --project or BH_PROJECT; either beats bh use.
+                                         Subagents share their session's pick: once it picked two projects,
+                                         every command must name its own (--project or BH_PROJECT)
   whoami | health
   projects [--org <slug>] | project create <slug> --name <name> [--timezone <tz>] [--org <slug>] [--owner <user-id>]
   project members | project member <user-id> [--role owner|member] | project member remove <user-id>
@@ -295,6 +298,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   worked <strategy-id> --file <json|jsonl|->           [{"domain","status":"pending|contacts_found|no_match|enrolled|exhausted","contactsFound"}]
                                          what a search inside a company came to; the engine records the rest as people stand
   copy queue <strategy-id> [--limit <n>] | copy write --file <json|jsonl|->   [{"messageId","subject","body","angle"}]
+                                         a referral's or re-engagement's step someone else already wrote is refused;
+                                         --replace replaces theirs, on purpose only
   copy check --file <json|jsonl|->      the same file, checked against the house rules and written nowhere;
                                          every problem per messageId, exit 1 when there is one
   copy sample <strategy-id> --file <json|jsonl|-> [--replace]   [{"position","subject","body","newThread"}]
@@ -1083,15 +1088,22 @@ function need(file: string | undefined): string {
 /**
  * Where the project comes from, first found wins: --project, BH_PROJECT, then this Claude Code
  * session's `bh use`. Nothing is ever defaulted: a default is whatever someone picked last, and
- * acting on another client's project is the worst thing a wrong guess can do.
+ * acting on another client's project is the worst thing a wrong guess can do. A session that
+ * picked more than one project names none (`several`): its subagents share the pick, and the one
+ * picked last may be another agent's client (belkins-home-plugin#148).
  */
 function currentProject(
   flag: string | undefined,
-  session: string | undefined,
-): { slug: string; from: string } | null {
+  session: SessionPick | undefined,
+): { slug: string; from: string; several?: string[] } | null {
   if (flag) return { slug: flag, from: '--project' }
   if (process.env.BH_PROJECT) return { slug: process.env.BH_PROJECT, from: 'BH_PROJECT' }
-  return session ? { slug: session, from: 'bh use, this session' } : null
+  if (!session) return null
+  return {
+    slug: session.slug,
+    from: 'bh use, this session',
+    ...(session.picked.length > 1 ? { several: session.picked } : {}),
+  }
 }
 
 function noProject(): BhError {
@@ -1099,8 +1111,22 @@ function noProject(): BhError {
     SESSION ? 'No project in this session' : 'No project',
     {
       hint: SESSION
-        ? 'bh use <slug> once per session (each Claude Code session keeps its own), or --project <slug>; bh projects lists them'
+        ? 'bh use <slug> once per session, or --project <slug> on each command (a subagent always names it); bh projects lists them'
         : 'not in a Claude Code session, so bh use cannot hold: --project <slug> or BH_PROJECT; bh projects lists them',
+    },
+    2,
+  )
+}
+
+/** Why a session that picked several projects is refused one: the agents in it share the pick. */
+const SEVERAL =
+  'This session picked more than one project, so bh use holds none: a Claude Code session and its subagents share one pick, and the last one may be another agent’s client'
+function severalProjects(picked: string[]): BhError {
+  return new BhError(
+    SEVERAL,
+    {
+      picked,
+      hint: 'name the project on every command: --project <slug>, or BH_PROJECT=<slug> before bh',
     },
     2,
   )
@@ -1354,6 +1380,7 @@ async function main(argv: string[]): Promise<void> {
   const current = currentProject(o.project, await loadSessionProject())
   const p = () => {
     if (!current) throw noProject()
+    if (current.several) throw severalProjects(current.several)
     return encodeURIComponent(current.slug)
   }
   /** A file of rows, sent in chunks; a row the engine refused makes the exit non-zero. */
@@ -1410,12 +1437,21 @@ async function main(argv: string[]): Promise<void> {
     case 'use': {
       if (!sub) {
         if (!current) throw noProject()
+        if (current.several) throw severalProjects(current.several)
         return out({ project: current.slug, from: current.from })
       }
       if (!SESSION) throw noProject()
       const found = await call(config, 'GET', `/projects/${encodeURIComponent(sub)}`)
       await saveSessionProject(sub)
-      return out({ project: found, for: 'this session' })
+      const picked = (await loadSessionProject())?.picked ?? [sub]
+      // Said at once, so an agent that just picked knows its later commands must name the project.
+      return out({
+        project: found,
+        for: 'this session',
+        ...(picked.length > 1
+          ? { but: `${SEVERAL}. Name it on every command: --project ${sub}`, picked }
+          : {}),
+      })
     }
     case 'whoami':
       return out(await call(config, 'GET', '/me'))
@@ -2466,7 +2502,12 @@ async function main(argv: string[]): Promise<void> {
         )
       // One request, not chunks: the engine writes all of the copy or none of it.
       if (sub === 'write')
-        return out(await call(config, 'POST', '/copy', { messages: await readRows(need(o.file)) }))
+        return out(
+          await call(config, 'POST', '/copy', {
+            messages: await readRows(need(o.file)),
+            ...(o.replace ? { replace: true } : {}),
+          }),
+        )
       if (sub === 'test') {
         if (!arg || !o.to)
           throw new BhError(
@@ -2625,7 +2666,7 @@ async function main(argv: string[]): Promise<void> {
         ).filter(([, v]) => v),
       )
       const answer = (await call(config, 'POST', `/providers/${name}/call`, {
-        project: current?.slug,
+        project: current ? decodeURIComponent(p()) : undefined,
         method,
         path: providerPath(path),
         ...(raw === undefined ? {} : { body: raw }),

@@ -12,7 +12,9 @@ whole plan before launch. A step whose copy is missing when it falls due holds t
 Rights: a server agent run writes no copy and no answer (`bh copy write` refuses its token):
 re-engagement and referral copy waits in `bh answers` for the own Claude of the person whose lead it
 is (`writing-answers` skill); first messages for newly enrolled people are a person's session (the
-engine opens a task instead).
+engine opens a task instead). A referral or re-engagement step that another person's Claude already
+wrote is refused with who wrote it and when: read theirs (`bh preview`), and replace it with
+`bh copy write --replace` only when you mean to, never on a scheduled pass.
 
 ## Read first
 

@@ -23,7 +23,7 @@ of its shell: `bin/bh` (and `bin/bh.cmd` on Windows, for cmd and PowerShell) run
 plugin, or `packages/bh` when the plugin is installed from this repository (Node 24 runs it as it is
 — nothing to install or build), and the install script puts it on the PATH of the person's own terminal too. What the published repository
 holds is `.github/scripts/build-plugin-repo.sh` and `distribution/`. Then `bh login`, which prints a link to approve in the browser; inside Claude Code the
-agent runs `bh use <project>` for each session itself, so parallel sessions work different projects.
+agent runs `bh use <project>` for each session itself, so parallel sessions work different projects (its subagents share that pick, and pass `--project` instead).
 
 Being added to the platform, getting a token, which environment to point at and where to work:
 [docs/onboarding.md](../docs/onboarding.md).

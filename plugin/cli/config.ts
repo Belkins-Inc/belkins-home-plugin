@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, rm, stat, writeFile, chmod } from 'node:fs/promises'
+import { appendFile, chmod, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -25,7 +25,8 @@ export async function saveConfig(config: BhConfig) {
 /**
  * The Claude Code session bh runs in, if any. Parallel sessions each work their own project, so
  * `bh use` inside one is remembered for that session alone — one file per session beside the
- * config, never the shared config (which two sessions would overwrite under each other).
+ * config, never the shared config (which two sessions would overwrite under each other). Every
+ * subagent of a session runs with the session's id: Claude Code gives a subagent none of its own.
  */
 export const SESSION = /^[\w-]{1,128}$/.test(process.env.CLAUDE_CODE_SESSION_ID ?? '')
   ? process.env.CLAUDE_CODE_SESSION_ID
@@ -35,10 +36,23 @@ const SESSIONS_DIR = join(dirname(CONFIG_PATH), 'sessions')
 /** A session's choice is forgotten this long after it was made. */
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
-export async function loadSessionProject(): Promise<string | undefined> {
+/**
+ * The session's pick: the project it picked last, and every project it picked. Subagents working
+ * different clients in parallel share the one file, so a pick can change under an agent between
+ * two of its commands; once the session has picked more than one project, the pick names none
+ * (cli.ts, currentProject) and each command must name its own.
+ */
+export type SessionPick = { slug: string; picked: string[] }
+
+export async function loadSessionProject(): Promise<SessionPick | undefined> {
   if (!SESSION) return undefined
   try {
-    return (await readFile(join(SESSIONS_DIR, SESSION), 'utf8')).trim() || undefined
+    const lines = (await readFile(join(SESSIONS_DIR, SESSION), 'utf8'))
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+    const slug = lines.at(-1)
+    return slug ? { slug, picked: [...new Set(lines)] } : undefined
   } catch {
     return undefined
   }
@@ -47,7 +61,9 @@ export async function loadSessionProject(): Promise<string | undefined> {
 export async function saveSessionProject(slug: string) {
   if (!SESSION) throw new Error('Not in a Claude Code session')
   await mkdir(SESSIONS_DIR, { recursive: true })
-  await writeFile(join(SESSIONS_DIR, SESSION), `${slug}\n`)
+  // Appended, never rewritten: two agents picking at the same moment both leave their line, so
+  // neither pick is lost and the session is known to work both.
+  await appendFile(join(SESSIONS_DIR, SESSION), `${slug}\n`)
   // Sessions end without telling anyone; the files of old ones are swept on the way.
   const now = Date.now()
   for (const name of await readdir(SESSIONS_DIR)) {

@@ -15,14 +15,22 @@ previous session did or did not do something — read it.
    draft, take notes, open tasks, check and replace addresses; it may not enroll, launch or pause,
    remove dnc, approve replies or set goals. If the work needs one of those, open a task for a person.
 2. `bh use <slug>` for the project the person named (`bh projects` lists them). It holds for this
-   Claude Code session only — the person may run several sessions side by side, one per client, and
+   Claude Code session — the person may run several sessions side by side, one per client, and
    each keeps its own; nothing another session picks reaches this one. If they did not say which
    project, ask rather than guess — a client named in passing, a project from an earlier session or
    the only one you know is not a pick; a session that has not picked is refused, never defaulted.
    Once `bh use` answers, name the project back in one line — its name and slug ("Working on Pepper
    (pepper).") — so a wrong pick is caught before anything is done on it.
-   When they move to another project mid-session, `bh use` it again. `bh use` with no slug says
-   which project is current; `--project <slug>` reads another for one command without switching.
+   `bh use` with no slug says which project is current; `--project <slug>` reads another for one
+   command without switching.
+   **Subagents share the session's pick.** Every subagent of a session runs under its id, so one
+   that runs `bh use` changes the project for the session and every other subagent. A subagent never
+   runs `bh use`: it passes `--project <slug>` (or `BH_PROJECT=<slug>` before `bh`) on every command.
+   When you start subagents for different projects, give each its slug and tell it so. Once a
+   session has picked a second project — a subagent's, or the person moving on mid-session — `bh
+   use` holds none: every command not naming its project is refused, so name it on each from then
+   on. Write `bh` output to a file only under a name that carries the project
+   (`clients/<slug>/…`), never a shared one like `/tmp/brief.json`: parallel agents overwrite it.
 3. `bh brief` — read all of it before doing anything. Then read the parts that matter for today in
    full (see "Where to look next").
 

@@ -13,8 +13,8 @@ makes of a leading `/`, and a path may also be written without it.
 
 ## Before the first call of a session
 
-1. `bh use <project>` (once per session) — `bh call` refuses a call with no project, so spend
-   always lands on one.
+1. `bh use <project>` (once per session; a subagent passes `--project <project>` instead) —
+   `bh call` refuses a call with no project, so spend always lands on one.
 2. `bh providers` — which providers this engine has a key for (`configured`), the priced endpoints,
    `perCallUsd` / `perResultUsd`, which ones guard repeats, and for a provider priced by credits
    (BetterContact) `usdPerCredit` and the `creditsLeft` its latest answer reported.
