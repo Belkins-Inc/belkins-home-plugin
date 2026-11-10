@@ -3905,6 +3905,22 @@ CREATE TABLE public.terms_acceptances (
 
 
 --
+-- Name: thread_forwards; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.thread_forwards (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    thread_message_id uuid NOT NULL,
+    to_address text NOT NULL,
+    rfc_message_id text,
+    sent_at timestamp with time zone,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: tool_alerts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5660,6 +5676,14 @@ ALTER TABLE ONLY public.terms_acceptances
 
 
 --
+-- Name: thread_forwards thread_forwards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.thread_forwards
+    ADD CONSTRAINT thread_forwards_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: thread_messages thread_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7259,6 +7283,13 @@ CREATE UNIQUE INDEX ux_tasks__open_segment ON public.tasks USING btree (segment_
 --
 
 CREATE UNIQUE INDEX ux_tasks__open_signal ON public.tasks USING btree (strategy_id, signal) WHERE ((status = 'open'::text) AND (signal IS NOT NULL));
+
+
+--
+-- Name: ux_thread_forwards__message_to; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_thread_forwards__message_to ON public.thread_forwards USING btree (thread_message_id, lower(to_address));
 
 
 --
@@ -10812,6 +10843,22 @@ ALTER TABLE ONLY public.terms_acceptances
 
 
 --
+-- Name: thread_forwards thread_forwards_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.thread_forwards
+    ADD CONSTRAINT thread_forwards_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: thread_forwards thread_forwards_thread_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.thread_forwards
+    ADD CONSTRAINT thread_forwards_thread_message_id_fkey FOREIGN KEY (thread_message_id) REFERENCES public.thread_messages(id) ON DELETE CASCADE;
+
+
+--
 -- Name: thread_messages thread_messages_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12515,6 +12562,15 @@ CREATE POLICY organisation_fence ON public.terms_acceptances USING ((organisatio
 
 
 --
+-- Name: thread_forwards organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.thread_forwards USING ((EXISTS ( SELECT 1
+   FROM public.thread_messages x
+  WHERE (x.id = thread_forwards.thread_message_id))));
+
+
+--
 -- Name: thread_messages organisation_fence; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -12926,6 +12982,12 @@ ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.terms_acceptances ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: thread_forwards; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.thread_forwards ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: thread_messages; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -13269,4 +13331,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110002615'),
     ('20261110003000'),
     ('20261110003800'),
-    ('20261110003827');
+    ('20261110003827'),
+    ('20261110005800');

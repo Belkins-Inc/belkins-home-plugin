@@ -764,6 +764,13 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          waiting answer copies them)
   thread pause-colleagues <id> [--only <enrollment-id,…>]   pause those still running or scheduled, reason
                                          colleague_replied; lead unpause lets one go on (a person only)
+  threads [--status open|waiting|closed] [--from <address|domain>] [--lead none|any] [--since <date>] [--limit <n>]
+                                         the project's conversations, newest first, those with no lead too;
+                                         --from: anyone in it wrote from that address or domain
+  threads close --note <why> (--ids <id,…> | --file <ids.txt> | the filters above)   closes each as thread
+                                         close does; with filters, every conversation they list
+  thread forward <id> --to <address> [--messages <id,…>]   copies of what we sent in it, from its own mailbox,
+                                         to a team address; each message goes once (a person only)
   thread close <id> --note <why>         no answer needed: it leaves Needs reply until the lead
                                          writes again; the note says why, for whoever reads the
                                          thread later (again on a closed thread: replaces the note)
@@ -1413,6 +1420,9 @@ async function main(argv: string[]): Promise<void> {
       help: { type: 'boolean', short: 'h' },
       provider: { type: 'string' },
       file: { type: 'string' },
+      lead: { type: 'string' },
+      messages: { type: 'string' },
+      ids: { type: 'string' },
       titles: { type: 'string' },
       value: { type: 'string' },
       reason: { type: 'string' },
@@ -3142,7 +3152,65 @@ async function main(argv: string[]): Promise<void> {
           ),
         )
       return out(await call(config, 'GET', `/projects/${p()}/inbox`))
+    case 'threads': {
+      const filters = new URLSearchParams({
+        ...(o.status ? { status: o.status } : {}),
+        ...(o.from ? { from: o.from } : {}),
+        ...(o.lead ? { lead: o.lead } : {}),
+        ...(o.since ? { since: o.since } : {}),
+        ...(o.limit ? { limit: o.limit } : {}),
+      })
+      if (sub === 'close') {
+        if (!o.note)
+          throw new BhError(
+            'Why do they need no answer?',
+            {
+              hint: 'bh threads close --from <our domain> --note "test mail between our mailboxes"',
+            },
+            2,
+          )
+        const ids = o.ids
+          ? o.ids.split(',').map((s) => s.trim())
+          : o.file
+            ? (await readFile(o.file, 'utf8')).split(/\s+/).filter(Boolean)
+            : filters.size
+              ? (
+                  (await call(config, 'GET', `/projects/${p()}/threads?${filters.toString()}`)) as {
+                    id: string
+                    status: string
+                  }[]
+                )
+                  .filter((t) => t.status !== 'closed')
+                  .map((t) => t.id)
+              : null
+        if (!ids)
+          throw new BhError(
+            'Which conversations?',
+            { hint: '--ids <id,…>, --file <ids.txt>, or filters such as --from <domain>' },
+            2,
+          )
+        if (!ids.length) return out({ closed: 0, threads: [] })
+        return out(
+          await call(config, 'POST', `/projects/${p()}/threads/close`, { ids, note: o.note }),
+        )
+      }
+      return out(await call(config, 'GET', `/projects/${p()}/threads?${filters.toString()}`))
+    }
     case 'thread':
+      if (sub === 'forward') {
+        if (!arg || !o.to)
+          throw new BhError(
+            'Which thread, and to whom?',
+            { hint: 'bh thread forward <thread-id> --to <team address> [--messages <id,…>]' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/threads/${arg}/forward`, {
+            to: o.to,
+            ...(o.messages ? { messageIds: o.messages.split(',').map((s) => s.trim()) } : {}),
+          }),
+        )
+      }
       if (sub === 'close') {
         if (!arg || !o.note)
           throw new BhError(
