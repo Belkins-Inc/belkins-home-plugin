@@ -102,6 +102,9 @@ anything was sent, it is refused, so settle the steps before launch. Accepted va
 - `appliesWhen`: `email_and_linkedin`, `email_only`, `linkedin_only` (one template each at most).
 - step `channel`: `email`, `linkedin_invite`, `linkedin_message`.
 - `delayDays` (default 3): send days after the anchor; forced to 0 on step 1.
+- `delayHours` (0 to 23, default 0): hours on top of `delayDays`, then the next moment the send
+  window allows. "8 hours after connecting" is a message with `anchor: invite_accepted`,
+  `delayDays: 0`, `delayHours: 8`.
 - `anchor`: `previous_step` (default) or `invite_accepted` (a LinkedIn message timed from acceptance).
 - `condition`: `null` (always), `invite_accepted`, `invite_not_accepted`.
 - `maxWaitDays` (default 10): a step whose condition is still unmet this long after it fell due is
@@ -135,6 +138,14 @@ anything was sent, it is refused, so settle the steps before launch. Accepted va
   It is written for this client only: never another client's approved copy as a model or quote
   (`bh copy check` warns when it names another client of the organisation).
 - `hypothesis`: what this step is expected to prove (read back when judging results).
+- `variants` (2 to 4): an A/B test of the step. Each `{ "name": "…", "withoutNote": …,
+  "guidance": "…" }` sets what differs; the step's leads take the variants in turn as they are
+  enrolled, half and half for two. An invitation with a note against a bare one is
+  `"variants": [{ "name": "note", "withoutNote": false, "guidance": "Connection note …" },
+  { "name": "bare", "withoutNote": true }]`; only an invitation's variants may set `withoutNote`.
+  `bh copy queue` shows each message's `variant` and the variant's guidance; `bh strategy show`
+  lists per variant its leads, sent, accepted and replied, which is how the test is read. A test
+  of wording alone needs no variants: the writer's `angle` per message already splits copy.
 - `track` (`linkedin_invite` and `linkedin_message` only, default `main`): `"linkedin"` runs the
   step beside the emails instead of in line with them. A step on the LinkedIn track is timed from
   the step before it on that track (the first from the lead's start) and never holds an email; the

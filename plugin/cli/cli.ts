@@ -222,7 +222,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
                                          a linkedin_invite step goes without a note unless it says "withoutNote": false;
                                          "track": "linkedin" (an invite or LinkedIn message) runs it beside the emails:
-                                         timed on its own track, it never holds an email;
+                                         timed on its own track, it never holds an email; "delayHours" (0-23) adds
+                                         hours to "delayDays"; "variants": [{"name","withoutNote","guidance"},…] (2-4)
+                                         split the step's leads in turn, an A/B test read in strategy show;
                                          on a draft that has sent nothing, its enrolled leads' plans are copied again,
                                          written copy kept where a step keeps its channel (a person only)
   plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread","threadOf","delayDays"}: one step's,

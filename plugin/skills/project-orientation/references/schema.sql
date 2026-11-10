@@ -1,7 +1,7 @@
 \restrict dbmate
 
 -- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6 (Homebrew)
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1425,6 +1425,8 @@ CREATE TABLE public.messages (
     skip_code text,
     accept_checked_at timestamp with time zone,
     track text DEFAULT 'main'::text NOT NULL,
+    delay_hours integer DEFAULT 0 NOT NULL,
+    variant text,
     CONSTRAINT messages_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
     CONSTRAINT messages_bounce_class_check CHECK ((bounce_class = ANY (ARRAY['no_such_user'::text, 'mailbox_full'::text, 'temporary'::text, 'blocked'::text, 'other'::text]))),
     CONSTRAINT messages_bounce_kind_check CHECK ((bounce_kind = ANY (ARRAY['hard'::text, 'soft'::text]))),
@@ -3803,11 +3805,14 @@ CREATE TABLE public.strategy_steps (
     hypothesis text,
     without_note boolean DEFAULT false NOT NULL,
     track text DEFAULT 'main'::text NOT NULL,
+    delay_hours integer DEFAULT 0 NOT NULL,
+    variants jsonb,
     thread_of integer,
     CONSTRAINT strategy_steps_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
     CONSTRAINT strategy_steps_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text]))),
     CONSTRAINT strategy_steps_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT strategy_steps_delay_days_check CHECK ((delay_days >= 0)),
+    CONSTRAINT strategy_steps_delay_hours_check CHECK (((delay_hours >= 0) AND (delay_hours <= 23))),
     CONSTRAINT strategy_steps_position_check CHECK (("position" >= 1)),
     CONSTRAINT strategy_steps_thread_of_check CHECK ((thread_of >= 1)),
     CONSTRAINT strategy_steps_track_check CHECK (((track = ANY (ARRAY['main'::text, 'linkedin'::text])) AND ((track = 'main'::text) OR (channel = ANY (ARRAY['linkedin_invite'::text, 'linkedin_message'::text]))))),
@@ -13371,6 +13376,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110001333'),
     ('20261110001901'),
     ('20261110002053'),
+    ('20261110002131'),
     ('20261110002229'),
     ('20261110002325'),
     ('20261110002615'),
