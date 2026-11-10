@@ -1,6 +1,6 @@
 \restrict dbmate
 
--- Dumped from database version 18.6
+-- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
@@ -441,6 +441,23 @@ begin
      set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
    where strategy_id = new.id and status = 'active';
   return null;
+end
+$$;
+
+
+--
+-- Name: unstick_on_rest(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.unstick_on_rest() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  new.stuck_code := null;
+  new.stuck_reason := null;
+  new.stuck_step := null;
+  new.stuck_since := null;
+  return new;
 end
 $$;
 
@@ -3575,7 +3592,7 @@ CREATE VIEW public.stalled_enrollments WITH (security_invoker='true') AS
     stuck_code,
     stuck_step
    FROM public.enrollments e
-  WHERE ((stuck_reason IS NOT NULL) OR ((status = 'paused'::text) AND ((paused_until IS NULL) OR (paused_until < now()))));
+  WHERE (((stuck_reason IS NOT NULL) AND (status = ANY (ARRAY['active'::text, 'scheduled'::text]))) OR ((status = 'paused'::text) AND ((paused_until < now()) OR ((paused_until IS NULL) AND (pause_reason IS DISTINCT FROM 'manual'::text) AND (pause_reason IS DISTINCT FROM 'held_back'::text) AND (pause_reason IS DISTINCT FROM 'colleague_replied'::text)))));
 
 
 --
@@ -7522,6 +7539,13 @@ CREATE TRIGGER copy_tests_count_sent AFTER INSERT ON public.copy_tests FOR EACH 
 --
 
 CREATE TRIGGER enrollments_replan BEFORE UPDATE ON public.enrollments FOR EACH ROW EXECUTE FUNCTION public.replan_on_enrollment();
+
+
+--
+-- Name: enrollments enrollments_unstick; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER enrollments_unstick BEFORE UPDATE OF status ON public.enrollments FOR EACH ROW WHEN (((new.status = ANY (ARRAY['paused'::text, 'stopped'::text, 'completed'::text])) AND (old.status IS DISTINCT FROM new.status) AND (new.stuck_code IS NOT NULL))) EXECUTE FUNCTION public.unstick_on_rest();
 
 
 --
@@ -13331,6 +13355,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110001333'),
     ('20261110001901'),
     ('20261110002053'),
+    ('20261110002229'),
     ('20261110002325'),
     ('20261110002615'),
     ('20261110003000'),
