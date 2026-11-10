@@ -50,6 +50,17 @@ Decide before spending, and write the reason in one sentence (a note or the sess
 
    Translate the client's exclusions into the query (`exclude_locations`, `exclude_industries`,
    headcount bands) so you do not pay for rows the engine will refuse to qualify.
+
+   **Default filters for every new source**, unless the segment is about one of them: a project
+   aims at no more than $0.05 a verified enrolled lead (`bh spend` → `perLead`; a task opens above
+   the project's limit), and most of that is company rows bought and then disqualified. So:
+   - exclude what the project already holds (`exclude_domains`, generect.md) instead of paging a
+     cursor that hands back paid duplicates;
+   - exclude the recurring disqualifiers by industry and company type: banks and credit unions,
+     investment managers and VC, government and non-profits, games studios, staffing, resellers;
+   - check the employee floor on `headcount_exact` as well as the band: a company in the 11–50 band
+     that lists 1–10 people is under it, and is dropped before it is judged or paid for further;
+   - two people a company (`max_per_company`, 2 by default), at different personas.
 2. **Count (free)** with the same body. Adjust until the number is the market you meant (a count of
    2 million is a missing filter; 0 is a misspelled value). `bh source update <id> --estimate <n>`.
 3. **Page from the cursor.** `segment_sources.cursor` is the next `offset_by` (empty = 0). Start

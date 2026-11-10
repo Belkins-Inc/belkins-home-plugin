@@ -162,6 +162,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          them ("" for nobody)
        [--reply-cc a@x.com]              every answer in its email threads copies them in the open, besides the
                                          lead's reply-all ("" for nobody); steps of a plan copy nobody
+       [--lead-cost-alert <usd>|off]     a task opens while the last 30 days cost more than this per verified
+                                         enrolled lead (new projects: 0.05)
   brief [--project <slug>]              read this first, every session
   behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
                                          the topics, one topic's entries, or the entries with every word;
@@ -866,7 +868,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          is answered from here by itself (--again buys it anew)
   cache company <linkedin-url> | cache company --domain <d>    the same for a company
   cache people <company-url|linkedin-id> [--former]           the people bought so far who work there (not all of them)
-  spend [--from <date>] [--to <date>]    this month's spend by provider unless dates are given, and credits left
+  spend [--from <date>] [--to <date>]    this month's spend by provider unless dates are given, and credits left;
+                                         perLead: provider spend per lead enrolled with a valid address, by step,
+                                         against the project's limit
   spend add --provider <p> --operation subscription|data_purchase|infrastructure|llm|other --usd <n> [--note <t>]
   address check <contact-id> --address <a> [--provider bouncer|scrubby] [--reason bounce_replacement|catch_all|new_contact] [--again]
                                          up to three guesses per bounced contact; Scrubby answers later
@@ -1514,6 +1518,7 @@ async function main(argv: string[]): Promise<void> {
       'reply-bcc': { type: 'string' },
       'reply-cc': { type: 'string' },
       reviewer: { type: 'string' },
+      'lead-cost-alert': { type: 'string' },
       class: { type: 'string' },
       cc: { type: 'string' },
       bcc: { type: 'string' },
@@ -1722,6 +1727,12 @@ async function main(argv: string[]): Promise<void> {
             ...(o['domain-cap'] ? { dailyDomainCap: Number(o['domain-cap']) } : {}),
             ...(o['reply-bcc'] !== undefined ? { replyBcc: addresses(o['reply-bcc']) } : {}),
             ...(o['reply-cc'] !== undefined ? { replyCc: addresses(o['reply-cc']) } : {}),
+            ...(o['lead-cost-alert'] !== undefined
+              ? {
+                  leadCostAlertUsd:
+                    o['lead-cost-alert'] === 'off' ? null : Number(o['lead-cost-alert']),
+                }
+              : {}),
             ...(o['brief-file']
               ? { brief: await readFile(o['brief-file'], 'utf8') }
               : o.brief

@@ -2893,7 +2893,9 @@ CREATE TABLE public.projects (
     reply_cc text[] DEFAULT '{}'::text[] NOT NULL,
     reply_cc_set_by uuid,
     reply_cc_set_via public.actor_via,
+    lead_cost_alert_usd numeric(8,4) DEFAULT 0.05,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
+    CONSTRAINT projects_lead_cost_alert_usd_check CHECK ((lead_cost_alert_usd > (0)::numeric)),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
     CONSTRAINT projects_slack_client_channel_check CHECK ((((slack_client_channel_id IS NULL) = (slack_client_channel IS NULL)) AND ((slack_client_channel_id IS NULL) = (slack_client_workspace_id IS NULL)))),
@@ -3918,7 +3920,7 @@ CREATE TABLE public.tasks (
     handed_run_id uuid,
     CONSTRAINT tasks_check CHECK (((status = 'open'::text) = (closed_at IS NULL))),
     CONSTRAINT tasks_priority_check CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text]))),
-    CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text, 'stalled'::text])) AND (strategy_id IS NOT NULL)))),
+    CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text, 'stalled'::text])) AND (strategy_id IS NOT NULL)) OR ((signal = 'lead_cost'::text) AND (strategy_id IS NULL)))),
     CONSTRAINT tasks_status_check CHECK ((status = ANY (ARRAY['open'::text, 'done'::text, 'cancelled'::text])))
 );
 
@@ -7311,6 +7313,13 @@ CREATE UNIQUE INDEX ux_slack_client_invites__user ON public.slack_client_invites
 --
 
 CREATE UNIQUE INDEX ux_slack_workspaces__home ON public.slack_workspaces USING btree ((true)) WHERE home;
+
+
+--
+-- Name: ux_tasks__open_project_signal; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_tasks__open_project_signal ON public.tasks USING btree (project_id, signal) WHERE ((status = 'open'::text) AND (signal = 'lead_cost'::text));
 
 
 --
@@ -13385,6 +13394,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110003800'),
     ('20261110003827'),
     ('20261110003853'),
+    ('20261110004523'),
     ('20261110004602'),
     ('20261110005720'),
     ('20261110005800'),
