@@ -250,6 +250,11 @@ real limits:
 - **No sends on the client's holidays** — the engine skips no public holiday by itself;
   `{"blackoutDates": ["2026-11-26", "2026-12-25"]}` in `bh strategy update` keeps those dates free
   of sends in each lead's own zone (the list replaces the one there).
+- **A step missing from a running plan** — `bh plan add-step <strategy-id> --after <position> --file
+  step.json [--dry-run]` (a person only): later steps move one place on; leads enrolled later get it,
+  and each live lead that has sent nothing past that point gets it, needing copy (`bh copy queue`).
+  Leads already past it, or ended, keep their plans. A LinkedIn step reaches only leads with a
+  profile whose sender has an account.
 - **A step too many in a frozen plan** — `bh plan remove <strategy-id> <step-id>` takes the plan's
   last step out (a person only): leads enrolled later do not get it, its unsent messages are
   cancelled, and a lead whose next step it was ends there.

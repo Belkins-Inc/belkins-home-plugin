@@ -116,6 +116,8 @@ number to dial skips the call step and goes on with the emails.
 - A draft with leads enrolled and nothing sent: `bh plan set` again with the whole new file (a
   person only). Every lead's plan is copied again; written copy stays where a step keeps its
   channel, and `bh copy queue` lists what the new or changed steps need.
+- A step added to a running plan: `bh plan add-step <strategy-id> --after <position> --file step.json`
+  (a person only; `--dry-run` first). Each live lead that has sent nothing past that point gets it.
 - Templates frozen, a lead's plan wrong: there is no `bh` command to edit one lead's messages;
   open a task for a person (`bh task open`) naming the enrollment and the change.
 - A new shape of plan: create a new strategy and enroll into it (one contact, one live strategy).

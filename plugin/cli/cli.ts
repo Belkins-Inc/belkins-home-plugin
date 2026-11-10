@@ -249,6 +249,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          as "Re: <that thread's first subject>"; every email not yet sent follows
                                          delayDays (not the first step; a person only): send days after the step before;
                                          leads enrolled later get it and every lead's unsent message of the step moves
+  plan add-step <strategy-id> --after <position> --file <step.json> [--plan <plan-id>] [--dry-run]
+                                         put a step after <position>, running leads too: later steps move one place on,
+                                         each live lead that sent nothing past that point gets it (needing copy, bh copy
+                                         queue); leads past it or ended do not; --plan when the strategy has several (a person only)
   plan remove <strategy-id> <step-id>   take the plan's last step out, frozen templates too: its unsent messages are
                                          cancelled, a lead whose next step it was ends there (a person only)
   companies upsert --file <json|jsonl|->               [{"domain","name","employeeCount","country","facts"}]
@@ -1503,6 +1507,8 @@ async function main(argv: string[]): Promise<void> {
       mailbox: { type: 'string' },
       'message-id': { type: 'string' },
       'dry-run': { type: 'boolean' },
+      after: { type: 'string' },
+      plan: { type: 'string' },
       replace: { type: 'boolean' },
       q: { type: 'string' },
       waiting: { type: 'string' },
@@ -1996,6 +2002,15 @@ async function main(argv: string[]): Promise<void> {
           ),
         )
       }
+      if (sub === 'add-step')
+        return out(
+          await call(config, 'POST', `/strategies/${arg}/steps`, {
+            after: Number(need(o.after)),
+            step: await readInput(need(o.file)),
+            ...(o.plan ? { planId: o.plan } : {}),
+            dryRun: Boolean(o['dry-run']),
+          }),
+        )
       if (sub === 'remove') {
         if (!pos[3])
           throw new BhError('Which step?', { hint: 'bh strategy show <id> lists its step ids' }, 2)
