@@ -3603,8 +3603,10 @@ CREATE TABLE public.strategies (
     active_since timestamp with time zone,
     first_emails_first boolean DEFAULT false NOT NULL,
     autopaused_at timestamp with time zone,
+    greeting text,
     blackout_dates date[] DEFAULT '{}'::date[] NOT NULL,
     CONSTRAINT strategies_catch_all_policy_check CHECK ((catch_all_policy = ANY (ARRAY['hold'::text, 'linkedin_only'::text, 'send'::text]))),
+    CONSTRAINT strategies_greeting_check CHECK (((greeting IS NULL) OR ((length(greeting) <= 80) AND (greeting ~ '\{(first|full|name)\}'::text) AND (greeting !~ '\n'::text)))),
     CONSTRAINT strategies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'paused'::text, 'archived'::text])))
 );
 
@@ -13330,6 +13332,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110002325'),
     ('20261110002615'),
     ('20261110003000'),
+    ('20261110003718'),
     ('20261110003800'),
     ('20261110003827'),
     ('20261110005800');

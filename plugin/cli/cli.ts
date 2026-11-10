@@ -185,6 +185,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          and goes on no ladder and no enroll again; its leads keep it. One on the
                                          ladder of a strategy that is not archived is taken off first
   strategies | strategy create --file <json> | strategy update <id> --file <json> | strategy show <id|first 8+ characters>
+                                         "greeting": the line its emails open with, one name slot: "Hey {first},",
+                                         "Guten Tag {full},", "Добрий день, {name}!" ({name}: as the language writes it);
+                                         null: the house's "Hi {first},"
   strategy launch <id> | strategy pause <id> [--reason <t>] | strategy archive <id>   (a person only)
   strategy exclude <id> --company <id|domain> --reason <t>   keep a company out of this strategy only (a person only)
   strategy exclude <id> --file <json|jsonl|->          [{"domain"|"companyId","reason","excluded":false to let back in}]

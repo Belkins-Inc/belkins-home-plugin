@@ -31,7 +31,8 @@ wrote is refused with who wrote it and when: read theirs (`bh preview`), and rep
    reads every page, for a batch of more than 200 messages). Each item is one message still
    `needs_copy`, ordered by lead then step: `messageId`, `enrollmentId`, `kind` (`first`,
    `re_engagement`, `referral`), `followsEnrollmentId`, `position`, `channel`, `condition`,
-   `guidance`, `hypothesis`, `newThread`, `strategyBrief`, the contact (`firstName`, `lastName`,
+   `guidance`, `hypothesis`, `newThread`, `strategyBrief`, `greeting` (the strategy's own, or null for
+   "Hi {first},"), the contact (`firstName`, `lastName`,
    `title`, `email`, `timezone`, `contactFacts`, `referredBy` — the referrer's name or null), the
    company (`company`, `domain`, `companyFacts`, `signal` — why it is in the segment, null when
    there is none), `persona`, `personaAngle`, `segment`, `sender`, `signature`, `earlierSteps`
@@ -125,14 +126,22 @@ These are the floor. The house rules below are stricter; `bh copy write` does no
   plain words, one idea, nothing to work out.
 - **Every email ends on one short question**: under ten words, with one obvious answer (a yes, a
   date or a name). Never either/or, never two questions. **The first email offers value for a yes**:
-  something concrete and free the reader gets by answering (a check of last month's invoices, a
-  backup vendor list for their sites), and the question asks for it. Model: "Want us to check last
-  month's invoices?". A question that only asks about them gives nothing for the reply and is
-  refused in the first email: "Who checks the fuel invoices across your sites today?", "Does anyone
-  compare fuel prices across your terminals?". Refused: "Is fuel run centrally, or does each site handle its own?". The
-  last email makes one offer and asks "Want me to set it up?"; it may close with one sentence after
-  the question ("If fuel is not a priority right now, I will stop here.").
-- **Email greets by first name on its own line** ("Hi Ada,"), the real name written in. No first
+  something concrete and free the reader gets by answering (a review of last month's no-shows, a
+  list of carriers for their lanes: shapes, never another client's offer), and the question asks
+  for it, e.g. "Want the no-show review for three clinics?". A question that only asks about them
+  gives nothing for the reply and is refused in the first email: "Who handles scheduling across
+  your clinics today?", "Does anyone compare carrier rates across your lanes?". Refused: "Is hiring
+  run centrally, or does each site handle its own?". The last email makes one offer and asks "Want
+  me to set it up?"; it may close with one sentence after the question ("If this is not a priority
+  right now, I will stop here.").
+- **Each client's copy is its own.** Step guidance is written for this client only and never
+  quotes another client's approved copy or uses it as a model; neither does the copy. `bh copy
+  check` flags copy that names another client of the organisation, and step guidance that does.
+- **Email greets by first name on its own line** ("Hi Ada,"), the real name written in, or with
+  the strategy's own greeting when it sets one (`greeting` on the strategy and on each copy queue
+  item: "Hey {first},", "Guten Tag {full},", "Добрий день, {name}!" where `{name}` is the name as
+  the language writes it). A person sets it with `bh strategy update <id> --file` and
+  `{"greeting": "Hey {first},"}` (`null` goes back to "Hi {first},"). No first
   name → no greeting at all ("Hi there" is worse). The first sentence does not start with "I" or
   "We", except the reason-first opener "I'm writing to you because ...", which is about them.
 - **Short.** A first email at most 120 words, a follow-up 100, the last 70 (after the greeting); a
@@ -146,7 +155,7 @@ These are the floor. The house rules below are stricter; `bh copy write` does no
   with `bh sender update <sender-id> --signature "<text>"` (ids: `bh senders`); a scheduled agent
   opens a task for one.
 - **Subject**: what a colleague would type, ≤ 6 words, sentence case or lower, no "!", emoji, dash
-  or "quick question". Proper names keep their capitals ("diesel across Acme quarries"). Write
+  or "quick question". Proper names keep their capitals ("clinics across Acme Dental"). Write
   it last, from the email.
 - **No dash as punctuation** (—, –, or a spaced hyphen); hyphens inside words are fine. Straight
   quotes and "..." rather than typographic ones.

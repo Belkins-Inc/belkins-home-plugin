@@ -124,10 +124,12 @@ anything was sent, it is refused, so settle the steps before launch. Accepted va
   only): its unsent invitations drop their notes at once; `false` puts the ones left bare back in
   the copy queue.
 - `guidance`: what this step says and how directly it asks — the copywriter's instruction. It may
-  fix the exact question per persona ("Question, word for word: Want us to check last month's invoices?"; the first email offers
+  fix the exact question per persona ("Question, word for word: Want the no-show review for three clinics?"; the first email offers
   something free for a yes and the question asks for it); the writer then uses it word for word. Edits the person makes to the
   copywriting sample go back into `guidance`, so the bulk copy inherits them.
   No em or en dash anywhere in it (refused): the writer copies its wording into the copy.
+  It is written for this client only: never another client's approved copy as a model or quote
+  (`bh copy check` warns when it names another client of the organisation).
 - `hypothesis`: what this step is expected to prove (read back when judging results).
 - `track` (`linkedin_invite` and `linkedin_message` only, default `main`): `"linkedin"` runs the
   step beside the emails instead of in line with them. A step on the LinkedIn track is timed from
