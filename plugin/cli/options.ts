@@ -134,6 +134,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   },
   companies: {
     '*': [],
+    domain: [],
     in: ['limit', 'offset', 'q', 'status', 'waiting'],
     judge: ['file'],
     upsert: ['file'],
@@ -163,8 +164,18 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'username',
     ],
   },
+  contact: {
+    '*': ['label', 'q'],
+    depart: ['reason', 'undo'],
+    duplicates: [],
+    merge: ['dry-run'],
+    upsert: ['file'],
+  },
   contacts: {
     '*': ['label', 'q'],
+    depart: ['reason', 'undo'],
+    duplicates: [],
+    merge: ['dry-run'],
     upsert: ['file'],
   },
   copy: {

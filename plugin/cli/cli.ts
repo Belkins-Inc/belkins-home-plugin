@@ -262,6 +262,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   companies in <segment-id> [--status new|qualified|disqualified] [--waiting fact|client] [--q <text>] [--limit <n>] [--offset <n>]
                                          answers {companies, total, counts, limit, offset}
   companies verdicts <segment-id> --company <id>       every verdict ever passed on that company
+  companies domain <company-id|wrong-domain> <right-domain>   correct a company's domain, keeping the company with its
+                                         contacts, verdicts and leads; refused when another company has it; its mail
+                                         provider is read again from the new domain
   sources | source add <segment-id> --kind linkedin|trustpilot|web|directory|import --name <n> [--provider <p>]
        [--query <json>] [--body <instructions>] [--estimate <n>]
   source update <id> [--name <n>] [--status active|paused|exhausted] [--cursor <c>] [--estimate <n>] [--body <instructions>]
@@ -310,8 +313,16 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts",
                                           "country","timezone"}]   country: ISO 3166 two letters (PL); timezone: IANA
                                          (Europe/Warsaw) — the lead's send window and meeting times go by them
+                                         a contact already at a company stays there and the row is warned; add
+                                         "moveCompany": true to move them (the answer says companyChanged)
                                          a phone number is not a fact: facts.phone is refused, numbers go in with bh phones add
-  contacts [--q <text>] [--label <name>]
+  contacts [--q <text>] [--label <name>]   --q: every word in the name, the address or the company's domain
+  contacts duplicates                    contacts that hold one LinkedIn profile, the same person saved twice, with live leads
+  contacts merge <keep-id> <drop-id> [--dry-run]   one person: leads, conversations, meetings, calls, numbers, labels,
+                                         standings and history move to the kept contact, which fills what it lacks;
+                                         the other is deleted; refused when both have a live lead (a person only)
+  contacts depart <id> --reason <how you know> [--undo]   they left the company: never enrolled again; a live
+                                         lead is named, not stopped
   labels                                 the project's own labels, with how many companies and contacts carry each
   label add <name> [--company <id|domain>,…] [--contact <id|email|linkedin-url>,…] [--file <json|jsonl|->]
                                          put it on (made if the project has none of that name, in any case);
@@ -2017,6 +2028,20 @@ async function main(argv: string[]): Promise<void> {
           )
         return out(await call(config, 'GET', `/segments/${arg}/companies/${o.company}/verdicts`))
       }
+      if (sub === 'domain') {
+        if (!arg || !pos[3])
+          throw new BhError(
+            'Which company, and its right domain?',
+            { hint: 'bh companies domain <company-id|wrong-domain> <right-domain>' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/projects/${p()}/companies/domain`, {
+            company: arg,
+            domain: pos[3],
+          }),
+        )
+      }
       break
     case 'sources':
       return out(await call(config, 'GET', `/projects/${p()}/sources`))
@@ -2641,8 +2666,39 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       break
+    case 'contact':
     case 'contacts':
       if (sub === 'upsert') return batch(`/projects/${p()}/contacts`)
+      if (sub === 'duplicates')
+        return out(await call(config, 'GET', `/projects/${p()}/contacts/duplicates`))
+      if (sub === 'merge') {
+        if (!arg || !pos[3])
+          throw new BhError(
+            'Which contact stays, and which goes?',
+            {
+              hint: 'bh contacts merge <keep-id> <drop-id> [--dry-run]; bh contacts duplicates lists pairs',
+            },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/contacts/${arg}/merge`, {
+            drop: pos[3],
+            dryRun: Boolean(o['dry-run']),
+          }),
+        )
+      }
+      if (sub === 'depart') {
+        if (!arg)
+          throw new BhError('Which contact?', { hint: 'bh contacts depart <id> --reason <t>' }, 2)
+        return out(
+          await call(config, 'POST', `/contacts/${arg}/depart`, {
+            ...(o.reason ? { reason: o.reason } : {}),
+            ...(o.undo ? { undo: true } : {}),
+          }),
+        )
+      }
+      if (cmd === 'contact')
+        throw new BhError(`Unknown command: ${pos.join(' ')}`, { hint: 'bh --help' }, 2)
       return out(
         await call(
           config,

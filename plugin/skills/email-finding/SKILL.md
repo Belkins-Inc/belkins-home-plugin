@@ -118,7 +118,12 @@ or another employer's domain passes a check of the company's own domain.
    profile, and its answer carries a warning: two people on one profile is a provider's error —
    find out which one the profile is before enrolling either.
    The contact keeps its company even when the address is on another domain (a group domain like
-   `global.ntt` for a contact at `services.global.ntt`); only `companyDomain` moves it.
+   `global.ntt` for a contact at `services.global.ntt`). A `companyDomain` other than the
+   contact's company does not move them either: the row is warned. Add `"moveCompany": true` only
+   when you know they changed companies; the answer then says `companyChanged`. Someone who left
+   for another employer: `bh contacts depart <id> --reason "<what shows it>"`, and they are never
+   enrolled again. One person held by two contacts: `bh contacts duplicates`, then a person
+   decides and runs `bh contacts merge <keep-id> <drop-id>`.
 9. **Not found** by either →
    `"facts":{"email_search":{"value":"not_found","source":"apollo,bettercontact","note":"2026-10-07"}}`.
    There is no third try: FullEnrich is off (the engine refuses a submission with
