@@ -122,7 +122,8 @@ Check it before a large order and mention it in `bh session end`.
 | Settle a catch-all / unknown address, confirm a guess | **off for now** — such an address goes by LinkedIn | [scrubby](references/scrubby.md) |
 | A web page as text, a site's page list | Firecrawl scrape / map, $0.0009 each | [firecrawl](references/firecrawl.md) |
 | Companies with bad (or good) Trustpilot reviews | Bright Data Trustpilot dataset, $2.50 / 1,000 rows | [brightdata](references/brightdata.md) |
-| Companies hiring for given roles now (a hiring signal), with the job posts | TheirStack company search with `job_filters`, $0.06/company | [theirstack](references/theirstack.md) |
+| Companies hiring for given roles now (a hiring signal), with the job posts | TheirStack company search with `job_filters`, $0.06/company; or Apollo company search with job titles, one credit ($0.0065) a page | [theirstack](references/theirstack.md), [apollo](references/apollo.md) |
+| People with given titles in a segment defined by industry, country and size | Apollo people search (free), then `bulk_match` by id, $0.0065 a match | [apollo](references/apollo.md) |
 
 Rules that cut across providers:
 
@@ -151,7 +152,8 @@ Rules that cut across providers:
 
 - Paying again with `--again` for an answer `bh call show <call-id>` still has.
 - Re-running page 1 of a query in a new session instead of reading `searches.cursor`.
-- Sending Apollo search filters as a JSON body (ignored — the search becomes "everybody").
+- Sending Apollo search filters as a JSON body — it has been ignored before (the search became
+  "everybody"); send them in the query string (apollo.md).
 - Ordering a Bright Data snapshot without `records_limit`.
 - Taking `email_not_unlocked@…`, a Generect address, or an Apollo address Bouncer has not called
   deliverable as a contact's address.

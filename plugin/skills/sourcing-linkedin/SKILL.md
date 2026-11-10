@@ -28,7 +28,10 @@ Decide before spending, and write the reason in one sentence (a note or the sess
 1. **Qualified companies nobody has looked inside yet** (`companies_left` in
    `strategy_segment_usage`) — no market is bought, only people.
 2. **People off the segment** (lead walk, no company named) — only when the segment is defined by
-   industry and country alone; the employer comes on the row but must still pass the segment.
+   industry, country and size alone; the employer comes on the row but must still pass the segment.
+   Cheapest measured: Apollo's free people search, then `bulk_match` by id (apollo.md, "Sourcing a
+   firmographic segment") — about 2–3.5¢ per valid address against about 32¢ company first; its size
+   filter leaks, so re-check the size on each match. Generect's lead walk is the other way.
 3. **More companies** from the source, from its cursor.
 4. Nothing left: the source is `exhausted`. Do not widen the segment yourself — propose a looser
    definition to a person (`bh question add` if the client decides, else `bh task open`), and say what
