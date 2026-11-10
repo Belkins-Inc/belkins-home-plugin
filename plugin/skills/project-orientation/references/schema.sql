@@ -1132,7 +1132,30 @@ CREATE TABLE public.crm_connections (
     disconnected_at timestamp with time zone,
     disconnected_by uuid,
     disconnected_via public.actor_via,
+    activity_synced_at timestamp with time zone,
+    activity_sync jsonb,
+    activity_auto boolean DEFAULT false NOT NULL,
+    activity_auto_at timestamp with time zone,
+    activity_auto_by uuid,
+    activity_auto_via public.actor_via,
+    activity_running_until timestamp with time zone,
     CONSTRAINT crm_connections_provider_check CHECK ((provider = ANY (ARRAY['pipedrive'::text, 'hubspot'::text])))
+);
+
+
+--
+-- Name: crm_pushes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.crm_pushes (
+    project_id uuid NOT NULL,
+    provider text NOT NULL,
+    account text NOT NULL,
+    ref text NOT NULL,
+    remote_id text NOT NULL,
+    state text NOT NULL,
+    pushed_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone
 );
 
 
@@ -4446,6 +4469,14 @@ ALTER TABLE ONLY public.copy_tests
 
 ALTER TABLE ONLY public.crm_connections
     ADD CONSTRAINT crm_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: crm_pushes crm_pushes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crm_pushes
+    ADD CONSTRAINT crm_pushes_pkey PRIMARY KEY (project_id, provider, account, ref);
 
 
 --
@@ -8169,6 +8200,14 @@ ALTER TABLE ONLY public.copy_tests
 
 
 --
+-- Name: crm_connections crm_connections_activity_auto_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crm_connections
+    ADD CONSTRAINT crm_connections_activity_auto_by_fkey FOREIGN KEY (activity_auto_by) REFERENCES public.users(id);
+
+
+--
 -- Name: crm_connections crm_connections_connected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8190,6 +8229,14 @@ ALTER TABLE ONLY public.crm_connections
 
 ALTER TABLE ONLY public.crm_connections
     ADD CONSTRAINT crm_connections_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: crm_pushes crm_pushes_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crm_pushes
+    ADD CONSTRAINT crm_pushes_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 
 
 --
@@ -11231,6 +11278,12 @@ ALTER TABLE public.copy_tests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crm_connections ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: crm_pushes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.crm_pushes ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: daily_sends; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -11862,6 +11915,13 @@ CREATE POLICY organisation_fence ON public.copy_tests USING ((EXISTS ( SELECT 1
 --
 
 CREATE POLICY organisation_fence ON public.crm_connections USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: crm_pushes organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.crm_pushes USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
 
 
 --
@@ -13174,4 +13234,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110000946'),
     ('20261110001333'),
     ('20261110002615'),
+    ('20261110003000'),
     ('20261110003800');

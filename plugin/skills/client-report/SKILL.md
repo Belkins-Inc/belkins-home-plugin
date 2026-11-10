@@ -68,6 +68,20 @@ says so in this session, send it as system mail:
 - System mail is for people who expect it: the client, our own team, an invitation. Never a lead or
   a prospect — that is a strategy's work, from its mailboxes.
 
+### The per-lead history in the client's CRM
+
+When the client wants each lead's touches in their own CRM, never hand-build it from reads:
+
+- `bh crm export --project <slug> [--since <date>] --out <file.csv>` — one row per step sent,
+  invitation accepted, reply (with its class), answer, meeting and call, with the person and their
+  stage; every row tagged `belkins-home:<slug>` with a stable `activity_id`, so the client's import
+  keyed on it adds only what is new. `--per-person` gives one row per lead; `--json` by person.
+- HubSpot connected (`bh crm`): `bh crm sync hubspot --dry-run` counts what would be written; the
+  person runs `bh crm sync hubspot` (contacts found by address or added, each touch once, a
+  changed meeting updated) or switches the hourly sync on with `bh crm sync hubspot --auto on`.
+  Both write into the client's system: a person's call, never the agent's.
+- What exactly goes where: `bh behaviour crm`.
+
 ## Record, so the next report starts from this one
 
 - **The report**: there is no `bh` command that writes `client_reports` yet. Record it as

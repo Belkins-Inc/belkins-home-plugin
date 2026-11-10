@@ -303,7 +303,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   dnc check <address|domain|number|profile URL>… | dnc check --file <csv>
                                          which of them the list blocks (a domain blocks its subdomains) —
                                          before paying a provider to enrich or find anyone there
-  crm                                    the client's CRMs (pipedrive) and the project's connection to each
+  crm                                    the client's CRMs (pipedrive, hubspot) and the project's connection to each
   crm connect <crm> --token-stdin        connect it with the client's API key, read from stdin (a person; the
                                          key is checked with the CRM, sealed on the server, never shown again)
   crm disconnect <crm>                   forget the key (a person)
@@ -314,6 +314,17 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          everyone in the CRM onto dnc, reason crm: addresses, their company
                                          domains (not free mail, not the client's own) and numbers;
                                          --dry-run counts and shows a sample, writing nothing
+  crm export [--since <date>] [--per-person] [--json] [--out <file>]
+                                         the project's per-person activity, for any CRM: a CSV row per step sent,
+                                         LinkedIn invitation accepted, reply (its class), answer, meeting and call,
+                                         with the person and where they stand (stage); every row tagged
+                                         source belkins-home:<project>, activity_id stable; --per-person one row a
+                                         person; --json by person; --since keeps what happened from then on
+  crm sync <crm> [--since <date>] [--limit <n>] [--dry-run]
+                                         the same written into the client's CRM (hubspot; a person): each person
+                                         found by address or added, each thing written once, a meeting or email
+                                         whose state changed updated; runs pass after pass until done
+  crm sync <crm> --auto on|off           the same every hour by itself, until switched off (a person)
   enroll <strategy-id> --file <json|jsonl|-> [--dry-run]    [{"contactId","segmentId","personaId"}]
                                          a lead goes first to a sender with a mailbox for its mail provider;
                                          unserved counts leads no sender's mailboxes serve (put on any)
@@ -1436,6 +1447,10 @@ async function main(argv: string[]): Promise<void> {
       'no-emails': { type: 'boolean' },
       'no-domains': { type: 'boolean' },
       'no-phones': { type: 'boolean' },
+      since: { type: 'string' },
+      json: { type: 'boolean' },
+      'per-person': { type: 'boolean' },
+      auto: { type: 'string' },
     },
   })
   const config = await loadConfig()
@@ -2712,6 +2727,65 @@ async function main(argv: string[]): Promise<void> {
       const crm = arg
       const base = () => `/projects/${p()}/crm/${encodeURIComponent(need(crm))}`
       if (!sub) return out(await call(config, 'GET', `/projects/${p()}/crm`))
+      if (sub === 'export') {
+        const query = new URLSearchParams()
+        if (o.since) query.set('since', o.since)
+        if (o.json) {
+          const answer = await call(config, 'GET', `/projects/${p()}/activity?${query}`)
+          if (!o.out) return out(answer)
+          await writeFile(o.out, `${JSON.stringify(answer, null, 2)}\n`)
+          return out({ written: o.out })
+        }
+        query.set('format', 'csv')
+        if (o['per-person']) query.set('rows', 'people')
+        const csv = await callText(config, `/projects/${p()}/activity?${query}`)
+        if (!o.out) return void process.stdout.write(csv)
+        await writeFile(o.out, csv)
+        return out({ written: o.out })
+      }
+      if (sub === 'sync') {
+        if (o.auto !== undefined) {
+          if (o.auto !== 'on' && o.auto !== 'off')
+            throw new BhError('On or off?', { hint: 'bh crm sync hubspot --auto on' }, 2)
+          return out(await call(config, 'PUT', `${base()}/activity`, { auto: o.auto === 'on' }))
+        }
+        const body = {
+          ...(o.since ? { since: o.since } : {}),
+          ...(o.limit ? { limit: Number(o.limit) } : {}),
+        }
+        if (o['dry-run'])
+          return out(await call(config, 'POST', `${base()}/activity`, { ...body, dryRun: true }))
+        // Pass after pass until nothing is left: each writes up to its budget.
+        type Pass = {
+          contacts: { found: number; created: number }
+          created: number
+          updated: number
+          failed: number
+          errors: string[]
+          more: boolean
+        }
+        const total = {
+          contacts: { found: 0, created: 0 },
+          created: 0,
+          updated: 0,
+          failed: 0,
+          errors: [] as string[],
+          passes: 0,
+        }
+        for (;;) {
+          const r = (await call(config, 'POST', `${base()}/activity`, body)) as Pass
+          total.passes++
+          total.contacts.found += r.contacts.found
+          total.contacts.created += r.contacts.created
+          total.created += r.created
+          total.updated += r.updated
+          total.failed = r.failed
+          total.errors = r.errors
+          if (!r.more) break
+          process.stderr.write(`${total.created + total.updated} written so far…\n`)
+        }
+        return out(total)
+      }
       if (sub === 'connect') {
         if (!o['token-stdin'])
           throw new BhError(
