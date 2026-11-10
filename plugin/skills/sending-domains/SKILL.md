@@ -97,6 +97,9 @@ bh domain approve <name> --closeout --max-cents <total> --redirect <url>
   engine points it at our name servers, removes the last owner's mail records and sets it up like
   a new domain. Ten days without it arriving shows as its `failure` in `bh domains`. Ask the
   person to raise it with Porkbun.
+- Its age is the registry's: `bh domains` shows `firstRegisteredAt` (the first registration,
+  years back) beside `registeredAt` (the day it reached us), and the young-domain caps count from
+  `firstRegisteredAt`, so a closeout is not paced as a new domain.
 
 ## 4. Order the mailboxes (a person)
 
@@ -144,7 +147,9 @@ When something stops:
 
 - **`failed`, with a task naming the cause.** A tenant refusing a domain another Google account
   still holds, a name taken between quote and purchase, a refusal by the registrar. Fix the cause
-  (the task says how), then `bh domain retry <name>` — nothing is bought again. A failed purchase is
+  (the task says how; for a domain another Google account holds, Google's recovery tool gives a
+  TXT record, added with `bh domain dns <name> add --type TXT --host @ --content "<value>"`), then
+  `bh domain retry <name>` — nothing is bought again. A failed purchase is
   approved again with `bh domain approve`, which places a new order.
 - **Google mailboxes waiting for a licence.** Google refused the tenant a new user ("Domain user
   limit reached", "Insufficient licenses"): `bh tenants` shows `fullAt`, and Google's user count

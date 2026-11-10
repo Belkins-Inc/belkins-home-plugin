@@ -549,7 +549,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          the cause is fixed; nothing is bought again (a person only)
   domain redirect <name> <url>|none      where its website goes: a 301 from the apex and every subdomain to the
                                          client's own site, or none (a person only)
-  domain dns <name>                      its DNS records and redirects at the registrar
+  domain dns <name>                      its DNS records and redirects at the registrar (also on a bought domain
+                                         that failed on its way into a tenant: add the TXT Google asks for)
   domain dns <name> add --type A|AAAA|CNAME|ALIAS|TXT|CAA --host <@|sub> --content <value> [--ttl <s>]
   domain dns <name> delete <record id>   (a person only; MX, SPF, DMARC and DKIM are the engine's and refused)
   domain dmarc <name> --policy none|quarantine|reject [--dry-run]
