@@ -218,6 +218,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
                                          a linkedin_invite step goes without a note unless it says "withoutNote": false;
+                                         "track": "linkedin" (an invite or LinkedIn message) runs it beside the emails:
+                                         timed on its own track, it never holds an email;
                                          on a draft that has sent nothing, its enrolled leads' plans are copied again,
                                          written copy kept where a step keeps its channel (a person only)
   plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread"}: one step's, frozen templates too; step ids in strategy show

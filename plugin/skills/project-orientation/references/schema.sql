@@ -1,7 +1,7 @@
 \restrict dbmate
 
--- Dumped from database version 18.4
--- Dumped by pg_dump version 18.6 (Homebrew)
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1403,6 +1403,7 @@ CREATE TABLE public.messages (
     bounce_class text,
     skip_code text,
     accept_checked_at timestamp with time zone,
+    track text DEFAULT 'main'::text NOT NULL,
     CONSTRAINT messages_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
     CONSTRAINT messages_bounce_class_check CHECK ((bounce_class = ANY (ARRAY['no_such_user'::text, 'mailbox_full'::text, 'temporary'::text, 'blocked'::text, 'other'::text]))),
     CONSTRAINT messages_bounce_kind_check CHECK ((bounce_kind = ANY (ARRAY['hard'::text, 'soft'::text]))),
@@ -1414,7 +1415,8 @@ CREATE TABLE public.messages (
     CONSTRAINT messages_position_check CHECK (("position" >= 1)),
     CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'wrong_person'::text, 'other'::text]))),
     CONSTRAINT messages_skip_code_with_reason CHECK (((skip_code IS NULL) = (skip_reason IS NULL))),
-    CONSTRAINT messages_status_check CHECK ((status = ANY (ARRAY['needs_copy'::text, 'ready'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text, 'cancelled'::text])))
+    CONSTRAINT messages_status_check CHECK ((status = ANY (ARRAY['needs_copy'::text, 'ready'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text, 'cancelled'::text]))),
+    CONSTRAINT messages_track_check CHECK (((track = ANY (ARRAY['main'::text, 'linkedin'::text])) AND ((track = 'main'::text) OR (channel = ANY (ARRAY['linkedin_invite'::text, 'linkedin_message'::text])))))
 )
 WITH (fillfactor='90', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
@@ -3772,11 +3774,13 @@ CREATE TABLE public.strategy_steps (
     guidance text,
     hypothesis text,
     without_note boolean DEFAULT false NOT NULL,
+    track text DEFAULT 'main'::text NOT NULL,
     CONSTRAINT strategy_steps_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
     CONSTRAINT strategy_steps_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text]))),
     CONSTRAINT strategy_steps_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT strategy_steps_delay_days_check CHECK ((delay_days >= 0)),
     CONSTRAINT strategy_steps_position_check CHECK (("position" >= 1)),
+    CONSTRAINT strategy_steps_track_check CHECK (((track = ANY (ARRAY['main'::text, 'linkedin'::text])) AND ((track = 'main'::text) OR (channel = ANY (ARRAY['linkedin_invite'::text, 'linkedin_message'::text]))))),
     CONSTRAINT strategy_steps_without_note_check CHECK (((NOT without_note) OR (channel = 'linkedin_invite'::text)))
 );
 
@@ -13255,6 +13259,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109233647'),
     ('20261110000553'),
     ('20261110000637'),
+    ('20261110000655'),
     ('20261110000741'),
     ('20261110000946'),
     ('20261110001333'),

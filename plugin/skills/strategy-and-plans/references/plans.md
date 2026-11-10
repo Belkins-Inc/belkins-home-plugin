@@ -43,16 +43,20 @@ written as they should be sent.
   "appliesWhen": "email_and_linkedin",
   "steps": [
     { "channel": "email", "guidance": "As step 1 of email_only." },
-    { "channel": "linkedin_invite", "delayDays": 1 },
+    { "channel": "linkedin_invite", "delayDays": 1, "track": "linkedin" },
     { "channel": "email", "delayDays": 3, "guidance": "Proof step in the email thread. Must not mention LinkedIn." },
-    { "channel": "linkedin_message", "anchor": "invite_accepted", "condition": "invite_accepted", "delayDays": 1, "maxWaitDays": 7, "guidance": "Thanks for connecting. One sentence of value, one soft question. Stands on its own; does not rely on the emails having arrived." },
+    { "channel": "linkedin_message", "anchor": "invite_accepted", "condition": "invite_accepted", "delayDays": 1, "maxWaitDays": 45, "track": "linkedin", "guidance": "Thanks for connecting. One sentence of value, one soft question. Stands on its own; does not rely on the emails having arrived." },
     { "channel": "email", "delayDays": 4, "guidance": "Last touch. Direct ask for a call or a polite close. References only the earlier emails." }
   ]
 }
 ```
 
-A lead whose invite is never accepted skips the LinkedIn message after `maxWaitDays` and continues
-with the next step. A fallback step for that case carries `"condition": "invite_not_accepted"`.
+The LinkedIn steps run on their own track: the invite goes a send day after the lead's start, the
+emails go on their own delays (step 3 three send days after step 1, step 5 four after step 3)
+whether or not the invite is accepted, and the message goes a send day after the acceptance, even
+one that comes after the last email. A lead whose invite is never accepted skips the message
+`maxWaitDays` after the invite went. Without `"track": "linkedin"` the steps run in one line: the
+message holds email 5 until the acceptance or its `maxWaitDays`, so keep that wait at 7–10 there. A fallback step for that case carries `"condition": "invite_not_accepted"`.
 A lead already connected to the sending account gets no invite: the step is skipped as
 `already_connected` and counts as accepted that moment, so `invite_accepted` messages go on their
 delays from then and an `invite_not_accepted` fallback is skipped (`bh behaviour linkedin`).

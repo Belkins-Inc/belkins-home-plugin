@@ -129,6 +129,11 @@ anything was sent, it is refused, so settle the steps before launch. Accepted va
   copywriting sample go back into `guidance`, so the bulk copy inherits them.
   No em or en dash anywhere in it (refused): the writer copies its wording into the copy.
 - `hypothesis`: what this step is expected to prove (read back when judging results).
+- `track` (`linkedin_invite` and `linkedin_message` only, default `main`): `"linkedin"` runs the
+  step beside the emails instead of in line with them. A step on the LinkedIn track is timed from
+  the step before it on that track (the first from the lead's start) and never holds an email; the
+  emails are timed from the email before them. Use it for every LinkedIn step of an
+  `email_and_linkedin` plan (see below).
 
 Steps get positions in array order. Examples per template: [references/plans.md](references/plans.md).
 
@@ -149,8 +154,14 @@ step's `guidance`.
 **Conditional steps.** Plans are conditions on steps, not a branching graph. A LinkedIn message is
 `anchor: invite_accepted, condition: invite_accepted`; its copy is written up front and simply
 unused if the invite is never accepted. A fallback (e.g. a short email) carries
-`condition: invite_not_accepted`. A waiting step holds the steps after it for up to `maxWaitDays`,
-so keep it at 7–10. Every step must read on its own and reference only steps sure to have gone out.
+`condition: invite_not_accepted`. In line with the emails, a waiting step holds the steps after it
+for up to `maxWaitDays`, so a short wait skips the message for anyone who accepts later. Put the
+invite and the messages on the LinkedIn track (`"track": "linkedin"`) instead: the emails keep
+their own delays, a message waits for the acceptance up to its `maxWaitDays` (30 to 45; the engine
+stops watching an invitation after 45 days) and goes however late the lead accepts, the lead staying
+open after its last email for it, and the email goes first when both are due. Every step must read
+on its own and reference only steps sure to have gone out: a LinkedIn message on the track cannot
+count on any particular email having gone before it.
 
 ### 5. Capacity: can the senders carry it
 
