@@ -656,7 +656,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          (an organisation admin) a managed account: an IP of its own in the sender's
                                          company's country, for good; --sign-up: still to be made on LinkedIn, with a
                                          password the engine makes and, for a company's person, their workplace mailbox
-  linkedin show|history <id>             one account; what was done to it
+  linkedin show|history <id>             one account; what was done to it (the id bh linkedin or bh linkedin
+                                         accounts prints, for a project's sender's account too)
   linkedin login <id> [--username <address>] [--totp]   stores its LinkedIn login, sealed (password and key hidden)
   linkedin sign-in <id> [--browser]      signs it in to Unipile on its own IP now (the engine also does, every 6 h);
                                          --browser: with the session its remote browser holds
