@@ -1,7 +1,7 @@
 \restrict dbmate
 
 -- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2896,6 +2896,9 @@ CREATE TABLE public.projects (
     reply_cc_set_by uuid,
     reply_cc_set_via public.actor_via,
     lead_cost_alert_usd numeric(8,4) DEFAULT 0.05,
+    archived_at timestamp with time zone,
+    archived_by uuid,
+    archived_via public.actor_via,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_lead_cost_alert_usd_check CHECK ((lead_cost_alert_usd > (0)::numeric)),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
@@ -9822,6 +9825,14 @@ ALTER TABLE ONLY public.projects
 
 
 --
+-- Name: projects projects_archived_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.projects
+    ADD CONSTRAINT projects_archived_by_fkey FOREIGN KEY (archived_by) REFERENCES public.users(id);
+
+
+--
 -- Name: projects projects_egress_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13420,5 +13431,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110010602'),
     ('20261110010757'),
     ('20261110011559'),
+    ('20261110012738'),
     ('20261110020000'),
     ('20261110030000');

@@ -29,7 +29,9 @@ import {
   withImages,
 } from './input.ts'
 import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
+import { OPTIONS } from './options.ts'
 import { setup } from './setup.ts'
+import { hasProjectToken, withProjectId } from './sql.ts'
 
 /** Entries per page `bh dnc list` reads; the engine answers up to 5,000. */
 const DNC_PAGE = 2000
@@ -106,14 +108,17 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          Subagents share their session's pick: once it picked two projects,
                                          every command must name its own (--project or BH_PROJECT)
   whoami | health
-  projects [--org <slug>] | project create <slug> --name <name> [--timezone <tz>] [--org <slug>] [--owner <user-id>]
+  projects [--org <slug>] [--all] | project create <slug> --name <name> [--timezone <tz>] [--org <slug>] [--owner <user-id>]
   project members | project member <user-id> [--role owner|member] | project member remove <user-id>
   project move <slug> --org <org>        move a project and all it owns to another organisation (platform admin)
+  project archive [<slug>] [--undo]     off every list: its agent off, its open tasks cancelled; refused while a
+                                         strategy is live; --undo makes it active again (its owner or an org admin)
   project remove <slug> [--dry-run]      delete a project that never worked for anyone, with its senders, mailboxes,
                                          placement tests, tasks and events, and the domains only it used (platform admin)
   orgs | org create <slug> --name <name> [--billing external|stripe]   organisations you belong to (the platform admin: all)
   org billing <slug> external|stripe   stripe: Dylan's clients; external: billed outside the platform (platform admin)
-  org protections <slug>               whether the engine pauses its unhealthy strategies, its daily lead cap, today's count
+  org protections [<slug>]             whether the engine pauses its unhealthy strategies, its daily lead cap, today's count;
+                                         with no slug, the organisation of the current project
   org autopause <slug> on|off          on: a strategy past a health limit is paused by the engine, not only flagged (platform admin)
   org lead-cap <slug> <n>|off          new leads its projects may enroll a day, UTC (platform admin)
   org approve <slug>                    let an organisation that signed itself up send and buy (platform admin)
@@ -155,7 +160,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   billing [--project <slug>]           the project's Stripe subscription, as Stripe last said it
   billing link <cus_…>                 link the project to its Stripe customer (a stripe organisation's project only)
   client-access | client-access add <email> | client-access remove <user-id>   who watches the project in the
-                                         client app; add needs a paid subscription (a person only)
+                                         client app (a Stripe-billed organisation's projects only; a person only);
+                                         clientApp.url is where the client signs in with a code mailed to them, and
+                                         clientApp.signInMail says when that code would not be sent. Free for the
+                                         client until Stripe is connected; then add needs an active subscription
   org members <org> | org add <org> --email <e> [--name <n>] [--role admin|member] | org role <org> <user-id> --role admin|member | org remove <org> <user-id>
   project update [--name <n>] [--timezone <tz>] [--domain-cap <n>] [--brief <text> | --brief-file <path>]   (a person only)
        [--reply-bcc a@x.com,b@y.com]     every answer in its email threads copies them without the lead seeing
@@ -169,10 +177,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          the topics, one topic's entries, or the entries with every word;
                                          read it before answering "what happens when …"
   sql "<select …>" [--limit <n>]        read anything, read-only; @project stands for the current project's id
-  note add --kind <decision|insight|client_feedback|rule|todo> --title <t> [--body <b>] [--supersedes <id,id>]
+                                         where it stands on its own (inside quotes, as in 'a@projects.io', it is text)
+  note add --kind <decision|insight|client_feedback|rule|todo> --title <t> [--body <b> | --body-file <path|->] [--supersedes <id,id>]
        [--strategy <id>] [--segment <id>]
   note list [--kind <k>] [--all]
-  task open --title <t> --assignee <email> [--priority urgent] [--due <iso>] [--done-when <text>] [--body <b>]
+  task open --title <t> --assignee <email> [--priority urgent] [--due <iso>] [--done-when <text>] [--body <b> | --body-file <path|->]
   task list [--status open|done|cancelled]
   task close <id> [--status done|cancelled] [--note <text>] | task reopen <id>
   task assign <id> --assignee <email> [--note <text>]   hand an open task to someone else; Slack tells them afresh
@@ -190,7 +199,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          "greeting": the line its emails open with, one name slot: "Hey {first},",
                                          "Guten Tag {full},", "Добрий день, {name}!" ({name}: as the language writes it);
                                          null: the house's "Hi {first},"
-  strategy launch <id> | strategy pause <id> [--reason <t>] | strategy archive <id>   (a person only)
+  strategy launch <id> | strategy pause <id> [--reason <t>] | strategy archive <id>   (a person only); launch
+                                         answers firstTouches: leads starting on each day, beside the daily limit
   strategy exclude <id> --company <id|domain> --reason <t>   keep a company out of this strategy only (a person only)
   strategy exclude <id> --file <json|jsonl|->          [{"domain"|"companyId","reason","excluded":false to let back in}]
   strategy include <id> --company <id|domain> [--reason <t>]   let it back in
@@ -204,7 +214,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          pause-colleagues); with --until the engine lets it go on when that day
                                          begins (UTC), as after an out-of-office; pausing it again changes the date
   lead stop <enrollment-id> --reason <t> end a lead for good; frees the contact for another strategy (a person only)
-  strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent
+  strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent (a person only)
   strategy respread <id> [--dry-run]     count again the start dates of a launched strategy's leads that sent nothing,
                                          on its send days, colleagues companyStaggerDays apart: earlier as well as
                                          later; a sendDays or companyStaggerDays update does it by itself (a person only)
@@ -244,8 +254,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   companies upsert --file <json|jsonl|->               [{"domain","name","employeeCount","country","facts"}]
                                          every --file of rows: a JSON array, or JSONL (a .jsonl file always is);
                                          sent 500 rows or 512 KB at a time, answered as one; a refused row exits 1
-  companies judge <segment-id> --file <json|jsonl|->   [{"domain","status":"new|qualified|disqualified","reason","questionId","signal","sourceId","searchId",
-                                         "evidence":[{"fact","value","url","seenAt"}],"exclusionId"}]
+  companies judge <segment-id> --file <json|jsonl|->   [{"domain","status":"new|qualified|disqualified","reason","questionId","signal":{…},"sourceId","searchId",
+                                         "evidence":[{"fact","value","url","seenAt"}],"exclusionId"}]; signal is an object,
+                                         e.g. "signal":{"seen":"2026-11-05","source":"own site","summary":"…"}
                                          every verdict is kept; a company breaking an exclusion is not qualified (the refusal
                                          names its exclusionIds); qualified and disqualified need a reason; a verdict without evidence is warned about
   companies in <segment-id> [--status new|qualified|disqualified] [--waiting fact|client] [--q <text>] [--limit <n>] [--offset <n>]
@@ -268,16 +279,16 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          what became of it: client feedback (a note, made unless --ref),
                                          the answer to an open question (--ref), a task (--ref), nothing
   client message <id> --client|--ours    the engine counted whose it is wrongly: say whose it is
-  questions [--status open|asked|answered|dropped|all] | question add --body <question> [--note <context>] [--asked]
+  questions [--status open|asked|answered|dropped|all] | question add (--body <question> | --body-file <path|->) [--note <context>] [--asked]
                                          [--thread <thread-id>]: the lead's thread whose answer waits for it
   question ask <id>                      post it in the project's client Slack channel; the client's reply
                                          in that thread is the answer, and the lead's thread waits in bh answers
-  question asked <id> | question answer <id> --body <answer, verbatim> | question drop <id>
+  question asked <id> | question answer <id> (--body <answer, verbatim> | --body-file <path|->) | question drop <id>
   question link <id> --thread <thread-id>   another lead's thread waits for this question too (not a second one)
   hypothesis list [--status open|proposed|testing|confirmed|rejected|parked|all]   open: proposed and testing
-  hypothesis add --claim <t> [--evidence <why>] [--segment <id>] [--persona <id>] [--strategy <id>]
+  hypothesis add --claim <t> [--evidence <why> | --evidence-file <path|->] [--segment <id>] [--persona <id>] [--strategy <id>]
        [--metric <what is measured>] [--threshold <what confirms it>] [--status proposed|parked]
-  hypothesis update <id> [--claim <t>] [--evidence <why> | --add-evidence <a dated line>]
+  hypothesis update <id> [--claim <t>] [--evidence <why> | --evidence-file <path|-> | --add-evidence <a dated line>]
        [--segment|--persona|--strategy <id|none>] [--metric <m>] [--threshold <t>]
        [--status proposed|testing|confirmed|rejected|parked] [--verdict <what the results showed>]
                                          testing: a person only, with --metric and --threshold;
@@ -385,10 +396,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   copy samples <strategy-id> | copy sample-remove <strategy-id> <sample-id>
   copy test <message-id> --to <email>   send one written email step, as the lead would get it (their mailbox and
                                          sender), to your own address before launch; a person only, 10 a mailbox a day
-  preview <message-id>
+  preview <message-id>                   html is null for a plan step: steps go as plain text
   senders | sender add --name <n> [--title <t>] [--signature <text>] | sender update <id> [--name] [--title] [--signature]
-                                         add, update and share take --signature-html-file <file.html> too: the email then
-                                         goes as text and HTML (the text keeps --signature); an empty file clears it
+                                         add, update and share take --signature-html-file <file.html> too: answers sent by
+                                         hand (bh reply) then go as text and HTML; plan steps always go as plain text with
+                                         the --signature text, never the HTML or a picture; an empty file clears it
   sender image <id> <file.png|jpg>       a picture for the HTML signature (100 KB at most); use the src it answers
   sender images <id> | sender image-remove <id> <image-id>
   sender photo <id> [<file.jpg|png> | --image <image-id> | --none]   the face beside their name: the engine sets it
@@ -977,48 +989,8 @@ function times(o: { 'send-at'?: string; 'approve-by'?: string }) {
   }
 }
 
-/** Flags every command reads: which API, whose token, which project. */
-const EVERYWHERE = ['api', 'token', 'project']
-
-/** What each reply command reads; anything else given to it is refused, not silently dropped. */
-const REPLY_FLAGS: Record<string, string[]> = {
-  draft: [
-    'body',
-    'body-file',
-    'note',
-    'send-at',
-    'approve-by',
-    'sender',
-    'reviewer',
-    'cc',
-    'bcc',
-    'subject',
-    'attach',
-  ],
-  // --allow-dnc and --reason: a person's answer to a do-not-contact address (a compliance answer).
-  approve: ['body', 'cc', 'bcc', 'subject', 'send-at', 'approve-by', 'allow-dnc', 'reason'],
-  revise: [
-    'body',
-    'body-file',
-    'note',
-    'cc',
-    'bcc',
-    'subject',
-    'send-at',
-    'approve-by',
-    'attach',
-    'no-attach',
-  ],
-  discard: [],
-  unapprove: [],
-  retry: [],
-  reschedule: ['send-at'],
-  assign: ['reviewer', 'to'],
-  rewrite: ['ask'],
-  ask: ['ask'],
-  agent: ['ask'],
-  versions: [],
-}
+/** Flags every command reads: which API, whose token, which project; --help prints the usage. */
+const EVERYWHERE = ['api', 'token', 'project', 'help']
 
 /** A flag a command does not read is refused, so nobody believes it took effect. */
 function takesOnly(o: Record<string, unknown>, command: string, flags: string[]) {
@@ -1030,7 +1002,7 @@ function takesOnly(o: Record<string, unknown>, command: string, flags: string[])
       `bh ${command} does not take ${stray.map((f) => `--${f}`).join(', ')}`,
       {
         hint: flags.length
-          ? `It takes ${flags.map((f) => `--${f}`).join(', ')}`
+          ? `It takes ${[...new Set(flags)].map((f) => `--${f}`).join(', ')}`
           : 'It takes no flags',
       },
       2,
@@ -1111,6 +1083,21 @@ function yesNo(name: string, value: string | undefined): Record<string, boolean>
   throw new BhError(`--${name} takes yes or no, not ${value}`, {}, 2)
 }
 
+/** A long text from --<name> or --<name>-file <path|-> (stdin), never both (belkins-home-plugin#112). */
+async function textOf(
+  name: string,
+  inline: string | undefined,
+  file: string | undefined,
+): Promise<string | undefined> {
+  if (file !== undefined && inline !== undefined)
+    throw new BhError(`Give --${name} or --${name}-file, not both`, {}, 2)
+  return file !== undefined ? readText(file) : inline
+}
+
+/** A text field when it has something in it; absent otherwise. */
+const withText = (field: string, value: string | undefined): Record<string, string> =>
+  value ? { [field]: value } : {}
+
 /** `none` clears a field; anything else is its value. */
 const orNone = (value: string) => (value === 'none' ? null : value)
 
@@ -1126,7 +1113,7 @@ async function company(
   o: Record<string, string | string[] | boolean | undefined>,
 ) {
   const [org, ref, ...more] = rest
-  const text = (key: string) => (typeof o[key] === 'string' ? (o[key] as string) : undefined)
+  const text = (v: unknown) => (typeof v === 'string' ? v : undefined)
   if (!org)
     throw new BhError('Which organisation?', { hint: `bh company ${sub ?? 'list'} belkins …` }, 2)
   const base = `/orgs/${encodeURIComponent(org)}/companies`
@@ -1137,24 +1124,24 @@ async function company(
   /** The fields a company is added or changed with, from the flags given. */
   const fields = () => {
     const f: Record<string, unknown> = {}
-    const set = (flag: string, field: string) => {
+    const set = (flag: unknown, field: string) => {
       const v = text(flag)
       if (v !== undefined) f[field] = orNone(v)
     }
-    set('name', 'name')
-    set('domain', 'mainDomain')
-    set('site', 'siteUrl')
-    set('linkedin', 'linkedinUrl')
-    set('address', 'postalAddress')
-    set('country', 'country')
-    set('google-tenant', 'workspaceTenant')
-    set('microsoft-tenant', 'microsoftTenant')
-    const pod = text('pod')
+    set(o.name, 'name')
+    set(o.domain, 'mainDomain')
+    set(o.site, 'siteUrl')
+    set(o.linkedin, 'linkedinUrl')
+    set(o.address, 'postalAddress')
+    set(o.country, 'country')
+    set(o['google-tenant'], 'workspaceTenant')
+    set(o['microsoft-tenant'], 'microsoftTenant')
+    const pod = text(o.pod)
     if (pod !== undefined) f.pod = pod === 'none' ? null : Number(pod)
     return f
   }
   const egress = async (name: string) => {
-    const egressName = text('egress')
+    const egressName = text(o.egress)
     if (egressName === undefined) return {}
     const answer = (await call(config, 'POST', '/egresses/assign', {
       egress: orNone(egressName),
@@ -1169,7 +1156,7 @@ async function company(
     case 'show':
       return out(await call(config, 'GET', one()))
     case 'add': {
-      if (!text('name') || !text('domain'))
+      if (!text(o.name) || !text(o.domain))
         throw new BhError(
           'A company needs its name and main domain',
           {
@@ -1190,8 +1177,8 @@ async function company(
     }
     case 'add-person': {
       // The whole onboarding: sender, mailboxes, warm-up and the LinkedIn account asked for.
-      const sender = more[0] ?? text('sender')
-      if (!sender && !text('name'))
+      const sender = more[0] ?? text(o.sender)
+      if (!sender && !text(o.name))
         throw new BhError(
           'Who?',
           {
@@ -1199,12 +1186,12 @@ async function company(
           },
           2,
         )
-      const domains = text('domains')
+      const domains = text(o.domains)
       return out(
         await call(config, 'POST', `${one()}/onboard`, {
-          ...(sender ? { senderId: sender } : { name: text('name') }),
-          ...(text('title') ? { title: text('title') } : {}),
-          ...(text('username') ? { username: text('username') } : {}),
+          ...(sender ? { senderId: sender } : { name: text(o.name) }),
+          ...(text(o.title) ? { title: text(o.title) } : {}),
+          ...(text(o.username) ? { username: text(o.username) } : {}),
           ...(domains
             ? {
                 domains: domains
@@ -1213,8 +1200,8 @@ async function company(
                   .filter(Boolean),
               }
             : {}),
-          ...yesNo('sending', text('sending')),
-          ...yesNo('linkedin', text('linkedin')),
+          ...yesNo('sending', text(o.sending)),
+          ...yesNo('linkedin', text(o.linkedin)),
         }),
       )
     }
@@ -1232,18 +1219,18 @@ async function company(
       if (!more[0]) throw new BhError('Which domain?', {}, 2)
       return out(await call(config, 'DELETE', `${one()}/domains/${encodeURIComponent(more[0])}`))
     case 'order': {
-      const rows = text('file')
-        ? await readRows(text('file')!)
-        : (text('domains') ?? '')
+      const rows = text(o.file)
+        ? await readRows(text(o.file)!)
+        : (text(o.domains) ?? '')
             .split(',')
             .map((d) => d.trim())
             .filter(Boolean)
             .map((domain) => ({
-              senderId: text('sender'),
+              senderId: text(o.sender),
               domain,
-              firstName: text('first-name'),
-              lastName: text('last-name'),
-              username: text('username'),
+              firstName: text(o['first-name']),
+              lastName: text(o['last-name']),
+              username: text(o.username),
             }))
       if (!rows.length)
         throw new BhError(
@@ -1260,11 +1247,11 @@ async function company(
         await call(
           config,
           'GET',
-          `${one()}/linkedin-posts?${new URLSearchParams(text('status') ? { status: text('status')! } : {})}`,
+          `${one()}/linkedin-posts?${new URLSearchParams(text(o.status) ? { status: text(o.status)! } : {})}`,
         ),
       )
     case 'post':
-      if (!text('file'))
+      if (!text(o.file))
         throw new BhError(
           'Which posts?',
           {
@@ -1274,7 +1261,7 @@ async function company(
         )
       return out(
         await call(config, 'POST', `${one()}/linkedin-posts`, {
-          posts: await withImages(await readRows(text('file')!), text('file')!),
+          posts: await withImages(await readRows(text(o.file)!), text(o.file)!),
           dryRun: Boolean(o['dry-run']),
         }),
       )
@@ -1533,6 +1520,7 @@ async function main(argv: string[]): Promise<void> {
       'follow-up': { type: 'string' },
       return: { type: 'string' },
       'body-file': { type: 'string' },
+      'evidence-file': { type: 'string' },
       'blocks-file': { type: 'string' },
       'html-file': { type: 'string' },
       'reply-to': { type: 'string' },
@@ -1607,8 +1595,18 @@ async function main(argv: string[]): Promise<void> {
       auto: { type: 'string' },
     },
   })
-  const config = await loadConfig()
   const [cmd, sub, arg] = pos
+  // Each command takes only the flags it reads (options.ts, made from this file), so a flag it
+  // would drop is refused instead of silently ignored (belkins-home-plugin#112).
+  const reads = cmd && !o.help ? OPTIONS[cmd] : undefined
+  if (reads) {
+    const named = sub !== undefined && Object.hasOwn(reads, sub)
+    takesOnly(o, named ? `${cmd} ${sub}` : cmd!, [
+      ...(reads['*'] ?? []),
+      ...((named ? reads[sub] : sub === undefined ? reads[''] : undefined) ?? []),
+    ])
+  }
+  const config = await loadConfig()
   const current = currentProject(o.project, await loadSessionProject())
   const p = () => {
     if (!current) throw noProject()
@@ -1692,10 +1690,15 @@ async function main(argv: string[]): Promise<void> {
       return out(await call(config, 'GET', '/me'))
     case 'health':
       return out(await call(config, 'GET', '/health'))
-    case 'projects':
-      return out(
-        await call(config, 'GET', `/projects${o.org ? `?org=${encodeURIComponent(o.org)}` : ''}`),
-      )
+    case 'projects': {
+      const all = (await call(
+        config,
+        'GET',
+        `/projects${o.org ? `?org=${encodeURIComponent(o.org)}` : ''}`,
+      )) as { status?: string }[]
+      // An archived project is off the list unless asked for (belkins-home-plugin#15).
+      return out(o.all ? all : all.filter((x) => x.status !== 'archived'))
+    }
     case 'project':
       if (sub === 'create')
         return out(
@@ -1712,6 +1715,15 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'remove')
         return out(
           await call(config, 'POST', `/projects/${arg}/remove`, { dryRun: Boolean(o['dry-run']) }),
+        )
+      if (sub === 'archive')
+        return out(
+          await call(
+            config,
+            'POST',
+            `/projects/${arg ? encodeURIComponent(arg) : p()}/archive`,
+            o.undo ? { undo: true } : {},
+          ),
         )
       if (sub === 'members') return out(await call(config, 'GET', `/projects/${p()}/members`))
       if (sub === 'member' && arg === 'remove')
@@ -1762,9 +1774,10 @@ async function main(argv: string[]): Promise<void> {
     case 'sql': {
       let query = sub ?? ''
       // @project stands for the current project's id: no shell expands it, and SQL has no use for it.
-      if (query.includes('@project')) {
+      // Only as a token of its own: inside quotes or comments it is left as written.
+      if (hasProjectToken(query)) {
         const found = (await call(config, 'GET', `/projects/${p()}`)) as { id: string }
-        query = query.replaceAll('@project', `'${found.id}'`)
+        query = withProjectId(query, found.id)
       }
       return out(
         await call(config, 'POST', '/sql', {
@@ -1779,7 +1792,7 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', `/projects/${p()}/notes`, {
             kind: o.kind,
             title: o.title,
-            ...(o.body ? { body: o.body } : {}),
+            ...withText('body', await textOf('body', o.body, o['body-file'])),
             ...(o.supersedes ? { supersedes: o.supersedes.split(',').map((s) => s.trim()) } : {}),
             ...(o.strategy ? { strategyId: o.strategy } : {}),
             ...(o.segment ? { segmentId: o.segment } : {}),
@@ -1811,7 +1824,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.priority ? { priority: o.priority } : {}),
             ...(o.due ? { dueAt: o.due } : {}),
             ...(o['done-when'] ? { doneWhen: o['done-when'] } : {}),
-            ...(o.body ? { body: o.body } : {}),
+            ...withText('body', await textOf('body', o.body, o['body-file'])),
           }),
         )
       }
@@ -1941,6 +1954,8 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       if (sub === 'launch') return out(await call(config, 'POST', `/strategies/${arg}/launch`, {}))
+      if (sub === 'unlaunch')
+        return out(await call(config, 'POST', `/strategies/${arg}/unlaunch`, {}))
       if (sub === 'archive')
         return out(await call(config, 'POST', `/strategies/${arg}/archive`, {}))
       if (sub === 'pause')
@@ -2089,7 +2104,7 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'add')
         return out(
           await call(config, 'POST', `/projects/${p()}/questions`, {
-            question: o.body,
+            question: await textOf('body', o.body, o['body-file']),
             ...(o.note ? { context: o.note } : {}),
             ...(o.asked ? { asked: true } : {}),
             ...(o.thread ? { threadId: o.thread } : {}),
@@ -2104,7 +2119,10 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'PATCH', `/questions/${arg}`, { status: 'asked' }))
       if (sub === 'answer')
         return out(
-          await call(config, 'PATCH', `/questions/${arg}`, { status: 'answered', answer: o.body }),
+          await call(config, 'PATCH', `/questions/${arg}`, {
+            status: 'answered',
+            answer: await textOf('body', o.body, o['body-file']),
+          }),
         )
       if (sub === 'drop')
         return out(await call(config, 'PATCH', `/questions/${arg}`, { status: 'dropped' }))
@@ -2118,7 +2136,7 @@ async function main(argv: string[]): Promise<void> {
         ...(o.strategy !== undefined ? { strategyId: ref(o.strategy) } : {}),
       }
       const judged = {
-        ...(o.evidence ? { evidence: o.evidence } : {}),
+        ...withText('evidence', await textOf('evidence', o.evidence, o['evidence-file'])),
         ...(o.metric ? { metric: o.metric } : {}),
         ...(o.threshold ? { threshold: o.threshold } : {}),
         ...(o.status ? { status: o.status } : {}),
@@ -2414,7 +2432,37 @@ async function main(argv: string[]): Promise<void> {
         )
       if (sub === 'billing')
         return out(await call(config, 'PATCH', `/orgs/${arg}`, { billing: pos[3] }))
-      if (sub === 'protections') return out(await call(config, 'GET', `/orgs/${arg}/protections`))
+      if (sub === 'protections') {
+        // No slug: the organisation of the project this command acts on (plugin#205).
+        let org = arg
+        if (!org) {
+          if (!current)
+            throw new BhError(
+              'Which organisation?',
+              { hint: 'bh org protections <slug>, or name a project: --project <slug>' },
+              2,
+            )
+          const project = (await call(config, 'GET', `/projects/${p()}`)) as {
+            organisation_id: string
+          }
+          const orgs = (await call(config, 'GET', '/orgs')) as { id: string; slug: string }[]
+          const found = orgs.find((x) => x.id === project.organisation_id)
+          if (!found)
+            throw new BhError(
+              `The organisation of project ${current.slug} is not one of yours`,
+              { hint: 'bh orgs lists them; bh org protections <slug>' },
+              2,
+            )
+          org = found.slug
+        }
+        return out(await call(config, 'GET', `/orgs/${encodeURIComponent(org)}/protections`))
+      }
+      if ((sub === 'autopause' || sub === 'lead-cap') && pos[3] === undefined)
+        throw new BhError(
+          'Which organisation, and what value?',
+          { hint: `bh org ${sub} <slug> ${sub === 'autopause' ? 'on|off' : '<n>|off'}` },
+          2,
+        )
       if (sub === 'autopause') {
         if (pos[3] !== 'on' && pos[3] !== 'off')
           throw new BhError(`autopause takes on or off, not ${pos[3] ?? 'nothing'}`, {}, 2)
@@ -3404,7 +3452,6 @@ async function main(argv: string[]): Promise<void> {
         ),
       )
     case 'reply':
-      if (sub && sub in REPLY_FLAGS) takesOnly(o, `reply ${sub}`, REPLY_FLAGS[sub]!)
       if (sub === 'draft') {
         const text = o['body-file'] ? await readFile(o['body-file'], 'utf8') : need(o.body)
         return out(
@@ -4288,8 +4335,7 @@ async function main(argv: string[]): Promise<void> {
             `${at}/recipients${o.email ? `?email=${encodeURIComponent(o.email)}` : ''}`,
           ),
         )
-      const onOff = (name: 'reviews' | 'alerts') => {
-        const v = o[name]
+      const onOff = (name: 'reviews' | 'alerts', v: string | undefined) => {
         if (v === undefined) return {}
         if (v !== 'on' && v !== 'off')
           throw new BhError(`--${name} is on or off`, { hint: `--${name} off` }, 2)
@@ -4299,8 +4345,8 @@ async function main(argv: string[]): Promise<void> {
         await call(config, 'PUT', `${at}/recipients`, {
           ...(o.email ? { email: o.email } : {}),
           ...(o.timezone ? { timezone: o.timezone } : {}),
-          ...onOff('reviews'),
-          ...onOff('alerts'),
+          ...onOff('reviews', o.reviews),
+          ...onOff('alerts', o.alerts),
         }),
       )
     }
@@ -4548,8 +4594,16 @@ async function main(argv: string[]): Promise<void> {
       if (cmd === 'proxies' || !sub || sub === 'list')
         return out(await call(config, 'GET', '/linkedin-proxies'))
       if (sub === 'add') {
-        for (const flag of ['country', 'host', 'port', 'username', 'provider'] as const)
-          if (!o[flag])
+        // Each named as read below, so the options table sees them too.
+        const given = {
+          country: o.country,
+          host: o.host,
+          port: o.port,
+          username: o.username,
+          provider: o.provider,
+        }
+        for (const [flag, value] of Object.entries(given))
+          if (!value)
             throw new BhError(
               `--${flag} is missing`,
               {
@@ -4774,6 +4828,16 @@ try {
     process.exitCode = 1
   }
 }
+
+// Every answer is written out before bh ends, however slowly the pipe reads it: a pipe's writes are
+// asynchronous on macOS, and an answer must never reach a parser cut short (belkins-home-plugin#75).
+// bh never calls process.exit; this also makes a failed write end non-zero instead of silently.
+await new Promise<void>((resolve) =>
+  process.stdout.write('', (error) => {
+    if (error) process.exitCode ||= 1
+    resolve()
+  }),
+)
 
 /** `--signature-html-file`: the file's HTML, or null to clear it when the file is empty. */
 async function signatureHtml(file: string | undefined) {
