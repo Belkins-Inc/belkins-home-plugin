@@ -1438,7 +1438,7 @@ CREATE TABLE public.messages (
     CONSTRAINT messages_check2 CHECK (((channel <> 'linkedin_invite'::text) OR (length(body) <= 300))),
     CONSTRAINT messages_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT messages_position_check CHECK (("position" >= 1)),
-    CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'wrong_person'::text, 'no_phone'::text, 'other'::text]))),
+    CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'wrong_person'::text, 'no_phone'::text, 'no_mail_server'::text, 'other'::text]))),
     CONSTRAINT messages_skip_code_with_reason CHECK (((skip_code IS NULL) = (skip_reason IS NULL))),
     CONSTRAINT messages_status_check CHECK ((status = ANY (ARRAY['needs_copy'::text, 'ready'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text, 'cancelled'::text]))),
     CONSTRAINT messages_track_check CHECK (((track = ANY (ARRAY['main'::text, 'linkedin'::text])) AND ((track = 'main'::text) OR (channel = ANY (ARRAY['linkedin_invite'::text, 'linkedin_message'::text])))))
@@ -13435,4 +13435,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110020000'),
     ('20261110023000'),
     ('20261110030000'),
-    ('20261110040000');
+    ('20261110040000'),
+    ('20261110105338');
