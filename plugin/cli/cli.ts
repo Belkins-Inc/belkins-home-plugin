@@ -343,7 +343,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   crm sync <crm> --auto on|off           the same every hour by itself, until switched off (a person)
   enroll <strategy-id> --file <json|jsonl|-> [--dry-run]    [{"contactId","segmentId","personaId"}]
                                          a lead goes first to a sender with a mailbox for its mail provider;
-                                         unserved counts leads no sender's mailboxes serve (put on any)
+                                         unserved counts leads no sender's mailboxes serve (put on any);
+                                         zoneWarning on a lead timed by the project's zone or a guess at its
+                                         country's (US, CA, AU…): set its timezone or the company's hq_state
   stand <strategy-id> --contact <id> --status candidate|held|rejected [--persona <id>] [--reason <t>]
   stand <strategy-id> --file <json|jsonl|->            [{"contactId","status","personaId","reason"}]
                                          a person live in the strategy stays enrolled (skipped, with why);
