@@ -6660,6 +6660,13 @@ CREATE INDEX ix_searches__source ON public.searches USING btree (source_id, ran_
 
 
 --
+-- Name: ix_segment_companies__new; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_segment_companies__new ON public.segment_companies USING btree (segment_id, created_at) WHERE (status = 'new'::text);
+
+
+--
 -- Name: ix_segment_companies__qualified; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13441,4 +13448,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110030000'),
     ('20261110040000'),
     ('20261110105338'),
-    ('20261110120821');
+    ('20261110120821'),
+    ('20261110121004');
