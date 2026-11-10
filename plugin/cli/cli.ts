@@ -31,6 +31,8 @@ import {
 import { DEFAULT_API, startLogin, waitForLogin } from './login.ts'
 import { setup } from './setup.ts'
 
+/** Entries per page `bh dnc list` reads; the engine answers up to 5,000. */
+const DNC_PAGE = 2000
 /** Rows per dnc import or check request; the engine takes up to 10,000. */
 const DNC_CHUNK = 5000
 
@@ -279,13 +281,18 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          a dead number (a caller's wrong number marks it by itself), the dial order
   esp                                    how many companies and contacts are on each email provider (MX:
                                          google, microsoft, proofpoint, mimecast…; pending = not looked up yet)
-  dnc add --kind email|domain|phone --value <v> --reason <r> [--note <t>] [--every-project] | dnc remove <id>
-                                         --every-project blocks it for every project, not only this one
+  dnc [list] [--q <text>] [--kind email|domain|phone|linkedin] [--reason <r>]
+                                         the project's entries and the every-project ones, newest first: id, kind,
+                                         value, reason, note, who added it; --q matches the value or the note
+  dnc add --kind email|domain|phone|linkedin --value <v> --reason <r> [--note <t>] [--every-project] | dnc remove <id>
+                                         --every-project blocks it for every project, not only this one; linkedin: a
+                                         profile URL (kept as its key: the /in/ name), for someone reached there alone
   dnc import <file.csv|-> [--reason <r>] [--note <t>] [--every-project]
-                                         a column email and/or domain, or value (kind from "@", or a kind column);
-                                         reason and note columns win over the flags; no header: one value a line.
+                                         a column email, domain, phone and/or linkedin, or value (kind from "@", a
+                                         linkedin.com/in/ URL, digits, or a kind column); reason and note columns win
+                                         over the flags; no header: one value a line.
                                          answers {added, already, refused, invalid}; a refused row exits 1
-  dnc check <address|domain|number>… | dnc check --file <csv>
+  dnc check <address|domain|number|profile URL>… | dnc check --file <csv>
                                          which of them the list blocks (a domain blocks its subdomains) —
                                          before paying a provider to enrich or find anyone there
   crm                                    the client's CRMs (pipedrive) and the project's connection to each
@@ -452,9 +459,13 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          host bot's comings and goings, the transcript, Meet's Docs
   meeting update <id> [--status held|no_show] [--outcome qualified|not_qualified|opportunity|won|lost]
                   [--feedback <client's words>] [--notes <t>]      (a person only)
-  mailboxes                              each mailbox, with its ladder day, placement and outreachHeldAt (and why)
+  mailboxes                              each mailbox, with its ladder day, placement and outreachHeldAt (and why),
+                                         disconnectedReason, and a warning the provider gave ahead of a disconnect
   mailbox connect --provider google|microsoft [--sender <id>] [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          prints the URL to open in a browser
+  mailbox reconnect <id>                 a disconnected mailbox connected again: one a person signs in to prints the URL
+                                         to open; a seat in one of our Google tenants is tried at once and made
+                                         active when Google gives its token (a person only)
   mailbox import --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          from another platform, by the refresh token it holds (same OAuth app):
                                          [{"provider":"google|microsoft","refreshToken","sender":"<name>"|"senderId"}]
@@ -730,6 +741,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          3 and 2 MB together, no macros, scripts or passwords
   replies [--status draft|approved|sent|failed|discarded]
   reply approve <id> [--body <final text>] [--cc …] [--bcc …] [--subject <s>] (a person only) | reply discard <id>
+       [--allow-dnc --reason <why>]       it goes even to an address on do-not-contact: a compliance answer (a data-
+                                         subject request) on the lead's own thread; recorded, the entry stays
   reply revise <id> --body <text> | --body-file <path> [--note <for the approver>] [--cc …] [--bcc …]
        [--subject <s>] [--attach <file>]… | [--no-attach]
                                          a new version of a draft; --cc/--bcc replace its copies ("" for none),
@@ -850,6 +863,17 @@ async function attached(o: { attach?: string[]; 'no-attach'?: boolean }) {
       })),
     ),
   }
+}
+
+/** `--allow-dnc` needs `--reason`: why this one answer goes past do-not-contact. */
+function dncOverride(reason: string | undefined): string {
+  if (!reason?.trim())
+    throw new BhError(
+      'Why must it go past do-not-contact?',
+      { hint: '--allow-dnc --reason "GDPR article 15 request"' },
+      2,
+    )
+  return reason.trim()
 }
 
 function copies(o: { cc?: string; bcc?: string }) {
@@ -1364,6 +1388,7 @@ async function main(argv: string[]): Promise<void> {
       window: { type: 'string' },
       outcome: { type: 'string' },
       'allow-repeat': { type: 'boolean' },
+      'allow-dnc': { type: 'boolean' },
       attempts: { type: 'string' },
       spacing: { type: 'string' },
       'open-days': { type: 'string' },
@@ -2443,6 +2468,23 @@ async function main(argv: string[]): Promise<void> {
     case 'esp':
       return out(await call(config, 'GET', `/projects/${p()}/esp`))
     case 'dnc':
+      if (!sub || sub === 'list') {
+        // Every entry, a page at a time: a project's list can run past one page.
+        const query = new URLSearchParams({
+          ...(o.q ? { q: o.q } : {}),
+          ...(o.kind ? { kind: o.kind } : {}),
+          ...(o.reason ? { reason: o.reason } : {}),
+          limit: String(DNC_PAGE),
+        })
+        const rows: unknown[] = []
+        for (let offset = 0; ; offset += DNC_PAGE) {
+          query.set('offset', String(offset))
+          const page = (await call(config, 'GET', `/projects/${p()}/dnc?${query}`)) as unknown[]
+          rows.push(...page)
+          if (page.length < DNC_PAGE) break
+        }
+        return out(rows)
+      }
       if (sub === 'add')
         return out(
           await call(config, 'POST', `/projects/${p()}/dnc`, {
@@ -2988,6 +3030,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.body ? { body: o.body } : {}),
             ...copies(o),
             ...(o.subject !== undefined ? { subject: o.subject } : {}),
+            ...(o['allow-dnc'] ? { allowDnc: dncOverride(o.reason) } : {}),
           }),
         )
       if (sub === 'discard') return out(await call(config, 'POST', `/replies/${arg}/discard`, {}))
@@ -3475,6 +3518,11 @@ async function main(argv: string[]): Promise<void> {
             ...limits,
           }),
         )
+      if (sub === 'reconnect') {
+        if (!arg)
+          throw new BhError('Which mailbox?', { hint: 'bh mailboxes lists them, with ids' }, 2)
+        return out(await call(config, 'POST', `/mailboxes/${arg}/reconnect`, {}))
+      }
       if (sub === 'import') {
         // One at a time: each token is tried against the provider, and one refused must not stop the rest.
         const rows = (await readRows(need(o.file))) as Record<string, unknown>[]

@@ -79,6 +79,11 @@ the views — `inbox_queue`, `stalled_enrollments`, `goal_progress`, `strategy_s
 `references/schema.sql` beside this skill in the published plugin; in a checkout of the platform it is
 `db/schema.sql`.
 
+Do-not-contact: `bh dnc list [--q] [--kind] [--reason]` shows the project's entries and the
+every-project ones; `bh dnc check <value>…` answers whether one is blocked, as enroll decides it — a
+contact is covered by its address, its company's domain or its LinkedIn profile. `dnc` in `bh sql`
+holds a project's entries under its `project_id` and the every-project ones with none.
+
 Other reads: `bh note list [--kind k] [--all]`, `bh questions --status all`,
 `bh hypothesis list --status all` (settled and parked too), `bh task list`,
 `bh strategies`, `bh strategy show <id>`, `bh segments`, `bh sources`, `bh personas`, `bh inbox`,

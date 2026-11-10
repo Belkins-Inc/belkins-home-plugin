@@ -46,7 +46,8 @@ The brief is the first thing a person approves before any money is spent (`segme
    meetings it produced and where from. Whatever could not be obtained is said plainly in that
    section ("No export of the 2025 campaign: asked, question <id>"), never skipped. The people it
    already reached are a dedupe list: `bh dnc add --kind email --reason
-   unsubscribed|complaint|bounced` (a file of them: `bh dnc import`) for everyone who opted out, complained or bounced, and a
+   unsubscribed|complaint|bounced` (a file of them: `bh dnc import`) for everyone who opted out, complained or bounced —
+   someone reached on LinkedIn alone by their profile URL (`--kind linkedin`, a `linkedin` column) — and a
    `decision` note on when the rest may be written to again.
 3. **Extract, do not summarise.** Carry names, prices (with currency and period), customers, figures,
    titles, geographies and the exact sentence an offer or guarantee is made in, verbatim. Drop
@@ -99,8 +100,8 @@ The brief is the first thing a person approves before any money is spent (`segme
    - Current customers, competitors, partners by domain or email → `bh dnc add --kind domain|email
      --value <v> --reason existing_customer|competitor|client_request [--note …]`.
      A list of them (a CRM export, a suppression file) → `bh dnc import <file.csv> --reason <r>`:
-     a column `email` and/or `domain` (or `value`); it answers how many were added, already there
-     and refused. A customer list
+     a column `email`, `domain` and/or `linkedin` (or `value`); it answers how many were added,
+     already there and refused. `bh dnc list` shows what is on it already. A customer list
      not received yet is a client question — launching without it was a real failure.
    - Constraints on how we write or send (forbidden topics, tone, compliance, "never claim X") →
      `bh note add --kind rule --title "<the rule>" --body "<source>"`.

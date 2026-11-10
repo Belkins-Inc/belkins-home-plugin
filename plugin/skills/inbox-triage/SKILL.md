@@ -143,6 +143,10 @@ there are many:
 - `bh reply approve <id> [--body "<final text>"] [--subject "<s>"]` sends it (at `send_at`, or
   now). Only a person's token can approve; read the thread, the note and the subject it goes under
   (`bh replies`) first, and edit the body or subject in the same call if it needs a change.
+- An answer the law requires to a lead on do-not-contact — a data-subject request (where their data
+  came from, what is held, erase it) from someone who unsubscribed — goes with
+  `bh reply approve <id> --allow-dnc --reason "<the request>"`: that one answer only, recorded; the
+  entry stays. Never use it for anything that sells.
 - After approving, tell the person what the answer carries: it goes **from `from`** (the thread's
   mailbox — often not theirs, so it shows in that mailbox's Sent, not in their own) **to `to`** at
   `sendsAt` (a minute's undo first), and `link` opens the conversation. Home → Sent lists it for a
@@ -156,7 +160,8 @@ there are many:
   project already has before making a new one.
 - `bh reply discard <id>` withdraws a draft, an approved reply not yet sent, or a failed one.
 - A failed reply (`bh replies --status failed`, `lastError`) is usually a disconnected mailbox; fix
-  the mailbox, then draft again.
+  the mailbox (a person runs `bh mailbox reconnect <id>`: a sign-in link, or for a seat in one of
+  our Google tenants an immediate retry), then draft again.
 
 ## The server agent
 

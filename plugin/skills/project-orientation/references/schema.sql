@@ -1216,7 +1216,7 @@ CREATE TABLE public.dnc (
     created_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     removed_at timestamp with time zone,
-    CONSTRAINT dnc_kind_check CHECK ((kind = ANY (ARRAY['email'::text, 'domain'::text, 'phone'::text]))),
+    CONSTRAINT dnc_kind_check CHECK ((kind = ANY (ARRAY['email'::text, 'domain'::text, 'phone'::text, 'linkedin'::text]))),
     CONSTRAINT dnc_reason_check CHECK ((reason = ANY (ARRAY['unsubscribed'::text, 'complaint'::text, 'bounced'::text, 'competitor'::text, 'existing_customer'::text, 'client_request'::text, 'registry'::text, 'crm'::text, 'other'::text])))
 );
 
@@ -2130,11 +2130,15 @@ CREATE TABLE public.mailboxes (
     photo_tried_at timestamp with time zone,
     mint_refusals integer DEFAULT 0 NOT NULL,
     mint_refused_at timestamp with time zone,
+    tenant_user_state text,
+    warning text,
+    warning_at timestamp with time zone,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 60))),
     CONSTRAINT mailboxes_placement_state_check CHECK ((placement_state = ANY (ARRAY['good'::text, 'unknown'::text, 'hold'::text, 'bad'::text]))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'smtp'::text, 'jmap'::text]))),
-    CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
+    CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text]))),
+    CONSTRAINT mailboxes_tenant_user_state_check CHECK ((tenant_user_state = ANY (ARRAY['suspended'::text, 'deleted'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
 
@@ -2928,6 +2932,7 @@ CREATE TABLE public.replies (
     calendar_ics text,
     files uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     subject text,
+    dnc_override text,
     CONSTRAINT replies_check CHECK (((status <> ALL (ARRAY['approved'::text, 'sending'::text, 'sent'::text])) OR (approved_at IS NOT NULL))),
     CONSTRAINT replies_meeting_notice_check CHECK (((notice IS NULL) = (meeting_id IS NULL))),
     CONSTRAINT replies_notice_check CHECK ((notice = ANY (ARRAY['confirmation'::text, 'reminder_day'::text, 'reminder_hour'::text, 'moved'::text, 'cancelled'::text]))),
@@ -12519,6 +12524,13 @@ ALTER TABLE public.placement_seeds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.placement_tests ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: dnc platform_entries; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY platform_entries ON public.dnc FOR SELECT TO bhn_reader USING ((project_id IS NULL));
+
+
+--
 -- Name: project_exclusions; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -13132,5 +13144,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109210000'),
     ('20261109213000'),
     ('20261109233647'),
+    ('20261110000553'),
     ('20261110000946'),
-    ('20261110001333');
+    ('20261110001333'),
+    ('20261110002615');

@@ -35,18 +35,19 @@ export function parseCsv(text: string): string[][] {
 }
 
 export type DncRow = {
-  kind: 'email' | 'domain' | 'phone'
+  kind: 'email' | 'domain' | 'phone' | 'linkedin'
   value: string
   reason?: string
   note?: string
 }
 
-const HEADERS = ['email', 'domain', 'phone', 'value', 'kind', 'reason', 'note']
+const HEADERS = ['email', 'domain', 'phone', 'linkedin', 'value', 'kind', 'reason', 'note']
+const KINDS = new Set(['email', 'domain', 'phone', 'linkedin'])
 
 /**
- * The entries in a dnc CSV: a column `email`, `domain` or `phone` (or several), or `value` with an
- * optional `kind` — a value with `@` is an address, one of digits and punctuation a phone number,
- * else a domain; `reason` and `note` columns are kept. A file with no header row is one value per
+ * The entries in a dnc CSV: a column `email`, `domain`, `phone` or `linkedin` (or several), or
+ * `value` with an optional `kind` — a linkedin.com URL is a profile, a value with `@` an address,
+ * one of digits and punctuation a phone number, else a domain; `reason` and `note` columns are kept. A file with no header row is one value per
  * line.
  */
 export async function readDncCsv(path: string): Promise<DncRow[]> {
@@ -56,12 +57,18 @@ export async function readDncCsv(path: string): Promise<DncRow[]> {
   const header = first.map((h) => h.trim().toLowerCase())
   const at = (name: string) => header.indexOf(name)
   const inferred = (value: string): DncRow['kind'] =>
-    value.includes('@') ? 'email' : /^\+?[\d\s().\-/]{7,}$/.test(value) ? 'phone' : 'domain'
+    /linkedin\.com\//i.test(value)
+      ? 'linkedin'
+      : value.includes('@')
+        ? 'email'
+        : /^\+?[\d\s().\-/]{7,}$/.test(value)
+          ? 'phone'
+          : 'domain'
   if (!header.some((h) => HEADERS.includes(h))) {
     if (first.length > 1)
       throw new BhError(
-        `${path}: no column named email, domain, phone or value`,
-        { hint: 'a header row: email | domain | phone | value[,kind][,reason][,note]' },
+        `${path}: no column named email, domain, phone, linkedin or value`,
+        { hint: 'a header row: email | domain | phone | linkedin | value[,kind][,reason][,note]' },
         2,
       )
     return rows.map((r) => {
@@ -69,19 +76,20 @@ export async function readDncCsv(path: string): Promise<DncRow[]> {
       return { kind: inferred(v), value: v }
     })
   }
-  const [email, domain, phone, value, kind, reason, note] = [
+  const [email, domain, phone, linkedin, value, kind, reason, note] = [
     at('email'),
     at('domain'),
     at('phone'),
+    at('linkedin'),
     at('value'),
     at('kind'),
     at('reason'),
     at('note'),
   ]
-  if (email < 0 && domain < 0 && phone < 0 && value < 0)
+  if (email < 0 && domain < 0 && phone < 0 && linkedin < 0 && value < 0)
     throw new BhError(
-      `${path}: no column named email, domain, phone or value`,
-      { hint: 'a header row: email | domain | phone | value[,kind][,reason][,note]' },
+      `${path}: no column named email, domain, phone, linkedin or value`,
+      { hint: 'a header row: email | domain | phone | linkedin | value[,kind][,reason][,note]' },
       2,
     )
   return rest.flatMap((r) => {
@@ -94,10 +102,11 @@ export async function readDncCsv(path: string): Promise<DncRow[]> {
     if (cell(email)) out.push({ kind: 'email', value: cell(email), ...extra })
     if (cell(domain)) out.push({ kind: 'domain', value: cell(domain), ...extra })
     if (cell(phone)) out.push({ kind: 'phone', value: cell(phone), ...extra })
+    if (cell(linkedin)) out.push({ kind: 'linkedin', value: cell(linkedin), ...extra })
     if (cell(value)) {
       const k = cell(kind).toLowerCase()
       out.push({
-        kind: k === 'email' || k === 'domain' || k === 'phone' ? k : inferred(cell(value)),
+        kind: KINDS.has(k) ? (k as DncRow['kind']) : inferred(cell(value)),
         value: cell(value),
         ...extra,
       })

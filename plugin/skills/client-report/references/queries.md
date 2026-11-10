@@ -236,6 +236,7 @@ select count(*) as calls, round(sum(mc.cost_usd), 2) as usd
 select d.kind, d.value, d.reason, d.note, d.created_at
   from dnc d
  where d.project_id = @project and d.created_at >= ':from' and d.created_at < ':to'::date + 1
+ -- the project's own entries; `d.project_id is null` are the every-project ones, which apply too
  order by d.created_at
 ```
 
