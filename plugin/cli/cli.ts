@@ -200,6 +200,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          begins (UTC), as after an out-of-office; pausing it again changes the date
   lead stop <enrollment-id> --reason <t> end a lead for good; frees the contact for another strategy (a person only)
   strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent
+  strategy respread <id> [--dry-run]     count again the start dates of a launched strategy's leads that sent nothing,
+                                         on its send days, colleagues companyStaggerDays apart: earlier as well as
+                                         later; a sendDays or companyStaggerDays update does it by itself (a person only)
   strategy repick-mailboxes <id> [--dry-run]   give each lead that has sent nothing yet a mailbox of its sender
                                          that serves its provider (mailbox update --recipients) and sends outreach
                                          on its first day: off held, badly placed and still warming-alone
@@ -1861,6 +1864,12 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       }
+      if (sub === 'respread')
+        return out(
+          await call(config, 'POST', `/strategies/${arg}/respread`, {
+            dryRun: Boolean(o['dry-run']),
+          }),
+        )
       if (sub === 'repick-mailboxes')
         return out(
           await call(config, 'POST', `/strategies/${arg}/mailboxes/repick`, {

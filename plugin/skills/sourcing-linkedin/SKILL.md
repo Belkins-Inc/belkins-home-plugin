@@ -184,7 +184,7 @@ Say which of these it was; a missing title is a persona change for a person to a
 - Every paid search is recorded with its call ids. A search not recorded is money nobody can see.
 - A page paid for but lost from the scratch file: `bh call show <call-id>`, not the same call again.
 - Never invent a company, a person, a domain or a title. A row without a domain is dropped.
-- Company `country` is ISO-2 and drives holidays and send windows; a US or Canadian company's
+- Company `country` is ISO-2 and drives send windows (the engine skips no holidays); a US or Canadian company's
   timezone comes from its state or city, not from the project's.
 
 ## Before you stop

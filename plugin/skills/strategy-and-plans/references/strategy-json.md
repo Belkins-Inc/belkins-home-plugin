@@ -4,13 +4,14 @@
 | --- | --- | --- | --- |
 | `name` | string | required on create | |
 | `brief` | markdown | null | Offer and call to action, tone, avoid, approved proof — the strategy level of Messaging |
-| `sendDays` | ISO weekdays 1–7 | `[1,2,3,4,5]` | days a message may go, in the lead's time zone |
+| `sendDays` | ISO weekdays 1–7 | `[1,2,3,4,5]` | days a message may go, in the lead's time zone; on a launched strategy a change counts the start dates of leads that sent nothing again |
+| `blackoutDates` | `"YYYY-MM-DD"` list | `[]` | dates nothing goes, in the lead's time zone (a client's holidays); days off like a weekend, so delays skip them. The list given replaces the one there |
 | `windowStart` / `windowEnd` | `"HH:MM"` | `09:00` / `17:00` | the lead's local sending window |
 | `dailyLimit` | int or null | null | first touches per day across the strategy; null = mailbox limits only |
 | `maxPerCompany` | int ≥ 1 | 2 | enrolled contacts per company, counted over every enrollment in the strategy |
 | `targetActive` | int or null | null | leads to keep in flight; below it the engine opens a task |
 | `startSpreadDays` | int ≥ 1 | 3 | a batch's first touches spread over this many days |
-| `companyStaggerDays` | int ≥ 0 | 2 | the next person at a company starts this many days after the previous |
+| `companyStaggerDays` | int ≥ 0 | 2 | the next person at a company starts this many send days after the previous; on a launched strategy a change moves colleagues not yet started, earlier or later |
 | `catchAllPolicy` | `hold` / `linkedin_only` / `send` | `hold` | what to do with catch-all addresses |
 | `segments` | segment ids | | replaces the list |
 | `personas` | `[{personaId, maxPerCompany?, angle?}]` in priority order | | replaces the list; position = array order |
@@ -21,6 +22,9 @@ Ids must belong to the current project (`bh use <slug>` in this session), or the
 ## Choosing the numbers
 
 - `sendDays`: weekdays unless the client's market works weekends.
+- Holidays: the engine keeps no holiday calendar, so it sends on public holidays that fall on a
+  send day. When the client wants none on a holiday or over a break, list the dates in
+  `blackoutDates` (each lead's own date).
 - Window: 08:00–17:00 local works for most B2B; narrow it for executives only if the client asks.
 - `maxPerCompany`: 2 for companies under ~200 people, 3 above; one per persona via the persona's
   `maxPerCompany` when two roles would read the same email.

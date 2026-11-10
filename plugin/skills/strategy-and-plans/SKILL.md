@@ -198,6 +198,13 @@ real limits:
   A strategy whose leads must all be started before a date (an event's attendees) can turn this
   round: `{"firstEmailsFirst": true}` in `bh strategy update` (a person only) sends its first emails
   before its follow-ups and holds none of them, and its follow-ups run late instead.
+- **Start dates after a calendar change** — a `sendDays` or `companyStaggerDays` update on a
+  launched strategy counts again the start dates of leads that have sent nothing (earlier as well
+  as later; colleagues held apart by the old stagger move up behind each other). `bh strategy
+  respread <id> [--dry-run]` does it again by hand (a person only).
+- **No sends on the client's holidays** — the engine skips no public holiday by itself;
+  `{"blackoutDates": ["2026-11-26", "2026-12-25"]}` in `bh strategy update` keeps those dates free
+  of sends in each lead's own zone (the list replaces the one there).
 - **A step too many in a frozen plan** — `bh plan remove <strategy-id> <step-id>` takes the plan's
   last step out (a person only): leads enrolled later do not get it, its unsent messages are
   cancelled, and a lead whose next step it was ends there.

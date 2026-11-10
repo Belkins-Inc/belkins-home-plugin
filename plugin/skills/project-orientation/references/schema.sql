@@ -1,6 +1,6 @@
 \restrict dbmate
 
--- Dumped from database version 18.6
+-- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
@@ -3600,6 +3600,7 @@ CREATE TABLE public.strategies (
     active_since timestamp with time zone,
     first_emails_first boolean DEFAULT false NOT NULL,
     autopaused_at timestamp with time zone,
+    blackout_dates date[] DEFAULT '{}'::date[] NOT NULL,
     CONSTRAINT strategies_catch_all_policy_check CHECK ((catch_all_policy = ANY (ARRAY['hold'::text, 'linkedin_only'::text, 'send'::text]))),
     CONSTRAINT strategies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'paused'::text, 'archived'::text])))
 );
@@ -7550,7 +7551,7 @@ CREATE TRIGGER projects_replan AFTER UPDATE OF timezone ON public.projects FOR E
 -- Name: strategies strategies_replan; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER strategies_replan AFTER UPDATE OF status, send_days, window_start, window_end ON public.strategies FOR EACH ROW WHEN (((((old.status IS DISTINCT FROM new.status) OR (old.send_days IS DISTINCT FROM new.send_days)) OR (old.window_start IS DISTINCT FROM new.window_start)) OR (old.window_end IS DISTINCT FROM new.window_end))) EXECUTE FUNCTION public.replan_on_strategy();
+CREATE TRIGGER strategies_replan AFTER UPDATE OF status, send_days, window_start, window_end, blackout_dates ON public.strategies FOR EACH ROW WHEN ((((((old.status IS DISTINCT FROM new.status) OR (old.send_days IS DISTINCT FROM new.send_days)) OR (old.window_start IS DISTINCT FROM new.window_start)) OR (old.window_end IS DISTINCT FROM new.window_end)) OR (old.blackout_dates IS DISTINCT FROM new.blackout_dates))) EXECUTE FUNCTION public.replan_on_strategy();
 
 
 --
@@ -13260,4 +13261,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110002325'),
     ('20261110002615'),
     ('20261110003000'),
-    ('20261110003800');
+    ('20261110003800'),
+    ('20261110003827');
