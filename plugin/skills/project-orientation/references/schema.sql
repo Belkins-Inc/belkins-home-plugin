@@ -1,6 +1,6 @@
 \restrict dbmate
 
--- Dumped from database version 18.4
+-- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
@@ -1259,8 +1259,12 @@ CREATE TABLE public.domains (
     company_id uuid,
     purchase text DEFAULT 'new'::text NOT NULL,
     claimed_at timestamp with time zone,
+    dmarc_policy text,
+    dmarc_set_by uuid,
+    dmarc_set_via public.actor_via,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
     CONSTRAINT domains_company_check CHECK (((company_id IS NULL) OR (organisation_id IS NOT NULL))),
+    CONSTRAINT domains_dmarc_policy_check CHECK (((dmarc_policy IS NULL) OR (dmarc_policy = ANY (ARRAY['none'::text, 'quarantine'::text, 'reject'::text])))),
     CONSTRAINT domains_one_owner CHECK ((num_nonnulls(project_id, organisation_id) <= 1)),
     CONSTRAINT domains_one_tenant CHECK (((tenant_id IS NULL) OR (microsoft_tenant_id IS NULL))),
     CONSTRAINT domains_purchase_check CHECK ((purchase = ANY (ARRAY['new'::text, 'closeout'::text]))),
@@ -2536,7 +2540,12 @@ CREATE TABLE public.personas (
     seniorities text[] DEFAULT '{}'::text[] NOT NULL,
     departments text[] DEFAULT '{}'::text[] NOT NULL,
     search_hints text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    retired_at timestamp with time zone,
+    retired_by uuid,
+    retired_via public.actor_via,
+    CONSTRAINT personas_status_check CHECK ((status = ANY (ARRAY['active'::text, 'retired'::text])))
 );
 
 
@@ -8232,6 +8241,14 @@ ALTER TABLE ONLY public.domains
 
 
 --
+-- Name: domains domains_dmarc_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domains
+    ADD CONSTRAINT domains_dmarc_set_by_fkey FOREIGN KEY (dmarc_set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: domains domains_microsoft_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9405,6 +9422,14 @@ ALTER TABLE ONLY public.organisations
 
 ALTER TABLE ONLY public.personas
     ADD CONSTRAINT personas_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: personas personas_retired_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.personas
+    ADD CONSTRAINT personas_retired_by_fkey FOREIGN KEY (retired_by) REFERENCES public.users(id);
 
 
 --
@@ -13145,6 +13170,8 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109213000'),
     ('20261109233647'),
     ('20261110000553'),
+    ('20261110000637'),
     ('20261110000946'),
     ('20261110001333'),
-    ('20261110002615');
+    ('20261110002615'),
+    ('20261110003800');

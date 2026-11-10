@@ -165,6 +165,10 @@ it may not (the app lacks the billing role) or Microsoft refuses — the task sa
 - `bh domain dns <name>` lists its records; `bh domain dns <name> add --type TXT --host @ --content
 "<value>"` adds a verification or a subdomain record (a person only). MX, SPF, DMARC and DKIM are
   the engine's and refused.
+- DMARC: a bought domain starts at `p=none`. A person raises it with `bh domain dmarc <name> --policy
+quarantine` (or `reject`) once it sends only through our mailboxes — for example when the client
+  sells security or IT and its sending domains must not look weaker than what it pitches. The
+  engine keeps the chosen policy; `bh domains` shows it as `dmarcPolicy`.
 - `bh domain release <name>` lets a domain lapse at expiry (a person only; refused while a mailbox
   sends from it). Domains renew by themselves otherwise — a lapsed domain can be registered by
   anyone, who then receives the replies our leads send to it, so releasing is always a person's

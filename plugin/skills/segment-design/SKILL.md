@@ -74,7 +74,7 @@ below). Paid enrichment stays a person's.
 
    The recipe (`--body`) is what lets the next session run the source without re-deriving it.
    Re-running `source add` with the same name updates it and keeps the fields left out;
-   `bh source update <id>` changes status, cursor, estimate and the recipe (`--body`).
+   `bh source update <id>` changes name, status, cursor, estimate and the recipe (`--body`).
 4. **Put the client's hard rules in exclusions**, if `client-brief` has not: `bh exclusion add --kind
    country|country_outside|industry|business_model|employees_below|employees_above|rating_above|other --value <v>
    --note "<why, client's words>"`. The judge refuses to qualify a company that breaks one; the

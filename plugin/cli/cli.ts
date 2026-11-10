@@ -169,9 +169,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   session end --summary <text>           the hand-over: done, left, to watch
   segments | segment create --name <n> [--body <definition>] [--criteria <json>] [--estimate <n>]
   segment update <id> [--name <n>] [--body <definition>] [--criteria <json>] [--estimate <n>] [--status active|paused|exhausted|archived]
-  personas | persona upsert --name <n> [--titles "a|b"] [--excluded-titles "a|b"] [--seniorities "a|b"]
+  personas [--all] | persona upsert --name <n> [--titles "a|b"] [--excluded-titles "a|b"] [--seniorities "a|b"]
        [--departments "a|b"] [--hints <search hints>] [--body <description>]   a field left out keeps its value
-  strategies | strategy create --file <json> | strategy update <id> --file <json> | strategy show <id>
+  persona update <id> [--name <n>] [--titles "a|b"] [--excluded-titles "a|b"] [--seniorities "a|b"]
+       [--departments "a|b"] [--hints <t>] [--body <t>]   by id: a rename keeps the persona, its leads and ladders
+  persona retire <id> | persona activate <id>   a retired persona is hidden from bh personas (--all shows it)
+                                         and goes on no ladder and no enroll again; its leads keep it. One on the
+                                         ladder of a strategy that is not archived is taken off first
+  strategies | strategy create --file <json> | strategy update <id> --file <json> | strategy show <id|first 8+ characters>
   strategy launch <id> | strategy pause <id> [--reason <t>] | strategy archive <id>   (a person only)
   strategy exclude <id> --company <id|domain> --reason <t>   keep a company out of this strategy only (a person only)
   strategy exclude <id> --file <json|jsonl|->          [{"domain"|"companyId","reason","excluded":false to let back in}]
@@ -181,8 +186,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          --label: the lead or its company carries it
   lead show <enrollment-id>              one lead's plan step by step
   lead resume <enrollment-id>            put back a lead a reply stopped when the reply needed nothing (a person only)
-  lead pause <enrollment-id> | lead unpause <enrollment-id>   hold a lead by hand, and let it go on (a person only;
-                                         unpause also lets go one paused with thread pause-colleagues)
+  lead pause <enrollment-id> [--until <YYYY-MM-DD>] | lead unpause <enrollment-id>   hold a lead by hand, and let it
+                                         go on (a person only; unpause also lets go one paused with thread
+                                         pause-colleagues); with --until the engine lets it go on when that day
+                                         begins (UTC), as after an out-of-office; pausing it again changes the date
   lead stop <enrollment-id> --reason <t> end a lead for good; frees the contact for another strategy (a person only)
   strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent
   strategy repick-mailboxes <id> [--dry-run]   give each lead that has sent nothing yet a mailbox of its sender
@@ -220,7 +227,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   companies verdicts <segment-id> --company <id>       every verdict ever passed on that company
   sources | source add <segment-id> --kind linkedin|trustpilot|web|directory|import --name <n> [--provider <p>]
        [--query <json>] [--body <instructions>] [--estimate <n>]
-  source update <id> [--status active|paused|exhausted] [--cursor <c>] [--estimate <n>] [--body <instructions>]
+  source update <id> [--name <n>] [--status active|paused|exhausted] [--cursor <c>] [--estimate <n>] [--body <instructions>]
                                          --estimate reads back as estimatedCompanies, in bh segments and bh sources
   search record --file <json>            {"kind":"companies","sourceId","provider","query","cursor","results","newRecords","duplicates","callIds":[…]}
                                          {"kind":"contacts","strategyId","companyId","provider","query","results","newRecords","duplicates","callIds":[…],
@@ -259,6 +266,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          all or nothing: a contact on dnc, outside the project, with no such number or
                                          already on a list is refused (--allow-repeat lets the last through)
   calls show <list-id> [--out <file.csv>]   its people in call order; --out writes the caller's CSV
+  calls rename <list-id> --name <n>     the list's name only; one already with the dialer keeps its name there
   calls outcome <list-id> --contact <contact-id> --outcome no_answer|voicemail|wrong_number|not_interested|call_back|meeting|other|none [--note <t>]
   goals | goal set <YYYY-MM> --target <meetings> [--counts qualified|held] | goal done <YYYY-MM> --done <n>   (a person only)
   contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts"}]
@@ -315,7 +323,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          --status enrolled puts back the row of one who is live
   worked <strategy-id> --file <json|jsonl|->           [{"domain","status":"pending|contacts_found|no_match|enrolled|exhausted","contactsFound"}]
                                          what a search inside a company came to; the engine records the rest as people stand
-  copy queue <strategy-id> [--limit <n>] | copy write --file <json|jsonl|->   [{"messageId","subject","body","angle"}]
+  copy queue <strategy-id> [--limit <n≤200>] [--offset <n>] [--all]   --all reads every page | copy write --file <json|jsonl|->   [{"messageId","subject","body","angle"}]
                                          a referral's or re-engagement's step someone else already wrote is refused;
                                          --replace replaces theirs, on purpose only
   copy check --file <json|jsonl|->      the same file, checked against the house rules and written nowhere;
@@ -516,6 +524,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domain dns <name>                      its DNS records and redirects at the registrar
   domain dns <name> add --type A|AAAA|CNAME|ALIAS|TXT|CAA --host <@|sub> --content <value> [--ttl <s>]
   domain dns <name> delete <record id>   (a person only; MX, SPF, DMARC and DKIM are the engine's and refused)
+  domain dmarc <name> --policy none|quarantine|reject [--dry-run]
+                                         what receivers do with mail failing DMARC (a person only): bought
+                                         domains start at none; raise it once the reports show only our mail.
+                                         The engine keeps it: a record it puts back comes back with this policy
   system-mail domains                    the agency's system mail domains at Resend: status and records
   system-mail domain add <name>          connect a domain to Resend (a person only); the engine writes its
                                          records when our registrar holds it, otherwise answers what to add.
@@ -1259,6 +1271,7 @@ async function main(argv: string[]): Promise<void> {
       tenant: { type: 'string' },
       env: { type: 'string' },
       platform: { type: 'string' },
+      policy: { type: 'string' },
       'per-environment': { type: 'string' },
       ip: { type: 'string' },
       proxy: { type: 'string' },
@@ -1336,6 +1349,7 @@ async function main(argv: string[]): Promise<void> {
       waiting: { type: 'string' },
       state: { type: 'string' },
       offset: { type: 'string' },
+      until: { type: 'string' },
       sender: { type: 'string' },
       recipients: { type: 'string' },
       signature: { type: 'string' },
@@ -1671,21 +1685,36 @@ async function main(argv: string[]): Promise<void> {
         )
       break
     case 'personas':
-      return out(await call(config, 'GET', `/projects/${p()}/personas`))
-    case 'persona':
+      return out(await call(config, 'GET', `/projects/${p()}/personas${o.all ? '?all=1' : ''}`))
+    case 'persona': {
+      const fields = {
+        ...(o.titles ? { titles: list(o.titles) } : {}),
+        ...(o['excluded-titles'] ? { excludedTitles: list(o['excluded-titles']) } : {}),
+        ...(o.seniorities ? { seniorities: list(o.seniorities) } : {}),
+        ...(o.departments ? { departments: list(o.departments) } : {}),
+        ...(o.hints ? { searchHints: o.hints } : {}),
+        ...(o.body ? { description: o.body } : {}),
+      }
       if (sub === 'upsert')
         return out(
-          await call(config, 'POST', `/projects/${p()}/personas`, {
-            name: o.name,
-            ...(o.titles ? { titles: list(o.titles) } : {}),
-            ...(o['excluded-titles'] ? { excludedTitles: list(o['excluded-titles']) } : {}),
-            ...(o.seniorities ? { seniorities: list(o.seniorities) } : {}),
-            ...(o.departments ? { departments: list(o.departments) } : {}),
-            ...(o.hints ? { searchHints: o.hints } : {}),
-            ...(o.body ? { description: o.body } : {}),
-          }),
+          await call(config, 'POST', `/projects/${p()}/personas`, { name: o.name, ...fields }),
         )
+      if (sub === 'update' || sub === 'retire' || sub === 'activate') {
+        if (!arg)
+          throw new BhError('Which persona?', { hint: 'bh personas --all lists their ids' }, 2)
+        return out(
+          await call(
+            config,
+            'PATCH',
+            `/personas/${arg}`,
+            sub === 'update'
+              ? { ...(o.name ? { name: o.name } : {}), ...fields }
+              : { status: sub === 'retire' ? 'retired' : 'active' },
+          ),
+        )
+      }
       break
+    }
     case 'strategies':
       return out(await call(config, 'GET', `/projects/${p()}/strategies`))
     case 'strategy':
@@ -1809,6 +1838,7 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/sources/${arg}`, {
+            ...(o.name ? { name: o.name } : {}),
             ...(o.status ? { status: o.status } : {}),
             ...(o.cursor !== undefined ? { cursor: o.cursor } : {}),
             ...(o.estimate ? { estimatedCompanies: Number(o.estimate) } : {}),
@@ -1956,6 +1986,10 @@ async function main(argv: string[]): Promise<void> {
       if (!arg) throw new BhError('Which call list?', { hint: 'bh calls' }, 2)
       if (sub === 'push')
         return out(await call(config, 'POST', `/call-lists/${arg}/dialer`, attemptsOf(o)))
+      if (sub === 'rename') {
+        if (!o.name) throw new BhError('What is it called now?', { hint: '--name <n>' }, 2)
+        return out(await call(config, 'PATCH', `/call-lists/${arg}`, { name: o.name }))
+      }
       if (sub === 'show') {
         if (o.out) {
           await writeFile(o.out, await callText(config, `/call-lists/${arg}/csv`))
@@ -2566,14 +2600,26 @@ async function main(argv: string[]): Promise<void> {
     case 'worked':
       return batch(`/strategies/${sub}/companies`)
     case 'copy':
-      if (sub === 'queue')
-        return out(
-          await call(
+      if (sub === 'queue') {
+        const page = (limit: string | undefined, offset: string | undefined) =>
+          call(
             config,
             'GET',
-            `/strategies/${arg}/copy-queue?${new URLSearchParams(o.limit ? { limit: o.limit } : {})}`,
-          ),
-        )
+            `/strategies/${arg}/copy-queue?${new URLSearchParams({
+              ...(limit ? { limit } : {}),
+              ...(offset ? { offset } : {}),
+            })}`,
+          ) as Promise<unknown[]>
+        if (!o.all) return out(await page(o.limit, o.offset))
+        // Every message waiting for copy, a page of 200 at a time (belkins-home-plugin#204).
+        const all: unknown[] = []
+        for (let offset = Number(o.offset ?? 0); ; offset += 200) {
+          const rows = await page('200', String(offset))
+          all.push(...rows)
+          if (rows.length < 200) break
+        }
+        return out(all)
+      }
       // One request, not chunks: the engine writes all of the copy or none of it.
       if (sub === 'write')
         return out(
@@ -3146,7 +3192,15 @@ async function main(argv: string[]): Promise<void> {
     case 'lead':
       if (sub === 'show') return out(await call(config, 'GET', `/enrollments/${arg}`))
       if (sub === 'resume') return out(await call(config, 'POST', `/enrollments/${arg}/resume`, {}))
-      if (sub === 'pause') return out(await call(config, 'POST', `/enrollments/${arg}/pause`, {}))
+      if (sub === 'pause')
+        return out(
+          await call(
+            config,
+            'POST',
+            `/enrollments/${arg}/pause`,
+            o.until ? { until: o.until } : {},
+          ),
+        )
       if (sub === 'unpause')
         return out(await call(config, 'POST', `/enrollments/${arg}/unpause`, {}))
       if (sub === 'stop')
@@ -3386,6 +3440,20 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'PUT', `/domains/${await domainId(arg)}/redirect`, {
             url: url === 'none' ? null : url,
+          }),
+        )
+      }
+      if (sub === 'dmarc') {
+        if (!o.policy)
+          throw new BhError(
+            'Which policy?',
+            { hint: `bh domain dmarc ${arg ?? '<name>'} --policy quarantine` },
+            2,
+          )
+        return out(
+          await call(config, 'PUT', `/domains/${await domainId(arg)}/dmarc`, {
+            policy: o.policy,
+            dryRun: Boolean(o['dry-run']),
           }),
         )
       }

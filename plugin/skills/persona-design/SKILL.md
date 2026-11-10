@@ -71,6 +71,12 @@ live in segments — a segment is which companies, a persona is which people.
    `upsert` matches by name; a field left out keeps its value, so extending the titles is one flag.
    A flag passed replaces that whole list — pass the full list, not the additions. Lists split on
    `|` (a title may contain a comma); with no `|` in the value they split on commas.
+   To rename a persona, `bh persona update <id> --name "<new name>"` (same flags as upsert): it
+   keeps the id, so its leads and ladders stay with it — an upsert under a new name makes a second
+   persona instead. A persona the client no longer works is retired, not left beside the live ones:
+   `bh persona retire <id>` hides it from `bh personas` (`--all` lists it), keeps it off every
+   ladder and enroll, and leaves its enrolled leads alone; take it off a live strategy's ladder
+   first. `bh persona activate <id>` brings it back.
 7. **Build the ladder in the strategy.** In the strategy file (`bh strategy create|update --file`),
    `personas` is the ladder in priority order — position 1 is tried first; the next is tried when a
    company has no one for the rung above:

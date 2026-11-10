@@ -27,7 +27,8 @@ wrote is refused with who wrote it and when: read theirs (`bh preview`), and rep
 
 ## Procedure
 
-1. `bh copy queue <strategy-id> [--limit n]` (default 50, max 200). Each item is one message still
+1. `bh copy queue <strategy-id> [--limit n] [--offset n]` (default 50, max 200 a page; `--all`
+   reads every page, for a batch of more than 200 messages). Each item is one message still
    `needs_copy`, ordered by lead then step: `messageId`, `enrollmentId`, `kind` (`first`,
    `re_engagement`, `referral`), `followsEnrollmentId`, `position`, `channel`, `condition`,
    `guidance`, `hypothesis`, `newThread`, `strategyBrief`, the contact (`firstName`, `lastName`,
