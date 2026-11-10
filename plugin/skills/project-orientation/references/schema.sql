@@ -3557,7 +3557,7 @@ CREATE TABLE public.spend (
     actor_user_id uuid,
     data jsonb DEFAULT '{}'::jsonb NOT NULL,
     cost_usd numeric(12,6) DEFAULT 0 NOT NULL,
-    CONSTRAINT spend_operation_check CHECK ((operation = ANY (ARRAY['company_search'::text, 'contact_search'::text, 'email_find'::text, 'verification'::text, 'enrichment'::text, 'llm'::text, 'subscription'::text, 'data_purchase'::text, 'infrastructure'::text, 'other'::text])))
+    CONSTRAINT spend_operation_check CHECK ((operation = ANY (ARRAY['company_search'::text, 'contact_search'::text, 'email_find'::text, 'phone_find'::text, 'verification'::text, 'enrichment'::text, 'llm'::text, 'subscription'::text, 'data_purchase'::text, 'infrastructure'::text, 'other'::text])))
 );
 
 
@@ -3622,7 +3622,9 @@ CREATE TABLE public.strategies (
     autopaused_at timestamp with time zone,
     greeting text,
     blackout_dates date[] DEFAULT '{}'::date[] NOT NULL,
+    company_size_caps jsonb DEFAULT '[]'::jsonb NOT NULL,
     CONSTRAINT strategies_catch_all_policy_check CHECK ((catch_all_policy = ANY (ARRAY['hold'::text, 'linkedin_only'::text, 'send'::text]))),
+    CONSTRAINT strategies_company_size_caps_check CHECK ((jsonb_typeof(company_size_caps) = 'array'::text)),
     CONSTRAINT strategies_greeting_check CHECK (((greeting IS NULL) OR ((length(greeting) <= 80) AND (greeting ~ '\{(first|full|name)\}'::text) AND (greeting !~ '\n'::text)))),
     CONSTRAINT strategies_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'active'::text, 'paused'::text, 'archived'::text])))
 );
@@ -13363,6 +13365,8 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110003800'),
     ('20261110003827'),
     ('20261110003853'),
+    ('20261110005720'),
     ('20261110005800'),
     ('20261110010000'),
-    ('20261110010757');
+    ('20261110010757'),
+    ('20261110020000');

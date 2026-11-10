@@ -74,10 +74,14 @@ pays a provider for a company or a person the do-not-contact list already blocks
 ### The repeat guard
 
 Paid endpoints marked `guardRepeats` refuse the **same request** (method, path, query, body) that
-already succeeded in the last 30 days: `409 repeated_request`, naming the earlier call. Use what
-the earlier call produced — it should already be in `companies` / `contacts` / `searches`, and
-`bh call show <call-id>` prints the provider's answer again for free. Add `--again` (and pay again)
-only when the data itself must be fresh.
+already succeeded in the last 30 days, in any project of the organisation: `409 repeated_request`.
+Like every refusal it is printed on **stderr** (stdout stays empty, a non-zero exit code), as JSON whose
+`error.details.callId` names the earlier call — a script that reads only stdout sees an empty
+answer, so read stderr too. Use what the earlier call produced — it should already be in
+`companies` / `contacts` / `searches`, and `bh call show <callId>` prints the provider's answer
+again for free. Add `--again` (and pay again) only when the data itself must be fresh.
+`bh address check` needs none of this: a repeated check takes the earlier verdict as this
+contact's by itself (`reusedCall` in its answer).
 
 The ledger keeps answers up to 1 MB (`provider_calls.response`); a larger answer is not kept. A
 Firecrawl page or map keeps only its first 16 KB. After 30 days every answer is cleared

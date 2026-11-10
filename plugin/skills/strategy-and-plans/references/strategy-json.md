@@ -9,6 +9,7 @@
 | `windowStart` / `windowEnd` | `"HH:MM"` | `09:00` / `17:00` | the lead's local sending window |
 | `dailyLimit` | int or null | null | first touches per day across the strategy; null = mailbox limits only |
 | `maxPerCompany` | int ≥ 1 | 2 | enrolled contacts per company, counted over every enrollment in the strategy |
+| `companySizeCaps` | `[{minEmployees, maxPerCompany}]` | `[]` | more people at bigger companies: a company takes the band with the largest `minEmployees` at or under its employee count; under every band, or of unknown size, `maxPerCompany`. The list given replaces the one there |
 | `targetActive` | int or null | null | leads to keep in flight; below it the engine opens a task |
 | `startSpreadDays` | int ≥ 1 | 3 | a batch's first touches spread over this many days |
 | `companyStaggerDays` | int ≥ 0 | 2 | the next person at a company starts this many send days after the previous; on a launched strategy a change moves colleagues not yet started, earlier or later |
@@ -26,7 +27,8 @@ Ids must belong to the current project (`bh use <slug>` in this session), or the
   send day. When the client wants none on a holiday or over a break, list the dates in
   `blackoutDates` (each lead's own date).
 - Window: 08:00–17:00 local works for most B2B; narrow it for executives only if the client asks.
-- `maxPerCompany`: 2 for companies under ~200 people, 3 above; one per persona via the persona's
+- `maxPerCompany`: 2 for companies under ~200 people, 3 above — in one strategy with
+  `"companySizeCaps": [{"minEmployees": 200, "maxPerCompany": 3}]` (companies need `employeeCount`); one per persona via the persona's
   `maxPerCompany` when two roles would read the same email.
 - `dailyLimit`: leave null while mailbox limits bind; set it to pace a small market (so the segment is
   not burned in a week) or to hold a new strategy to a test batch.

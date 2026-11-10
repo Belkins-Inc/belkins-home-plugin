@@ -840,8 +840,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   limits set <tool> --below <n>|off      alert #home-alerts below this (an admin); limits reset <tool> to the default
   call <provider> <METHOD> <path?query> [--body <json> | --body-file <path|->] [--again]
        [--strategy <id>] [--segment <id>] [--source <id>] [--search <id>] [--company <id>] [--contact <id>]
-                                         the provider's answer on stdout, untouched; cost on stderr;
-                                         the leading "/" may be left out (Git Bash rewrites it; bh undoes that too)
+                                         the provider's answer on stdout, untouched; cost and refusals on stderr
+                                         (a refusal's details.callId names the earlier call); a collect with no refs
+                                         is tied to its submit's; the leading "/" may be left out (Git Bash rewrites it)
   call show <call-id>                    an earlier call with what the provider answered (use it again instead of paying again),
                                          and what it delivered later (Apollo's phones) under deliveries
   cache person <linkedin-url>            what was bought about a person, any project, free; a Generect enrichment by URL
@@ -3041,6 +3042,7 @@ async function main(argv: string[]): Promise<void> {
         creditsLeft: number | null
         deliveredLater?: boolean
         cached?: { fetchedAt: string; callId: string | null }
+        notice?: string
         body: unknown
       }
       const cost = answer.costUsd === null ? 'cost unknown' : `$${answer.costUsd.toFixed(4)}`
@@ -3059,6 +3061,7 @@ async function main(argv: string[]): Promise<void> {
         process.stderr.write(
           `# the rest arrives later, to the engine: bh call show ${answer.callId} lists it under deliveries\n`,
         )
+      if (answer.notice) process.stderr.write(`# ${answer.notice}\n`)
       out(answer.body)
       if (answer.status >= 400) process.exitCode = 1
       return
