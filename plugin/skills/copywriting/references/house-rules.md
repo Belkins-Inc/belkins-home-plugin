@@ -125,8 +125,9 @@ Step guidance may fix the question word for word per persona; then use it word f
 - No "!", no emoji, no all-caps word, no dash, no burned opener.
 - Written last, out of the email; never a headline or a pitch. Good: "reply times at northwind",
   "your trustpilot reviews". Bad: "Transform Your Customer Support Today!".
-- Follow-ups in the thread go out as "Re: <step 1 subject>" whatever you write; repeat step 1's
-  exactly (one subject across a thread; a `newThread` step starts its own).
+- Follow-ups in a thread go out as "Re: <the thread's first subject>" whatever you write; repeat it
+  exactly (one subject across a thread). The thread is step 1's unless the step says `threadOf`
+  (that earlier step's thread); a `newThread` step starts its own.
 - Proper names keep their capitals: companies, brands, people and places ("clinics across Acme
   Dental", "rates on Northwind lanes", "hiring in Nampa and Twin Falls"). Everything else stays
   lower case. `bh copy check` judges Title Case on the other words only.

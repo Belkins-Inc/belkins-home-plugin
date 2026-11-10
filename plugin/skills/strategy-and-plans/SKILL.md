@@ -107,9 +107,13 @@ anything was sent, it is refused, so settle the steps before launch. Accepted va
 - `maxWaitDays` (default 10): a step whose condition is still unmet this long after it fell due is
   skipped and the next one is scheduled.
 - `newThread` (email, default false): start a new thread with its own subject instead of "Re:".
-  `bh plan step <strategy-id> <step-id> --file` with `{"newThread": false}` moves a frozen
-  template's follow-up into the lead's first thread (a person only); every email of it not yet
-  sent follows, written ones included (their own subject is then not used).
+- `threadOf` (a follow-up email, default null): the position of the earlier email step whose
+  thread it continues; null is the plan's first email. A two-thread sequence (emails 1 and 2, then
+  3 and 4) is step 3 `"newThread": true` and step 4 `"threadOf": 3`: email 4 goes as
+  "Re: <email 3's subject>" in email 3's thread. `bh plan step <strategy-id> <step-id> --file` with
+  `{"newThread": false}` or `{"threadOf": 3}` moves a frozen template's follow-up into another
+  thread (a person only); every email of it not yet sent follows, written ones included (their own
+  subject is then not used).
 - `withoutNote` (`linkedin_invite` only, default **true**): an invitation goes as a bare
   connection request unless its step says `"withoutNote": false`. LinkedIn caps invitations with a
   note far below bare ones (a free account runs out after a handful, and LinkedIn then answers
@@ -221,6 +225,10 @@ real limits:
 - **A step too many in a frozen plan** — `bh plan remove <strategy-id> <step-id>` takes the plan's
   last step out (a person only): leads enrolled later do not get it, its unsent messages are
   cancelled, and a lead whose next step it was ends there.
+- **Gaps too long or too short in a running strategy** — `bh plan step <strategy-id> <step-id>
+  --file` with `{"delayDays": 2}` (a person only): leads enrolled later get the new delay, and every
+  lead's message of that step not yet sent is timed again from the step before it. Sent history
+  does not change.
 
 Worked with the engine's defaults: 250 leads on a four-step email plan are 1,000 messages. Four fresh
 mailboxes on one new domain send about 80 in their first two weeks and about 500 in the two after; the domain's

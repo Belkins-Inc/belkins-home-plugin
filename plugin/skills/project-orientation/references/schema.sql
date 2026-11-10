@@ -3777,11 +3777,13 @@ CREATE TABLE public.strategy_steps (
     hypothesis text,
     without_note boolean DEFAULT false NOT NULL,
     track text DEFAULT 'main'::text NOT NULL,
+    thread_of integer,
     CONSTRAINT strategy_steps_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
     CONSTRAINT strategy_steps_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text]))),
     CONSTRAINT strategy_steps_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT strategy_steps_delay_days_check CHECK ((delay_days >= 0)),
     CONSTRAINT strategy_steps_position_check CHECK (("position" >= 1)),
+    CONSTRAINT strategy_steps_thread_of_check CHECK ((thread_of >= 1)),
     CONSTRAINT strategy_steps_track_check CHECK (((track = ANY (ARRAY['main'::text, 'linkedin'::text])) AND ((track = 'main'::text) OR (channel = ANY (ARRAY['linkedin_invite'::text, 'linkedin_message'::text]))))),
     CONSTRAINT strategy_steps_without_note_check CHECK (((NOT without_note) OR (channel = 'linkedin_invite'::text)))
 );
@@ -13337,4 +13339,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110003827'),
     ('20261110003853'),
     ('20261110005800'),
+    ('20261110010000'),
     ('20261110010757');

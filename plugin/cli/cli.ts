@@ -225,10 +225,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          timed on its own track, it never holds an email;
                                          on a draft that has sent nothing, its enrolled leads' plans are copied again,
                                          written copy kept where a step keeps its channel (a person only)
-  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread"}: one step's, frozen templates too; step ids in strategy show
+  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread","threadOf","delayDays"}: one step's,
+                                         frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
-                                         newThread (a follow-up email; a person only): false answers in the lead's first thread
-                                         ("Re: <step 1 subject>"), true starts its own; every email not yet sent follows
+                                         newThread (a follow-up email; a person only): true starts its own thread; false answers
+                                         in the thread of threadOf, the position of an earlier email step (null: the first email's),
+                                         as "Re: <that thread's first subject>"; every email not yet sent follows
+                                         delayDays (not the first step; a person only): send days after the step before;
+                                         leads enrolled later get it and every lead's unsent message of the step moves
   plan remove <strategy-id> <step-id>   take the plan's last step out, frozen templates too: its unsent messages are
                                          cancelled, a lead whose next step it was ends there (a person only)
   companies upsert --file <json|jsonl|->               [{"domain","name","employeeCount","country","facts"}]

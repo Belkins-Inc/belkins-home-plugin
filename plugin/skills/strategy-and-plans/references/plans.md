@@ -83,6 +83,12 @@ Asks for nothing but the connection; does not pitch; does not mention the email.
 - One step's `guidance` or `hypothesis`, frozen templates too: `bh plan step <strategy-id> <step-id>
   --file step.json` with `{"guidance": "…"}`. Messages not yet written follow it; written ones keep
   their copy (rewrite them through `bh copy`). Step ids are in `bh strategy show`.
+- One step's delay, frozen templates too: `{"delayDays": 2}` in the same command (a person only).
+  Leads enrolled later get it; every lead's message of that step not yet sent is timed again from
+  the step before it. Sent messages stay as they went.
+- One follow-up's thread: `{"threadOf": 3}` (continue email 3's thread), `{"threadOf": null}` (the
+  first email's) or `{"newThread": true}` (its own), a person only. Every email of it not yet sent
+  follows.
 
 - A draft with leads enrolled and nothing sent: `bh plan set` again with the whole new file (a
   person only). Every lead's plan is copied again; written copy stays where a step keeps its
