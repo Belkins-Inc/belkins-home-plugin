@@ -816,7 +816,9 @@ CREATE TABLE public.call_lists (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     dialer_list_id text,
     dialer_pushed_at timestamp with time zone,
-    dialer_error text
+    dialer_error text,
+    strategy_id uuid,
+    members_added_at timestamp with time zone
 );
 
 
@@ -1430,13 +1432,13 @@ CREATE TABLE public.messages (
     CONSTRAINT messages_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
     CONSTRAINT messages_bounce_class_check CHECK ((bounce_class = ANY (ARRAY['no_such_user'::text, 'mailbox_full'::text, 'temporary'::text, 'blocked'::text, 'other'::text]))),
     CONSTRAINT messages_bounce_kind_check CHECK ((bounce_kind = ANY (ARRAY['hard'::text, 'soft'::text]))),
-    CONSTRAINT messages_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text]))),
+    CONSTRAINT messages_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'call'::text]))),
     CONSTRAINT messages_check CHECK (((status = ANY (ARRAY['needs_copy'::text, 'cancelled'::text, 'skipped'::text])) OR (body IS NOT NULL))),
     CONSTRAINT messages_check1 CHECK (((channel <> 'email'::text) OR (status = ANY (ARRAY['needs_copy'::text, 'cancelled'::text, 'skipped'::text])) OR (subject IS NOT NULL))),
     CONSTRAINT messages_check2 CHECK (((channel <> 'linkedin_invite'::text) OR (length(body) <= 300))),
     CONSTRAINT messages_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT messages_position_check CHECK (("position" >= 1)),
-    CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'wrong_person'::text, 'other'::text]))),
+    CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'wrong_person'::text, 'no_phone'::text, 'other'::text]))),
     CONSTRAINT messages_skip_code_with_reason CHECK (((skip_code IS NULL) = (skip_reason IS NULL))),
     CONSTRAINT messages_status_check CHECK ((status = ANY (ARRAY['needs_copy'::text, 'ready'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text, 'cancelled'::text]))),
     CONSTRAINT messages_track_check CHECK (((track = ANY (ARRAY['main'::text, 'linkedin'::text])) AND ((track = 'main'::text) OR (channel = ANY (ARRAY['linkedin_invite'::text, 'linkedin_message'::text])))))
@@ -3811,7 +3813,7 @@ CREATE TABLE public.strategy_steps (
     variants jsonb,
     thread_of integer,
     CONSTRAINT strategy_steps_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
-    CONSTRAINT strategy_steps_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text]))),
+    CONSTRAINT strategy_steps_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'call'::text]))),
     CONSTRAINT strategy_steps_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT strategy_steps_delay_days_check CHECK ((delay_days >= 0)),
     CONSTRAINT strategy_steps_delay_hours_check CHECK (((delay_hours >= 0) AND (delay_hours <= 23))),
@@ -5895,6 +5897,13 @@ CREATE INDEX answer_requests_waiting ON public.answer_requests USING btree (requ
 
 
 --
+-- Name: call_lists_strategy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX call_lists_strategy ON public.call_lists USING btree (strategy_id) WHERE (strategy_id IS NOT NULL);
+
+
+--
 -- Name: client_project_grants_active; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7954,6 +7963,14 @@ ALTER TABLE ONLY public.call_lists
 
 ALTER TABLE ONLY public.call_lists
     ADD CONSTRAINT call_lists_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: call_lists call_lists_strategy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_lists
+    ADD CONSTRAINT call_lists_strategy_id_fkey FOREIGN KEY (strategy_id) REFERENCES public.strategies(id) ON DELETE SET NULL;
 
 
 --
@@ -13394,6 +13411,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110003800'),
     ('20261110003827'),
     ('20261110003853'),
+    ('20261110004026'),
     ('20261110004523'),
     ('20261110004602'),
     ('20261110005720'),

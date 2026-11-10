@@ -222,6 +222,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          (needsCopy); without it the answer counts them (couldChangeSender)
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
+                                         a "call" step puts the lead on the strategy's call list when reached
+                                         (handed to the dialer when the project is linked); its guidance is the brief;
                                          a linkedin_invite step goes without a note unless it says "withoutNote": false;
                                          "track": "linkedin" (an invite or LinkedIn message) runs it beside the emails:
                                          timed on its own track, it never holds an email; "delayHours" (0-23) adds

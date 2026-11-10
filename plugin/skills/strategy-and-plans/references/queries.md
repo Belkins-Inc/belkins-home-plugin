@@ -86,7 +86,7 @@ with sent as (
          bool_or(m.channel = 'linkedin_invite' and m.accepted_at is not null) as accepted
   from messages m join enrollments e on e.id = m.enrollment_id
   join strategies s on s.id = e.strategy_id
-  where s.project_id = @project and m.sent_at is not null
+  where s.project_id = @project and m.sent_at is not null and m.channel <> 'call'
   group by 1, 2
 ), replied as (
   select distinct t.enrollment_id, t.channel from threads t
@@ -100,3 +100,27 @@ group by s.channel
 
 Too few leads reached for a rate (a few dozen) → the client's previous outreach decides, and the
 note says so.
+
+## Leads with their first steps sent
+
+Who is ready for the callers: live leads of a strategy whose first `@n` steps have all gone out
+(sent, or skipped such as an invite to someone already connected) and at least two emails sent,
+not yet on any call list, with whether they have a number. A plan with a `call` step does this by
+itself; this is for leads enrolled before it had one.
+
+```sql
+select e.id as enrollment_id, c.id as contact_id, c.first_name, c.last_name, co.name as company,
+       exists (select 1 from contact_phones p where p.contact_id = c.id and p.state = 'active') as has_number
+from enrollments e
+join contacts c on c.id = e.contact_id
+left join companies co on co.id = c.company_id
+where e.strategy_id = @strategy and e.status in ('active', 'paused')
+  and not exists (select 1 from messages m where m.enrollment_id = e.id and m.position <= @n
+                    and m.resend_of is null and m.status in ('needs_copy', 'ready', 'sending'))
+  and (select count(*) from messages m where m.enrollment_id = e.id and m.channel = 'email'
+         and m.status = 'sent') >= 2
+  and not exists (select 1 from call_list_contacts x where x.contact_id = c.id)
+order by e.created_at
+```
+
+The rows go to `bh calls create` (a person only) with each `contactId` and a `reason`.

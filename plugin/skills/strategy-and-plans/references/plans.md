@@ -65,6 +65,29 @@ Invitations go without a note by default. Only when the person asks for notes do
 step carry `"withoutNote": false` and a guidance such as "Connection note, under 200 characters.
 Asks for nothing but the connection; does not pitch; does not mention the email."
 
+## email_and_linkedin with calling
+
+Calling starts in the first week: a lead goes to the callers once it has had two emails and the
+LinkedIn invite. The call step comes right after them; with the invite on the LinkedIn track, the
+call step is timed from the second email.
+
+```json
+{
+  "appliesWhen": "email_and_linkedin",
+  "steps": [
+    { "channel": "email", "guidance": "As step 1 of email_only." },
+    { "channel": "linkedin_invite", "delayDays": 1, "track": "linkedin" },
+    { "channel": "email", "delayDays": 2, "guidance": "Proof step in the email thread. Must not mention LinkedIn." },
+    { "channel": "call", "delayDays": 1, "guidance": "Had two emails on <the signal>; ask whether it is worth 20 minutes this week." },
+    { "channel": "linkedin_message", "anchor": "invite_accepted", "condition": "invite_accepted", "delayDays": 1, "maxWaitDays": 45, "track": "linkedin", "guidance": "Thanks for connecting. One sentence of value, one soft question." },
+    { "channel": "email", "delayDays": 3, "guidance": "Last touch. Direct ask for a call or a polite close." }
+  ]
+}
+```
+
+With email and calling only, the call step follows the second email the same way. A lead with no
+number to dial skips the call step and goes on with the emails.
+
 ## linkedin_only
 
 ```json
