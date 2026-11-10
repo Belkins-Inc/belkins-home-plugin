@@ -64,8 +64,15 @@ wrote is refused with who wrote it and when: read theirs (`bh preview`), and rep
    `withProblems` is 0. When several agents write one strategy, check the whole batch together:
    colleagues are compared across the batch and against copy already written, in every strategy of
    the project.
-7. `bh copy write --file copy.json`. The batch is all or nothing: one refused message and nothing
-   is written; the error lists every problem per `messageId`. Fix and send the batch again.
+7. `bh copy write --file copy.json`, **at most 500 messages a call** (bh refuses a larger file
+   before sending it; `bh copy check` takes any size, 2 000 at a time, and says when a file is over
+   500). Split a larger batch by strategy, or at 500 keeping each lead's messages together. The
+   batch is all or nothing: one refused message and nothing is written; the error lists every
+   problem per `messageId`. Fix and send the batch again. A written batch answers with the house
+   rules it breaks (`withProblems`, `messages`): written anyway, so fix them and write again.
+   To take written copy back out (the client wants it rewritten from scratch, or it must not go as
+   it is), a person runs `bh copy clear <message-id> …`: the message waits for copy again
+   (`needs_copy`), and a lead whose step falls due meanwhile is held for it.
 8. `bh preview <message-id>` for the first lead of each persona and each template: it shows the
    message as sent (from, to, subject with "Re:", body with signature). Read it as the recipient.
    To see how it lands in a real inbox, a person sends it to their own address: **Send test** on the
@@ -74,6 +81,7 @@ wrote is refused with who wrote it and when: read theirs (`bh preview`), and rep
 9. Repeat until the queue is empty; `bh strategy show <id>` → `beforeLaunch` "Copy for every step".
 
 A message is rewritable while it is `needs_copy` or `ready`; once `sending`/`sent` it is refused.
+A `ready` message can also be cleared back to `needs_copy` by a person (`bh copy clear`).
 
 ## What the engine checks (`copyProblems`) — refused exactly for these
 
@@ -86,11 +94,15 @@ A message is rewritable while it is `needs_copy` or `ready`; once `sending`/`sen
 - any channel: "a placeholder was left in the copy" when body or subject contains `{{` or `}}`,
   `[name]` / `[first name]` / `[last name]` / `[full name]`, `[company…]`, or **any square
   brackets holding only letters and spaces** (case-insensitive, so `[see below]` is refused too).
+- any channel: "a dash (—, – or a spaced hyphen); write two sentences or use a comma" for an em
+  or en dash, or a hyphen standing between words (`word - word`) or opening a line, in the body or
+  the subject. Hyphens inside words stay. This holds for copy a client approved with a dash too:
+  write it with a comma, a colon or two sentences.
 - `angle` is required (non-empty) on every message.
 
-These are the floor. The house rules below are stricter; `bh copy write` does not refuse on them,
-`bh copy check` reports the ones a script can read, and the rest (substance, specificity, one story)
-you hold. Full rules, lists and examples: [references/house-rules.md](references/house-rules.md),
+These are the floor. The house rules below are stricter; `bh copy write` does not refuse on them
+(its answer lists them), `bh copy check` reports the ones a script can read, and the rest
+(substance, specificity, one story) you hold. Full rules, lists and examples: [references/house-rules.md](references/house-rules.md),
 [references/examples.md](references/examples.md).
 
 ## Rules that matter most

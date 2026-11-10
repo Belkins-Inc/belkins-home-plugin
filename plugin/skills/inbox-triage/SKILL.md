@@ -111,6 +111,13 @@ there are many:
    land in the lead's working hours (their time zone, not ours) or when they asked for a moment
    ("write me Monday"); leave it off otherwise and it goes as soon as it is approved. Set
    `--approve-by` when the draft goes stale (offered slots): approval is refused after it.
+   `bh reply revise` and `bh reply approve` take `--send-at` and `--approve-by` too (`""` takes one
+   off); `bh reply reschedule <id> --send-at <iso|now>` moves a draft or an approved reply without
+   a new id (an approved one: a person only). A new `--note` on unchanged text keeps the same id.
+   The draft's Slack notice goes to you when you draft in your own session; `--reviewer <email>`
+   names someone else, and `bh reply assign <id> --reviewer <email>` hands a waiting draft over.
+   A project's `--reply-cc` (bh project update) is copied on every answer unless `--cc` says
+   otherwise; plan steps never carry it.
    `--sender` signs it as another sender than the lead's. A LinkedIn thread takes replies the
    same way: the approved answer goes into the same chat from the thread's LinkedIn account, as
    plain text with no signature, so write it as a chat message (short, no greeting block, no
@@ -165,7 +172,8 @@ there are many:
 - `bh reply discard <id>` withdraws a draft, an approved reply not yet sent, or a failed one.
 - A failed reply (`bh replies --status failed`, `lastError`) is usually a disconnected mailbox; fix
   the mailbox (a person runs `bh mailbox reconnect <id>`: a sign-in link, or for a seat in one of
-  our Google tenants an immediate retry), then draft again.
+  our Google tenants an immediate retry), then `bh reply retry <id>` sends it again as it was (a
+  person only; no new draft). Once a newer answer went in the thread, discard the old failure.
 
 ## The server agent
 

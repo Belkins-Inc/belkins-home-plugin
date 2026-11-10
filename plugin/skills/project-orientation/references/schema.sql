@@ -2861,6 +2861,9 @@ CREATE TABLE public.projects (
     reply_bcc_set_by uuid,
     reply_bcc_set_via public.actor_via,
     dialer_off boolean DEFAULT false NOT NULL,
+    reply_cc text[] DEFAULT '{}'::text[] NOT NULL,
+    reply_cc_set_by uuid,
+    reply_cc_set_via public.actor_via,
     CONSTRAINT projects_daily_domain_cap_check CHECK (((daily_domain_cap >= 1) AND (daily_domain_cap <= 50))),
     CONSTRAINT projects_setup_skipped_check CHECK ((setup_skipped <@ ARRAY['rules'::text, 'linkedin'::text, 'agent'::text])),
     CONSTRAINT projects_slack_channel_check CHECK (((slack_channel_id IS NULL) = (slack_channel IS NULL))),
@@ -2967,6 +2970,7 @@ CREATE TABLE public.replies (
     files uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     subject text,
     dnc_override text,
+    reviewer_id uuid,
     CONSTRAINT replies_check CHECK (((status <> ALL (ARRAY['approved'::text, 'sending'::text, 'sent'::text])) OR (approved_at IS NOT NULL))),
     CONSTRAINT replies_meeting_notice_check CHECK (((notice IS NULL) = (meeting_id IS NULL))),
     CONSTRAINT replies_notice_check CHECK ((notice = ANY (ARRAY['confirmation'::text, 'reminder_day'::text, 'reminder_hour'::text, 'moved'::text, 'cancelled'::text]))),
@@ -9730,6 +9734,14 @@ ALTER TABLE ONLY public.projects
 
 
 --
+-- Name: projects projects_reply_cc_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.projects
+    ADD CONSTRAINT projects_reply_cc_set_by_fkey FOREIGN KEY (reply_cc_set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: projects projects_setup_skipped_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9871,6 +9883,14 @@ ALTER TABLE ONLY public.replies
 
 ALTER TABLE ONLY public.replies
     ADD CONSTRAINT replies_previous_id_fkey FOREIGN KEY (previous_id) REFERENCES public.replies(id);
+
+
+--
+-- Name: replies replies_reviewer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.replies
+    ADD CONSTRAINT replies_reviewer_id_fkey FOREIGN KEY (reviewer_id) REFERENCES public.users(id);
 
 
 --
@@ -13233,9 +13253,11 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261109233647'),
     ('20261110000553'),
     ('20261110000637'),
+    ('20261110000741'),
     ('20261110000946'),
     ('20261110001333'),
     ('20261110001901'),
+    ('20261110002325'),
     ('20261110002615'),
     ('20261110003000'),
     ('20261110003800');

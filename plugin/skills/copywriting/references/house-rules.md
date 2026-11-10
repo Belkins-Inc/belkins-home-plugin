@@ -2,7 +2,7 @@
 
 Ported from belkins-home-ai (sending/prompts.ts, sending/style.ts, sending/relevance.ts,
 strategies/sequence-prompts.ts), and tightened by the first client's onboarding (a fuel procurement
-platform, September 2026). `bh copy write` refuses only on length, subject presence and placeholders. `bh copy check`
+platform, September 2026). `bh copy write` refuses only on length, subject presence, placeholders and dashes (and answers with the rest it finds). `bh copy check`
 reports every rule marked (checked) below, per message; the rest is the writer's to hold. Read your
 copy against every line, then run `bh copy check` on the whole batch before `bh copy write`.
 

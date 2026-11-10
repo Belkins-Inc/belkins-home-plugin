@@ -5,7 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { parseArgs } from 'node:util'
 
-import { merge, refusedIn, sendRows, warnedIn } from './batch.ts'
+import { chunk, merge, refusedIn, sendRows, warnedIn } from './batch.ts'
 import { consoleLogin, meetbotLogin } from './console-login.ts'
 import { BhError, call, callFile, callText } from './client.ts'
 import { readDncCsv } from './csv.ts'
@@ -38,6 +38,12 @@ const DNC_CHUNK = 5000
 
 /** Companies and contacts per label request; the engine takes up to 1,000 of each. */
 const LABEL_CHUNK = 1000
+
+/** Messages per copy check request (the engine's cap), within its 8 MB body. */
+const COPY_CHECK_MAX = 2000
+const COPY_CHECK_BYTES = 6 * 1024 * 1024
+/** The most messages one copy write takes: all of them or none, so bh does not split it. */
+const COPY_WRITE_MAX = 500
 
 type LabelAnswer = {
   label: { id: string; name: string }
@@ -154,6 +160,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   project update [--name <n>] [--timezone <tz>] [--domain-cap <n>] [--brief <text> | --brief-file <path>]   (a person only)
        [--reply-bcc a@x.com,b@y.com]     every answer in its email threads copies them without the lead seeing
                                          them ("" for nobody)
+       [--reply-cc a@x.com]              every answer in its email threads copies them in the open, besides the
+                                         lead's reply-all ("" for nobody); steps of a plan copy nobody
   brief [--project <slug>]              read this first, every session
   behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
                                          the topics, one topic's entries, or the entries with every word;
@@ -335,10 +343,16 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   worked <strategy-id> --file <json|jsonl|->           [{"domain","status":"pending|contacts_found|no_match|enrolled|exhausted","contactsFound"}]
                                          what a search inside a company came to; the engine records the rest as people stand
   copy queue <strategy-id> [--limit <n≤200>] [--offset <n>] [--all]   --all reads every page | copy write --file <json|jsonl|->   [{"messageId","subject","body","angle"}]
+                                         at most 500 messages a call, all written or none (bh refuses a larger file);
+                                         the answer lists house rules the copy breaks (written anyway, as copy check says);
                                          a referral's or re-engagement's step someone else already wrote is refused;
                                          --replace replaces theirs, on purpose only
   copy check --file <json|jsonl|->      the same file, checked against the house rules and written nowhere;
-                                         every problem per messageId, exit 1 when there is one
+                                         every problem per messageId, exit 1 when there is one; sent 2,000 at a
+                                         time and answered as one (colleagues compared within each 2,000 and
+                                         with copy already written)
+  copy clear <message-id> [<message-id> …]   take a written message's copy back out: it waits for copy again
+                                         (needs_copy); not once sent; a person only
   copy sample <strategy-id> --file <json|jsonl|-> [--replace]   [{"position","subject","body","newThread"}]
                                          sample emails of the strategy's steps, written for no lead: warm-up and
                                          placement tests carry them before launch, or when we send through another
@@ -758,23 +772,33 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          confirm or change what a reply means; no --class marks it handled
   reply draft <thread-id> --body <text> | --body-file <path> [--note <for the approver>] [--send-at <iso>]
        [--approve-by <iso>] [--sender <id>] [--cc a@x.com,b@y.com] [--bcc c@z.com] [--subject <s>]
+       [--reviewer <email>]              who approves it; its Slack notice goes to them (left out: you, when you
+                                         draft in your own session; else whoever launched the lead's strategy)
                                          --subject sends it under that subject, exactly as written (left out:
                                          "Re: " and the subject of the lead's last message; "" for that)
                                          --cc copies people in the open (left out: whom the lead's message
-                                         copied, bh thread's replyCc; "" for none), --bcc without the lead seeing them
+                                         copied, bh thread's replyCc, and the project's --reply-cc; "" for none),
+                                         --bcc without the lead seeing them
                                          (left out: the project's, bh project update --reply-bcc; "" for none)
        [--attach <file>]…                 a file to send with it (repeat for more): only in an answer to a lead who
                                          wrote in this email thread; PDF, PNG, JPEG, .docx, .xlsx or .pptx, at most
                                          3 and 2 MB together, no macros, scripts or passwords
   replies [--status draft|approved|sent|failed|discarded]
-  reply approve <id> [--body <final text>] [--cc …] [--bcc …] [--subject <s>] (a person only) | reply discard <id>
+  reply approve <id> [--body <final text>] [--cc …] [--bcc …] [--subject <s>] [--send-at <iso|"">]
+       [--approve-by <iso|"">]           (a person only); --send-at "" sends it as soon as it may
        [--allow-dnc --reason <why>]       it goes even to an address on do-not-contact: a compliance answer (a data-
                                          subject request) on the lead's own thread; recorded, the entry stays
+  reply discard <id>                     withdraws a draft, an approved reply not gone yet, or a failed one
+  reply retry <id>                       sends a failed reply again as it was, after the undo minute (a person only)
+  reply reschedule <id> --send-at <iso|now>   moves when a draft or an approved reply goes, same id (now: as
+                                         soon as it may; an approved one: a person only)
+  reply assign <id> --reviewer <email>   who approves a draft: its Slack notice goes to them, posted anew
   reply revise <id> --body <text> | --body-file <path> [--note <for the approver>] [--cc …] [--bcc …]
-       [--subject <s>] [--attach <file>]… | [--no-attach]
+       [--subject <s>] [--send-at <iso|"">] [--approve-by <iso|"">] [--attach <file>]… | [--no-attach]
                                          a new version of a draft; --cc/--bcc replace its copies ("" for none),
                                          --subject its subject (left out: it keeps it; "" for the lead's own),
-                                         --attach its files (left out: it keeps them), --no-attach takes them off
+                                         --attach its files (left out: it keeps them), --no-attach takes them off;
+                                         the same text with a new --note or time keeps the same id
   reply rewrite <id> --ask <what to change>   your own Claude rewrites it on its next pass (bh answers) | reply versions <id>
   reply ask <thread-id> [--ask <what to say>]  your own Claude writes the answer on its next pass (a person only)
   reply-templates <strategy-id>          the fixed answers the engine sends on its own, by kind of reply
@@ -892,6 +916,74 @@ async function attached(o: { attach?: string[]; 'no-attach'?: boolean }) {
       })),
     ),
   }
+}
+
+/** A reply's times as given: '' takes one off (sends as soon as it may, or no approve-by). */
+function times(o: { 'send-at'?: string; 'approve-by'?: string }) {
+  return {
+    ...(o['send-at'] !== undefined ? { sendAt: o['send-at'] } : {}),
+    ...(o['approve-by'] !== undefined ? { approveBy: o['approve-by'] } : {}),
+  }
+}
+
+/** Flags every command reads: which API, whose token, which project. */
+const EVERYWHERE = ['api', 'token', 'project']
+
+/** What each reply command reads; anything else given to it is refused, not silently dropped. */
+const REPLY_FLAGS: Record<string, string[]> = {
+  draft: [
+    'body',
+    'body-file',
+    'note',
+    'send-at',
+    'approve-by',
+    'sender',
+    'reviewer',
+    'cc',
+    'bcc',
+    'subject',
+    'attach',
+  ],
+  // --allow-dnc and --reason: a person's answer to a do-not-contact address (a compliance answer).
+  approve: ['body', 'cc', 'bcc', 'subject', 'send-at', 'approve-by', 'allow-dnc', 'reason'],
+  revise: [
+    'body',
+    'body-file',
+    'note',
+    'cc',
+    'bcc',
+    'subject',
+    'send-at',
+    'approve-by',
+    'attach',
+    'no-attach',
+  ],
+  discard: [],
+  unapprove: [],
+  retry: [],
+  reschedule: ['send-at'],
+  assign: ['reviewer', 'to'],
+  rewrite: ['ask'],
+  ask: ['ask'],
+  agent: ['ask'],
+  versions: [],
+}
+
+/** A flag a command does not read is refused, so nobody believes it took effect. */
+function takesOnly(o: Record<string, unknown>, command: string, flags: string[]) {
+  const stray = Object.keys(o).filter(
+    (k) => o[k] !== undefined && !EVERYWHERE.includes(k) && !flags.includes(k),
+  )
+  if (stray.length)
+    throw new BhError(
+      `bh ${command} does not take ${stray.map((f) => `--${f}`).join(', ')}`,
+      {
+        hint: flags.length
+          ? `It takes ${flags.map((f) => `--${f}`).join(', ')}`
+          : 'It takes no flags',
+      },
+      2,
+    )
 }
 
 /** `--allow-dnc` needs `--reason`: why this one answer goes past do-not-contact. */
@@ -1376,6 +1468,8 @@ async function main(argv: string[]): Promise<void> {
       'message-limit': { type: 'string' },
       'domain-cap': { type: 'string' },
       'reply-bcc': { type: 'string' },
+      'reply-cc': { type: 'string' },
+      reviewer: { type: 'string' },
       class: { type: 'string' },
       cc: { type: 'string' },
       bcc: { type: 'string' },
@@ -1582,6 +1676,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.timezone ? { timezone: o.timezone } : {}),
             ...(o['domain-cap'] ? { dailyDomainCap: Number(o['domain-cap']) } : {}),
             ...(o['reply-bcc'] !== undefined ? { replyBcc: addresses(o['reply-bcc']) } : {}),
+            ...(o['reply-cc'] !== undefined ? { replyCc: addresses(o['reply-cc']) } : {}),
             ...(o['brief-file']
               ? { brief: await readFile(o['brief-file'], 'utf8') }
               : o.brief
@@ -2640,13 +2735,40 @@ async function main(argv: string[]): Promise<void> {
         return out(all)
       }
       // One request, not chunks: the engine writes all of the copy or none of it.
-      if (sub === 'write')
-        return out(
-          await call(config, 'POST', '/copy', {
-            messages: await readRows(need(o.file)),
-            ...(o.replace ? { replace: true } : {}),
-          }),
-        )
+      if (sub === 'write') {
+        const messages = await readRows(need(o.file))
+        if (messages.length > COPY_WRITE_MAX)
+          throw new BhError(
+            `${messages.length} messages; bh copy write takes at most ${COPY_WRITE_MAX} at a time, all or none`,
+            {
+              hint: `Split the file into parts of ${COPY_WRITE_MAX} or fewer (by strategy, or keeping each lead's messages together) and write each`,
+            },
+            2,
+          )
+        const written = (await call(config, 'POST', '/copy', {
+          messages,
+          ...(o.replace ? { replace: true } : {}),
+        })) as { withProblems?: number }
+        out(written)
+        if (written.withProblems)
+          process.stderr.write(
+            `written, with house problems on ${written.withProblems} ${written.withProblems === 1 ? 'message' : 'messages'}: see "messages" (bh copy check reports the same)\n`,
+          )
+        return
+      }
+      if (sub === 'clear') {
+        const ids = pos.slice(2)
+        if (!ids.length)
+          throw new BhError(
+            'Which message?',
+            { hint: 'bh copy clear <message-id> [<message-id> …]' },
+            2,
+          )
+        const answers = []
+        for (const id of ids)
+          answers.push(await call(config, 'POST', `/messages/${id}/clear-copy`, {}))
+        return out(answers.length === 1 ? answers[0] : answers)
+      }
       if (sub === 'test') {
         if (!arg || !o.to)
           throw new BhError(
@@ -2684,10 +2806,18 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'DELETE', `/strategies/${arg}/samples/${pos[3]}`))
       }
       if (sub === 'check') {
-        const checked = (await call(config, 'POST', '/copy/check', {
-          messages: await readRows(need(o.file)),
-        })) as { withProblems: number }
+        // A file over what the engine checks at once goes in parts, answered as one; colleagues
+        // are then compared within each part and with copy already written.
+        const messages = await readRows(need(o.file))
+        const answers = []
+        for (const part of chunk(messages, COPY_CHECK_MAX, COPY_CHECK_BYTES))
+          answers.push(await call(config, 'POST', '/copy/check', { messages: part }))
+        const checked = merge(answers) as { withProblems: number }
         out(checked)
+        if (messages.length > COPY_WRITE_MAX)
+          process.stderr.write(
+            `${messages.length} messages: bh copy write takes at most ${COPY_WRITE_MAX} at a time, so write them in parts\n`,
+          )
         if (checked.withProblems) process.exitCode = 1
         return
       }
@@ -3140,6 +3270,7 @@ async function main(argv: string[]): Promise<void> {
         ),
       )
     case 'reply':
+      if (sub && sub in REPLY_FLAGS) takesOnly(o, `reply ${sub}`, REPLY_FLAGS[sub]!)
       if (sub === 'draft') {
         const text = o['body-file'] ? await readFile(o['body-file'], 'utf8') : need(o.body)
         return out(
@@ -3149,6 +3280,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o['send-at'] ? { sendAt: o['send-at'] } : {}),
             ...(o['approve-by'] ? { approveBy: o['approve-by'] } : {}),
             ...(o.sender ? { senderId: o.sender } : {}),
+            ...(o.reviewer ? { reviewer: o.reviewer } : {}),
             ...copies(o),
             ...(o.subject !== undefined ? { subject: o.subject } : {}),
             ...(await attached(o)),
@@ -3161,7 +3293,25 @@ async function main(argv: string[]): Promise<void> {
             ...(o.body ? { body: o.body } : {}),
             ...copies(o),
             ...(o.subject !== undefined ? { subject: o.subject } : {}),
+            ...times(o),
             ...(o['allow-dnc'] ? { allowDnc: dncOverride(o.reason) } : {}),
+          }),
+        )
+      if (sub === 'retry') return out(await call(config, 'POST', `/replies/${arg}/retry`, {}))
+      if (sub === 'reschedule') {
+        const at = o['send-at']
+        if (at === undefined)
+          throw new BhError('When should it go?', { hint: '--send-at <iso>, or --send-at now' }, 2)
+        return out(
+          await call(config, 'POST', `/replies/${arg}/reschedule`, {
+            sendAt: at === 'now' ? '' : at,
+          }),
+        )
+      }
+      if (sub === 'assign')
+        return out(
+          await call(config, 'POST', `/replies/${arg}/assign`, {
+            reviewer: o.reviewer ?? o.to,
           }),
         )
       if (sub === 'discard') return out(await call(config, 'POST', `/replies/${arg}/discard`, {}))
@@ -3175,6 +3325,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.note ? { note: o.note } : {}),
             ...copies(o),
             ...(o.subject !== undefined ? { subject: o.subject } : {}),
+            ...times(o),
             ...(await attached(o)),
           }),
         )
