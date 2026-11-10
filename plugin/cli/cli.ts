@@ -154,7 +154,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          them ("" for nobody)
   brief [--project <slug>]              read this first, every session
   behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
-                                         the topics, one topic's entries, or the entries with every word;
+                                         the topics, one topic's entries, or the entries with every word
+                                         (else the ten with the most; "matched" of "words" says how many);
                                          read it before answering "what happens when …"
   sql "<select …>" [--limit <n>]        read anything, read-only; @project stands for the current project's id
   note add --kind <decision|insight|client_feedback|rule|todo> --title <t> [--body <b>] [--supersedes <id,id>]

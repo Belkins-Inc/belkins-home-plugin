@@ -55,4 +55,6 @@ Re-copy `workspace/` only if its `CLAUDE.md` changed.
 ## Something is wrong
 
 A defect in `bh`, the engine or a skill: open an issue here (`gh issue create --repo
-Belkins-Inc/belkins-home-plugin --label bug`) — the platform team reads them.
+Belkins-Inc/belkins-home-plugin --label bug`) — the platform team reads them. This repository is
+public: an issue carries no client or lead names, email addresses, domains, project slugs or ids —
+describe them by role and count, and give the command that reproduces it.
