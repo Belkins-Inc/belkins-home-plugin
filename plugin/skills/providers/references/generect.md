@@ -7,8 +7,10 @@ prices the call from `meta.amount_charged` when present. Keep the trailing slash
 Two indexes:
 
 - **database** — the stored index. Counts are free, rows $0.0045. Use it for everything it can answer.
-- **realtime** — live LinkedIn. Counts $0.007, rows $0.007. Only for what database refuses
-  (keywords, names).
+- **realtime** — live LinkedIn. $0.007 a row, and **at least $0.007 a call**: an answer with no row
+  is charged too. Only for what database refuses (keywords, names, past employers) and the
+  fallback inside a company. Slow: a search inside one company can take minutes — the engine waits
+  up to four (two on the database index), so do not retry a realtime call that is still running.
 
 ## Companies
 
@@ -38,7 +40,8 @@ Filters (database):
 
 | Field | Values / notes |
 | --- | --- |
-| `industries`, `exclude_industries` | LinkedIn industry names. A parent **includes its sub-industries** by default |
+| `industries` | LinkedIn industry names. A parent **includes its sub-industries** by default |
+| `exclude_industries` | **Does not expand a parent**: it removes only companies labelled with the parent itself. Around one US city, `industries: ["Manufacturing"]` counted 888 and `exclude_industries: ["Manufacturing"]` removed 130 of 4,542 — 758 manufacturers stayed. To leave a branch out, list its children here, or take "everything else" as the total minus the count of the branch |
 | `sub_industries` | `true` = take the named industries exactly, **without** their children (narrows a branch: Financial Services UK 40,229 → 24,532) |
 | `locations`, `exclude_locations` | country names as LinkedIn writes them: `"United Kingdom"`, `"United States"` |
 | `headcounts` | exactly: `1-10`, `11-50`, `51-200`, `201-500`, `501-1000`, `1001-5000`, `5001-10000`, `10 000+` (note the space) |
@@ -167,7 +170,15 @@ search finds to its database (the database count rose right after), so the gap i
 companies nobody has searched live.
 
 Use it as the fallback, never first: after the database search of a company keeps fewer than
-`max_per_company` people, ask realtime with the same body. An empty answer is free.
+`max_per_company` people, ask realtime with the same body. **An empty answer costs $0.007 like a
+row** (`meta.amount_charged: 0.007` on `data.leads: []`), so price the fallback per call, not per
+person found: in one run 11 of 85 calls answered anyone, 12 rows in all, and only 2 of them were new
+people kept — $0.60 for two contacts. Count the company on the database first (below) and skip the
+fallback where the index already holds many people and none fit.
+
+Realtime can answer `400 {"detail":"No such company","amount":0}` (free) for a `company_link` the
+database knows and counts people for. It is a "no result" for realtime, not a broken link: keep the
+database's answer, or reach the people by LinkedIn.
 
 ```sh
 bh call generect POST /search/realtime/leads/ --strategy <strategy> --company <company-id> --body '{
@@ -192,6 +203,12 @@ A realtime row is looser than a database row — check every one:
   `https://www.linkedin.com/in/<sales_id>`. Store that as the contact's `linkedinUrl` — the engine
   takes it (3,142 contacts carried one on 2026-11-02) and LinkedIn steps work from it. Apollo's
   match wants it as `/sales/lead/<sales_id>` (apollo.md).
+
+**Counting on realtime.** `/search/realtime/leads/` counts with `limit_by: 1`: read
+`data.results_count`, $0.007 (and the one row). **`limit_by: 0` is not a count** — realtime returns
+and bills every row ($0.99 for 142 rows once); the engine refuses it (`400 body_refused`). A
+one-row page has the same body as its count, so asking for the first row after counting is refused
+as a repeat: the row is already in the count's answer (`bh call show <call-id>`).
 
 To see why a company gave nothing, count it free before paying: `{"company_link": …}` alone says how
 many of its people the index holds, the same body with the ladder how many of them fit. Few or none
@@ -236,6 +253,11 @@ Lead filters and traps:
   `Chief Risk Officer`) — list both forms.
 - `offset_by` < 2,400 and `limit_by` ≤ 2,400; no exclusion of any kind on leads, and name filters
   are refused on database.
+- **`offset_by` only pages a search with no company named.** Inside one company (`company_link`)
+  any `offset_by` above 0 is refused: `400 "Offset by parameter only for without_company=true"`.
+  So inside a company take the free count first (`/search/database/leads/count/` with the same
+  body), then buy one page from offset 0 with `limit_by` up to that count. Raising a per-company cap
+  later means buying the first rows again.
 - `is_current` cannot be filtered; it comes **on the row**. Drop rows with `is_current: false` or
   `company_still_working: false` — they are former employees (still charged).
 
@@ -245,6 +267,24 @@ this), `sales_id` (the URN), `linkedin_sales_link` (search context with commas �
 `linkedin_company_id`, `company_industry`, `location`, `is_current`, `company_still_working`.
 **No email** (`email_candidates` is a count, `contact_info` is empty) and no seniority or department.
 The index's company data is loose (a garage labelled Software Development) — the employer still has
+to pass the segment.
+
+### People who used to work somewhere (realtime only, $0.007 per row)
+
+`past_company_names` (company **names**, not LinkedIn URLs) with `job_titles` and `locations` finds
+people by a former employer — a "familiar faces" segment of people who left a client's customers.
+
+```sh
+bh call generect POST /search/realtime/leads/ --strategy <strategy> --body '{
+  "past_company_names": ["Acme Retail"], "job_titles": ["Head of eCommerce", "Director of Digital"],
+  "locations": ["United States"], "limit_by": 1, "offset_by": 0
+}'
+```
+
+Count first with `limit_by: 1` (above), then buy the page you need. The rows carry
+`lead_company_id`, the numeric LinkedIn id of the **current** employer, and no domain:
+`bh cache company https://www.linkedin.com/company/<id>` resolves it for free when it is kept;
+otherwise the employer is a company to find (its page from its name, above). The employer still has
 to pass the segment.
 
 ### A named person (realtime only, $0.007 per row)
@@ -303,6 +343,8 @@ with `bh cache person <url>` / `bh cache company <url>`; `--again` buys anew.
 ## Errors
 
 - `Bad url`, `Person does not exist`, `Company does not exist`, `No such company` — ordinary "no
-  result", not failures.
+  result", not failures (free).
+- `502 provider_unreachable` after the engine's wait (two minutes, four on realtime) — nothing was
+  charged; try once more later, and on realtime narrow the body (fewer titles, one company).
 - `429` or a `detail` containing "Try again later" — wait a minute and retry (up to three times).
 - One over-long title in `job_titles` fails the whole request — keep titles short.

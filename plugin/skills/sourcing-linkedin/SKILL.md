@@ -123,7 +123,9 @@ Decide before spending, and write the reason in one sentence (a note or the sess
      still empty. One list of the whole ladder with a wide `limit_by` buys rows the cap throws away:
      one project paid for 12,700 people in October and kept 21%.
    - **Too few kept → realtime** with the same body (generect.md, "Inside one company, live"): the
-     database index misses people, most at small companies, and an empty realtime answer is free.
+     database index misses people, most at small companies. Every realtime call costs at least
+     $0.007, an empty answer too, and can take minutes: skip it where the free database count
+     shows many people held and none fit (the ladder is the gap, not the index).
      Check each realtime row's employer, duplicates and title before keeping it.
    - Record each search (the database one and the realtime one apart) as a contact search, with
      what was dropped and why:

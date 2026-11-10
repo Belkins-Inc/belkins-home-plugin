@@ -109,7 +109,8 @@ Check it before a large order and mention it in `bh session end`.
 | How many companies / people match (free) | Generect database `…/count/` | [generect](references/generect.md) |
 | Companies in a market (LinkedIn data) | Generect database companies, $0.0045/row | [generect](references/generect.md) |
 | People inside a company, or off a segment | Generect database leads, $0.0045/row | [generect](references/generect.md) |
-| People inside a company the database has too few of (fewer than `max_per_company` who fit) | Generect realtime leads with the same `company_link` and titles, $0.007/row, an empty answer free | [generect](references/generect.md) |
+| People inside a company the database has too few of (fewer than `max_per_company` who fit) | Generect realtime leads with the same `company_link` and titles, $0.007/row and at least $0.007 a call (an empty answer is charged); can take minutes | [generect](references/generect.md) |
+| People who used to work at a given company | Generect realtime leads with `past_company_names`, $0.007/row; count with `limit_by: 1` | [generect](references/generect.md) |
 | A person's current title and employer from their LinkedIn URL | Generect lead by link (`/leads/by_link/`), $0.0045, at most two weeks old; free from the cache when a profile read in the last 30 days is kept | [generect](references/generect.md) |
 | Which LinkedIn profile is this named person | Apollo `people/match` first, Generect realtime leads only when Apollo is silent | [apollo](references/apollo.md) |
 | A person's email address — first try | Apollo `people/bulk_match` (10 a call), $0.0065 per person matched; Bouncer decides | [apollo](references/apollo.md) |
