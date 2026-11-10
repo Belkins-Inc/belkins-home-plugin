@@ -134,7 +134,11 @@ sending days and outreach from its fourth (`bh behaviour limits-and-pacing`). En
 and `bh strategy repick-mailboxes` give a lead its sender's least-loaded mailbox that sends outreach
 on the lead's first day, so a mailbox still warming alone, or one whose outreach is held, takes new
 leads only when none of the sender's mailboxes would send sooner; nothing needs closing by hand.
-Leads enrolled before a hold move with `bh strategy repick-mailboxes <id>` (dry run first).
+Leads enrolled before a hold move with `bh strategy repick-mailboxes <id>` (dry run first); new
+mailboxes take a share of leads that have sent nothing with `--even`, and `--to-provider`,
+`--only` or `--skip` aim the move (`bh --help`). To keep a mailbox from new leads, pause it
+(`bh mailbox update <id> --status paused`); `--recipients none` is refused, as `none` is the
+provider of a domain with no mail server.
 
 When something stops:
 

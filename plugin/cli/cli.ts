@@ -154,8 +154,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          them ("" for nobody)
   brief [--project <slug>]              read this first, every session
   behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
-                                         the topics, one topic's entries, or the entries with every word
-                                         (else the ten with the most; "matched" of "words" says how many);
+                                         the topics, one topic's entries, or the entries with every word;
                                          read it before answering "what happens when …"
   sql "<select …>" [--limit <n>]        read anything, read-only; @project stands for the current project's id
   note add --kind <decision|insight|client_feedback|rule|todo> --title <t> [--body <b>] [--supersedes <id,id>]
@@ -188,6 +187,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          that serves its provider (mailbox update --recipients) and sends outreach
                                          on its first day: off held, badly placed and still warming-alone
                                          mailboxes when the sender has another; each move says why; a person only
+                 [--even]                   also spread leads on mailboxes that send, so mailboxes added after
+                                         enrollment get their share (a lead moves while another carries 2 fewer)
+                 [--to-provider google|microsoft] [--only <mailbox-id,…>] [--skip <mailbox-id,…>]
+                                         where leads may move to; where they come from is unchanged
+                 [--change-sender]          a lead whose sender has no mailbox for its provider, or is no longer on
+                                         the strategy, moves to another sender who has one; only leads with nothing
+                                         sent on any channel; their written copy is cleared and needs writing again
+                                         (needsCopy); without it the answer counts them (couldChangeSender)
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
                                          a linkedin_invite step goes without a note unless it says "withoutNote": false;
@@ -293,6 +300,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          domains (not free mail, not the client's own) and numbers;
                                          --dry-run counts and shows a sample, writing nothing
   enroll <strategy-id> --file <json|jsonl|-> [--dry-run]    [{"contactId","segmentId","personaId"}]
+                                         a lead goes first to a sender with a mailbox for its mail provider;
+                                         unserved counts leads no sender's mailboxes serve (put on any)
   stand <strategy-id> --contact <id> --status candidate|held|rejected [--persona <id>] [--reason <t>]
   stand <strategy-id> --file <json|jsonl|->            [{"contactId","status","personaId","reason"}]
                                          a person live in the strategy stays enrolled (skipped, with why);
@@ -462,6 +471,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   mailbox update <id> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed|--not-warmed] [--status active|paused|archived]
                  [--sender <id>]            another sender of the project writes from it
                  [--recipients google,microsoft,…|any]   write only to leads whose mail that provider takes
+                                         (none is refused: it is a domain with no MX; to write to nobody, --status paused)
                  --not-warmed on a warmed one: the ladder again from its first day; --warmed needs a
                  domain registered 30 days ago or more
                                          (bh esp names them); a lead no mailbox of its sender serves may use any.
@@ -1195,6 +1205,10 @@ async function main(argv: string[]): Promise<void> {
       status: { type: 'string' },
       note: { type: 'string' },
       only: { type: 'string' },
+      skip: { type: 'string' },
+      even: { type: 'boolean' },
+      'to-provider': { type: 'string' },
+      'change-sender': { type: 'boolean' },
       summary: { type: 'string' },
       for: { type: 'string' },
       email: { type: 'string' },
@@ -1681,6 +1695,11 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'POST', `/strategies/${arg}/mailboxes/repick`, {
             dryRun: Boolean(o['dry-run']),
+            ...(o.even ? { even: true } : {}),
+            ...(o['to-provider'] ? { toProvider: o['to-provider'] } : {}),
+            ...(o.only ? { only: list(o.only) } : {}),
+            ...(o.skip ? { skip: list(o.skip) } : {}),
+            ...(o['change-sender'] ? { changeSender: true } : {}),
           }),
         )
       if (sub === 'launch') return out(await call(config, 'POST', `/strategies/${arg}/launch`, {}))

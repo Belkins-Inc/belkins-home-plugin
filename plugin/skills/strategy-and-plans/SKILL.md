@@ -228,8 +228,17 @@ strategy; `rejected` for this strategy; catch-all
 held back; no usable email and no LinkedIn; no template fits; the company cap
 (`maxPerCompany`, counted over every enrollment in this strategy); the persona cap at the company;
 no active mailbox among the senders; **already in a live strategy** (one contact, one live
-strategy). Mailboxes are assigned by load. Starts are spread over `startSpreadDays`; a second person
-at a company starts `companyStaggerDays` after the first.
+strategy). Senders and mailboxes are assigned by load, a lead first going to a sender with a
+mailbox for its mail provider (`bh mailbox update <id> --recipients`); `unserved` in the enroll
+answer counts leads no sender's mailboxes serve. Starts are spread over `startSpreadDays`; a second
+person at a company starts `companyStaggerDays` after the first.
+
+Moving leads that have sent nothing (a person runs it; `--dry-run` first): `bh strategy
+repick-mailboxes <id>` moves them off mailboxes that would not send; `--even` also spreads them onto
+mailboxes connected after enrollment; `--to-provider google|microsoft`, `--only <ids>` and `--skip
+<ids>` say where they may go; `--change-sender` moves a lead whose sender has no mailbox for its
+provider (or left the strategy) to another sender, and its copy then has to be written again
+(`needsCopy`, then `bh copy queue`). No need to stop and re-enroll leads to rebalance them.
 
 Catch-all addresses follow `catchAllPolicy`: `hold` (default) holds the lead (`strategy_contacts =
 held`) unless it has LinkedIn, in which case it goes LinkedIn-only; `linkedin_only` never emails a

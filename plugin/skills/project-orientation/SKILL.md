@@ -89,25 +89,14 @@ Other reads: `bh note list [--kind k] [--all]`, `bh questions --status all`,
 Before answering any "what happens when …" question about the system — a teammate's or your own
 (a lead already connected on LinkedIn, a reply mid-plan, a mailbox at its limit, a paused
 strategy) — read `bh behaviour`: the topics, `bh behaviour <topic>` for one, `bh behaviour --search
-"<words>"` across all. Search with the two or three words that name the situation ("warm-up
-ladder", "already connected"), not the whole question: entries holding every word come first, and
-when none does the answer lists the ten holding the most (`matched` of `words`), which may or may
-not answer it. Answer from the entry, saying which one. Only after a short search and a look at the
-topic that should hold it (`bh behaviour <topic>`) find nothing, say so plainly — "the behaviour
-docs do not cover this" — rather than guessing from names or from how other tools work, and open
-an issue so it gets written:
+"<words>"` across all. Answer from the entry, saying which one. If no entry covers it, say so
+plainly — "the behaviour docs do not cover this" — rather than guessing from names or from how
+other tools work, and open an issue so it gets written:
 
 ```
 gh issue create --repo Belkins-Inc/belkins-home-plugin --label "behaviour question" \
-  --title "<the question, as asked>" --body "<the situation, what you found in bh behaviour>"
+  --title "<the question, as asked>" --body "<who asked, the situation, what you found in bh behaviour>"
 ```
-
-**That repository is public.** An issue there — title, body, comments, attachments — carries no
-client or lead data: no company or person names, email addresses, domains, project slugs, ids,
-phone numbers or quoted copy. Describe by role and count ("a lead at a client's prospect",
-"3 of 40 first emails", "a project with two senders"), and give the `bh sql` query or the `bh`
-command that reproduces it instead of the values it returned; the people who fix it can run it.
-Check the title and body for these before you send it.
 
 Name the issue in your answer and in the hand-over.
 
@@ -189,9 +178,7 @@ gh issue create --repo Belkins-Inc/belkins-home-plugin --label bug --title "<the
 
 or, in a session working in the repository, an entry in `docs/skills-fixes.md` in the same shape.
 **Where**: the file, command or endpoint. **What happened**: what you ran and what came back, with
-numbers and the date — enough to reproduce it. **Change**: what should be different. The issue is
-public, so the rule above holds: no client or lead names, emails, domains, slugs or ids — the
-command or query that reproduces it instead. Then
+numbers, ids and the date — enough to reproduce it. **Change**: what should be different. Then
 carry on with a workaround, and name the issue in the hand-over.
 
 ## End of session

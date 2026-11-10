@@ -12,8 +12,7 @@ platform code, and nothing here is built.
   skills. Their source is not here and you do not fetch it.
 - When `bh` cannot do something, or answers wrong, or a skill sends you the wrong way: say so plainly,
   carry on with what `bh` can do, and record the defect as the `project-orientation` skill says (a
-  GitHub issue on `Belkins-Inc/belkins-home-plugin`). That repository is public: the issue names no
-  client, lead, email, domain, project slug or id. Do not invent a workaround that goes around the
+  GitHub issue on `Belkins-Inc/belkins-home-plugin`). Do not invent a workaround that goes around the
   engine.
 - Files you make for a person (a call list, a batch for `bh --file`, a draft) go under
   `clients/<project-slug>/`. The project's memory is the database, not this directory.
