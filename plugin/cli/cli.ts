@@ -219,8 +219,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          on its send days, colleagues companyStaggerDays apart: earlier as well as
                                          later; a sendDays or companyStaggerDays update does it by itself (a person only)
   strategy repick-mailboxes <id> [--dry-run]   give each lead that has sent nothing yet a mailbox of its sender
-                                         that serves its provider (mailbox update --recipients) and sends outreach
-                                         on its first day: off held, badly placed and still warming-alone
+                                         that serves its provider (mailbox update --recipients), sends outreach
+                                         on its first day and is hosted there (Gmail on Google, Outlook on
+                                         Microsoft) when one is: off held, badly placed and still warming-alone
                                          mailboxes when the sender has another; each move says why; a person only
                  [--even]                   also spread leads on mailboxes that send, so mailboxes added after
                                          enrollment get their share (a lead moves while another carries 2 fewer)
