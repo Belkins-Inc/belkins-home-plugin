@@ -54,11 +54,15 @@ wrote is refused with who wrote it and when: read theirs (`bh preview`), and rep
    per `messageId`: the engine's checks below plus the house rules it can read (dashes and curly
    quotes, burned phrases and hype, the greeting with the real first name, a first sentence starting
    with I or We, word limits per step, the question rule, the subject rules, one subject across a
-   thread, British spelling to a US recipient, a link or markdown, the same first email to two
-   colleagues at one company). It exits 1 while any message has a problem; `warnings` (a lead with
-   no signal) are for the reviewer, not errors. Fix and check again until `withProblems` is 0.
-   When several agents write one strategy, check the whole batch together: colleagues are compared
-   across the batch and against copy already written.
+   thread, British spelling to a US recipient, a link or markdown, the same text to two colleagues
+   at one company at any step, as the strategy's Copy tab flags it). A link is read as one word (its
+   `?` is no question), a blank line ends a sentence, a sign-off line a client asks for ("Thanks,")
+   under the question is the close, and hype and spelling are not looked for inside the lead's own
+   names (their company's name and domain). It exits 1 while any message has a problem; `warnings`
+   (a lead with no signal) are for the reviewer, not errors. Fix and check again until
+   `withProblems` is 0. When several agents write one strategy, check the whole batch together:
+   colleagues are compared across the batch and against copy already written, in every strategy of
+   the project.
 7. `bh copy write --file copy.json`. The batch is all or nothing: one refused message and nothing
    is written; the error lists every problem per `messageId`. Fix and send the batch again.
 8. `bh preview <message-id>` for the first lead of each persona and each template: it shows the
@@ -98,10 +102,12 @@ you hold. Full rules, lists and examples: [references/house-rules.md](references
   persona angle, never from the job title.
 - **No signal, say so.** A lead whose queue item has `problem` set (no signal) gets copy from the
   brief and the persona angle only, and the person hears how many such leads the batch has.
-- **The first email connects the dots, in three beats, then the question**: their footprint (a fact
-  from the signal or facts), the pain that scale means for this reader (hedged: "usually",
-  "often"), what the reader gets free for a yes (a concrete deliverable from the client, matched to
-  the reader's pain), then the question that asks for it. Going straight from the observation to the question was refused in onboarding.
+- **The first email connects the dots, in three beats, then the question**: why we write to this
+  company (their footprint: a fact from the signal or facts, and it may open reason first, "I'm
+  writing to you because <company> <the fact it qualified on>"), who we are and what that scale
+  means for this reader (hedged: "usually", "often"), what the reader gets free for a yes (a
+  concrete deliverable from the client, matched to the reader's pain), then the question that asks
+  for it. Going straight from the observation to the question was refused in onboarding.
 - **Simple beats clever.** The reader gets the email in one read and answers without thinking:
   plain words, one idea, nothing to work out.
 - **Every email ends on one short question**: under ten words, with one obvious answer (a yes, a
@@ -114,13 +120,16 @@ you hold. Full rules, lists and examples: [references/house-rules.md](references
   last email makes one offer and asks "Want me to set it up?"; it may close with one sentence after
   the question ("If fuel is not a priority right now, I will stop here.").
 - **Email greets by first name on its own line** ("Hi Ada,"), the real name written in. No first
-  name → no greeting at all ("Hi there" is worse). The first sentence does not start with "I" or "We".
+  name → no greeting at all ("Hi there" is worse). The first sentence does not start with "I" or
+  "We", except the reason-first opener "I'm writing to you because ...", which is about them.
 - **Short.** A first email at most 120 words, a follow-up 100, the last 70 (after the greeting); a
   few short paragraphs of uneven length, one idea, one ask. Plain text, blank lines between
   paragraphs; no markdown, lists, HTML; no link on step 1.
 - **American spelling for US recipients** (center, fueled, program, organize).
 - **No sign-off, no signature.** The engine appends the sender's `signature` to every email; the
-  body ends on its last sentence. No "Best regards". If `signature` is null, stop: a person sets it
+  body ends on its last sentence. No "Best regards". Where a client rule asks for a short sign-off
+  line ("Thanks,"), it goes on the body's last line; the check reads it as the close, not as a
+  sentence after the question. If `signature` is null, stop: a person sets it
   with `bh sender update <sender-id> --signature "<text>"` (ids: `bh senders`); a scheduled agent
   opens a task for one.
 - **Subject**: what a colleague would type, ≤ 6 words, sentence case or lower, no "!", emoji, dash

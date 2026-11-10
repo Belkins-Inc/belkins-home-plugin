@@ -32,8 +32,10 @@ copy against every line, then run `bh copy check` on the whole batch before `bh 
 
 ## The first email: three beats, then the offer as a question
 
-1. **Their footprint**: a fact from the signal or the lead's facts (sites, markets, reviews), in
-   their terms. "Rogers Group runs 86 quarries and 56 asphalt plants across 12 states."
+1. **Why we write to them, their footprint**: a fact from the signal or the lead's facts (sites,
+   markets, reviews), in their terms. "Rogers Group runs 86 quarries and 56 asphalt plants across
+   12 states." It may open reason first: "I'm writing to you because Rogers Group runs 86
+   quarries ...", then who we are and the offer in the next beats.
 2. **What that scale means for the problem the client solves**, hedged because it is an
    inference: "That is more than 140 places where diesel gets ordered, delivered and invoiced,
    usually by whichever local vendor covers that county."
@@ -57,7 +59,10 @@ Every email ends on **one short question**:
   so answering is worth it;
 - never either/or ("or" in the question), never two questions;
 - the last sentence of the email. The last email of a plan may close with one sentence after it
-  ("If fuel is not a priority right now, I will stop here.").
+  ("If fuel is not a priority right now, I will stop here."). A sign-off line a client rule asks
+  for ("Thanks," on the last line) is the close, not a sentence after the question, and does not
+  count toward the words. A link counts as one word, and its "?" is not a question; a blank line
+  ends a sentence, so a paragraph ending on a link stays out of the question.
 
 Good: "Want us to check last month's invoices?", "Want the backup vendor list for your terminals?"
 (the first email: a yes gets them the offer), "Worth putting one terminal out to bid?" (a yes).
@@ -75,7 +80,9 @@ Step guidance may fix the question word for word per persona; then use it word f
 
 - **Greeting** (checked): email opens with "Hi <first name>," on a line of its own, the name from
   the contact record. No first name, no greeting; never "Hi there". Not on LinkedIn.
-- **First sentence** (checked; under the greeting) is about them: it does not begin with "I" or "We".
+- **First sentence** (checked; under the greeting) is about them: it does not begin with "I" or
+  "We". The reason-first opener "I'm writing to you because <company> <the reason>" passes: it
+  is about them.
 - **Length** (checked, words after the greeting): the first email at most 120, a follow-up at most
   100, the last email at most 70. A few short paragraphs, one idea. Vary paragraph length; a
   one-sentence paragraph is how a person writes.
@@ -83,7 +90,8 @@ Step guidance may fix the question word for word per persona; then use it word f
   `[text](url)`), no HTML, no bulleted lists.
 - **Links** (checked): none on step 1. Later only if the guidance calls for one.
 - **Spelling** (checked): American for a recipient in the United States (the contact's country, or
-  the company's): center, fueled, program, organize, color. Elsewhere follow the brief.
+  the company's): center, fueled, program, organize, color. Elsewhere follow the brief. The lead's
+  own names (their company's name and domain) are written as they are: "Berkshire Grey" stays.
 - **Ending**: the body ends on its last sentence. No valediction, no name, title or company: the
   engine appends the sender's signature. No unsubscribe footer or link, no postal address. Where
   the law asks for a way out (an organisation that signed itself up, writing to the EU or the UK),
@@ -123,7 +131,8 @@ Burned openers (anywhere, subject included):
 Hype: revolutionise/revolutionize/revolutionary, supercharge, game-changer/game changing,
 cutting-edge, state-of-the-art, world-class, best-in-class, seamless, synergy, "leverage your",
 "leverage our", "to leverage", skyrocket, effortless, "in today's fast-paced", "fast-paced world",
-"take it to the next level".
+"take it to the next level". Not looked for inside the lead's own company name or domain: a
+company called "Synergy ..." is named as it is.
 
 Valedictions: "Best regards", "Kind regards", "Warm regards", "Warmest regards", "Sincerely",
 "Yours truly", "Looking forward to hearing from you".
@@ -140,9 +149,11 @@ Valedictions: "Best regards", "Kind regards", "Warm regards", "Warmest regards",
 
 ## Colleagues at one company (checked)
 
-Two people at one company compare notes. Their first emails must not be the same text with a
-different name: vary beat two and beat three, and use different markets or sites where the data
-allows. The question may stay the same where the guidance fixes it.
+Two people at one company compare notes. No message of theirs, at any step and in any strategy of
+the project, may be the same text with a different name: vary beat two and beat three, and use
+different markets or sites where the data allows. The question may stay the same where the guidance
+fixes it. `bh copy check` and the strategy's Copy tab apply the same rule, so a batch that passes the
+check is not flagged there after the write.
 
 ## Self-check before `bh copy write`
 
