@@ -383,14 +383,16 @@ $$;
 
 CREATE FUNCTION public.replan_on_messages_inserted() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
+    AS $_$
 begin
-  update enrollments
-     set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
-   where id in (select enrollment_id from inserted);
+  execute $q$
+    update enrollments
+       set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
+     where id in (select enrollment_id from inserted)
+  $q$;
   return null;
 end
-$$;
+$_$;
 
 
 --
@@ -399,18 +401,20 @@ $$;
 
 CREATE FUNCTION public.replan_on_messages_updated() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
+    AS $_$
 begin
-  update enrollments
-     set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
-   where id in (
-     select n.enrollment_id
-       from after_rows n join before_rows o on o.id = n.id
-      where (o.status, o.accepted_at, o.sent_at, o.written_at)
-            is distinct from (n.status, n.accepted_at, n.sent_at, n.written_at));
+  execute $q$
+    update enrollments
+       set planned_until = null, next_message_id = null, replan_at = clock_timestamp()
+     where id in (
+       select n.enrollment_id
+         from after_rows n join before_rows o on o.id = n.id
+        where (o.status, o.accepted_at, o.sent_at, o.written_at)
+              is distinct from (n.status, n.accepted_at, n.sent_at, n.written_at))
+  $q$;
   return null;
 end
-$$;
+$_$;
 
 
 --
@@ -13436,4 +13440,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110023000'),
     ('20261110030000'),
     ('20261110040000'),
-    ('20261110105338');
+    ('20261110105338'),
+    ('20261110120821');
