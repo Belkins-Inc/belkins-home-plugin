@@ -112,10 +112,12 @@ anything was sent, it is refused, so settle the steps before launch. Accepted va
   sent follows, written ones included (their own subject is then not used).
 - `withoutNote` (`linkedin_invite` only, default **true**): an invitation goes as a bare
   connection request unless its step says `"withoutNote": false`. LinkedIn caps invitations with a
-  note far below bare ones (a free account runs out after a handful and every further one is
-  refused with "You have reached the limit for custom messages"), so a note is the exception: set
-  `false` only when the person asks for notes while the strategy is being made, and say in the
-  proposal that the account's cap will stop them. A bare step needs no copy (its messages are
+  note far below bare ones (a free account runs out after a handful, and LinkedIn then answers
+  "You have reached the limit for custom messages"), so a note is the exception: set `false` only
+  when the person asks for notes while the strategy is being made, and say in the proposal that
+  the account's cap will stop them. Once LinkedIn refuses a note that way, the engine sends that
+  account's invitations without their notes until the next month (`notesOffUntil` in
+  `bh linkedin`, a channel problem in `bh brief`); the invitations still go. A bare step needs no copy (its messages are
   ready as soon as a lead is enrolled, copy written for them is refused) and no guidance; what a
   note would have said goes into the first message after acceptance. `bh plan step <strategy-id>
   <step-id> --file` with `{"withoutNote": true}` switches a frozen template's invite step (a person

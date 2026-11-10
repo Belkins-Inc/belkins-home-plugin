@@ -1456,6 +1456,7 @@ CREATE TABLE public.thread_messages (
     received_at timestamp with time zone DEFAULT now(),
     alert_ref text,
     alert_shown text,
+    body_missing boolean,
     CONSTRAINT thread_messages_classification_check CHECK ((classification = ANY (ARRAY['interested'::text, 'meeting'::text, 'question'::text, 'not_now'::text, 'referral'::text, 'not_interested'::text, 'unsubscribe'::text, 'wrong_person'::text, 'acknowledgement'::text, 'out_of_office'::text, 'other'::text]))),
     CONSTRAINT thread_messages_direction_check CHECK ((direction = ANY (ARRAY['in'::text, 'out'::text]))),
     CONSTRAINT thread_messages_draft_verdict_check CHECK ((draft_verdict = ANY (ARRAY['draft'::text, 'none'::text, 'agent'::text]))),
@@ -1853,6 +1854,7 @@ CREATE TABLE public.linkedin_accounts (
     profile_posts_at timestamp with time zone,
     profile_posts_by uuid,
     profile_posts_via public.actor_via,
+    invite_notes_off_until timestamp with time zone,
     CONSTRAINT linkedin_accounts_managed_check CHECK (((proxy_id IS NOT NULL) OR ((credentials IS NULL) AND (sign_in_intent IS NULL)))),
     CONSTRAINT linkedin_accounts_proxy_country_check CHECK ((proxy_country ~ '^[A-Z]{2}$'::text)),
     CONSTRAINT linkedin_accounts_status_check CHECK ((status = ANY (ARRAY['new'::text, 'connecting'::text, 'checkpoint'::text, 'active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
@@ -13233,6 +13235,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110000637'),
     ('20261110000946'),
     ('20261110001333'),
+    ('20261110001901'),
     ('20261110002615'),
     ('20261110003000'),
     ('20261110003800');

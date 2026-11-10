@@ -674,7 +674,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          a client's mail, an agency company's, or one mailbox's, leaves through that
                                          egress (none: the engine's own address; for a mailbox, back to its project's
                                          or company's); a company's egress is its own
-  linkedin                               this project's LinkedIn accounts, with today's invites and messages
+  linkedin                               this project's LinkedIn accounts, with today's invites and messages;
+                                         notesOffUntil: LinkedIn's custom-note limit reached, invitations go
+                                         without their note until then
   linkedin available                     accounts linked in Unipile that no project has attached
   linkedin connect <unipile-account-id> [--sender <id>] [--invite-limit <n>] [--message-limit <n>]
                                          attaches it to the sender named like its owner unless --sender
@@ -747,6 +749,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          thread later (again on a closed thread: replaces the note)
   thread reopen <id>                     takes "no answer needed" back
   thread attachments <message-id>        the files a message carried, read from its mailbox
+  thread refetch <message-id>            a LinkedIn message asked for again: its text, what it carried (files, a
+                                         voice note, a sticker, a shared post), and bodyMissing when still empty
   thread attachment <message-id> <n> [--out <file>]   saves file n (from the list) here, under its own name or --out
   thread stage <id> opportunity|proposal|won|lost|none   where the deal with its lead stands after they answered
   triage <message-id> [--class <c>] [--note <t>] [--follow-up <yyyy-mm-dd>] [--return <yyyy-mm-dd>]
@@ -3029,6 +3033,11 @@ async function main(argv: string[]): Promise<void> {
         if (!arg)
           throw new BhError('Which message?', { hint: 'bh thread <thread-id> lists them' }, 2)
         return out(await call(config, 'GET', `/thread-messages/${arg}/attachments`))
+      }
+      if (sub === 'refetch') {
+        if (!arg)
+          throw new BhError('Which message?', { hint: 'bh thread <thread-id> lists them' }, 2)
+        return out(await call(config, 'POST', `/thread-messages/${arg}/refetch`, {}))
       }
       if (sub === 'attachment') {
         const n = pos[3]

@@ -56,7 +56,11 @@ there are many:
    a draft may already exist. A message's `attachments` are the files it carried (a PDF, a signed
    form): `bh thread attachment <messageId> <n>` saves file `n` here to read it. `bh thread
    attachments <messageId>` reads the list from the mailbox when `attachments` is null (stored
-   before files were kept).
+   before files were kept). On LinkedIn, `attachments` names what the lead sent besides text (a
+   file, a voice note, a sticker, a shared post); no file is saved from there. A LinkedIn message
+   with `bodyMissing` came with nothing in it: run `bh thread refetch <messageId>` before judging
+   it, and if it is still empty, ask the sender's person to open the chat on LinkedIn rather than
+   reply blind.
    **Look at `colleagues` every time.** A reply stops only the lead who wrote; the company's other
    leads in a plan go on, and the engine never pauses them on its own. `colleagues` lists them
    (strategy, steps sent, `nextAt`); `inThread` / `inDraft` mark those the conversation or our
