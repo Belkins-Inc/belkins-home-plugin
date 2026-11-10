@@ -551,7 +551,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          (bh esp names them); a lead no mailbox of its sender serves may use any.
                                          Leads already enrolled keep theirs until strategy repick-mailboxes
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
-  domain quote <name> [<name>…]          availability and price at the registrar (free)
+  domain quote <name> [<name>…]          availability and price at the registrar (free), and its credit
+                                         (balanceCents; null with balanceError when the registrar does not say)
   domain closeouts [--query <word>] [--age-min <years, 5>] [--price-max-cents <n>] [--tld <com>] [--limit <n, 20>]
        [--names any|company]
                                          aged expired domains at a fixed price, oldest first, without the ones on a
@@ -606,7 +607,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   tenants                                our Google Workspace and Microsoft 365 tenants, with the domains and mailboxes
                                          in each; a Google one's users as the engine counts them and as Google does
                                          (the larger counts against --max-users), and whether Google refused it a
-                                         user for want of a licence (fullAt) (an admin)
+                                         user for want of a licence (fullAt) (an admin); anyone else sees each
+                                         client tenant's room before an order: domains, users, free seats, fullAt
   tenant add --name <n> --admin-email <super admin> --key <service account JSON file> | --key-from <tenant>
              [--max-domains <n>] [--max-users <n>] [--role clients|network] [--default-pool yes|no]
                                          the key is proved against the tenant before it is kept (an admin);

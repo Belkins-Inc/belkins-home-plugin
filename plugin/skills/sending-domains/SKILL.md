@@ -38,6 +38,10 @@ years. It goes from lookalikes that 301-redirect to the client's site:
   carries. If the brief says nothing about it, ask the person before approving.
 - Where the mailboxes live: `google` (our Workspace tenants, the default) or `microsoft` (our
   Microsoft 365 tenants). Mix them only when the person asks — `bh tenants` shows what we hold.
+  To anyone but an admin it shows each client tenant's room: `domains` against `maxDomains`, and for
+  Google `users`, `ordered` and `free` seats against `maxUsers`, and `fullAt` when Google refused a
+  user. Before a large order, check that the `free` seats carry it; when they do not, ask a
+  platform admin for another tenant before approving.
 
 ## 2. Quote
 
@@ -45,7 +49,8 @@ years. It goes from lookalikes that 301-redirect to the client's site:
 bh domain quote getacme.com tryacme.com acmehq.com     # free; up to 10 names
 ```
 
-It answers each name's availability and price, and the registrar's credit (`balanceCents`). Drop
+It answers each name's availability and price, and the registrar's credit (`balanceCents`; when
+the registrar does not give it, `null` with `balanceError` saying why — quote again). Drop
 the names that are taken or `premium`, and quote replacements. Show the person the list,
 the total, and the credit.
 
@@ -153,8 +158,8 @@ When something stops:
   `bh domain retry <name>` — nothing is bought again. A failed purchase is
   approved again with `bh domain approve`, which places a new order.
 - **Google mailboxes waiting for a licence.** Google refused the tenant a new user ("Domain user
-  limit reached", "Insufficient licenses"): `bh tenants` shows `fullAt`, and Google's user count
-  beside the engine's. A person frees seats in the Admin console or routes new domains to another
+  limit reached", "Insufficient licenses"): `bh tenants` shows `fullAt` (an admin sees Google's
+  user count beside the engine's). A person frees seats in the Admin console or routes new domains to another
   tenant; the orders go ahead by themselves once Google takes a user again.
 - **A failed mailbox order** whose cause is fixed goes back in the queue with `bh mailbox retry
   <order-id>` (the id is in `bh mailbox orders`); a user already made is not made again.
