@@ -87,7 +87,9 @@ below). Paid enrichment stays a person's.
    through the free leads count. A segment with plenty of companies and nobody in the titles is not
    a market. Record each sizing call with `bh search record`: a count returns no rows, so send
    `{"kind":"companies","sourceId","provider","query","results":0,"note":"count: <n>","callIds":[…]}`
-   (no cursor — the source has not moved). `bh call` prints the count on stderr as the result count.
+   (no cursor — the source has not moved). A people count, or a free people search inside
+   qualified accounts, is a contact search naming the segment, since no strategy exists before
+   approval: `{"kind":"contacts","segmentId","provider","query","results":<n>,"note":"people count","callIds":[…]}`. `bh call` prints the count on stderr as the result count.
 6. **Carry the numbers to the goal.** Work from the month's meeting target down through leads,
    addresses and people to companies, each rate with where it came from —
    project history, the client's previous outreach, or an assumption said to be one. Method and a

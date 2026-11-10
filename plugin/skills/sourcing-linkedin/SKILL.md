@@ -135,7 +135,9 @@ Decide before spending, and write the reason in one sentence (a note or the sess
      `{"kind":"contacts","strategyId":…,"companyId":…,"provider":"generect","query":…,"results":…,"newRecords":…,"callIds":[…],"dropped":{"title":5,"over_cap":2}}`.
      The reasons: `former`, `title` (outside the ladder or an excluded title), `over_cap` (past
      `max_per_company`), `other_company` (realtime answered someone else's people), `duplicate`
-     (already held, or the same person twice). They are what answers "why was this lead not found".
+     (already held, or the same person twice), `location` (outside the strategy's region, or in a
+     part of it a rule holds out), `invalid` (a fake or placeholder record). They are what answers
+     "why was this lead not found".
 4. **Keep only people who fit**: `is_current` not false; title matches a persona (whole words; the
    first rung that matches is their persona); no excluded title; within `max_per_company`, highest
    rung first. People who do not fit are not stored — the search's counts and `dropped` keep the

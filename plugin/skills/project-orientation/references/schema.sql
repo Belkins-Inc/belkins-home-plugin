@@ -1,6 +1,6 @@
 \restrict dbmate
 
--- Dumped from database version 18.4
+-- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
@@ -3107,7 +3107,7 @@ CREATE TABLE public.searches (
     cost_usd numeric(12,6) DEFAULT 0 NOT NULL,
     dropped jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT searches_check CHECK (((kind <> 'companies'::text) OR (source_id IS NOT NULL))),
-    CONSTRAINT searches_check1 CHECK (((kind <> 'contacts'::text) OR (strategy_id IS NOT NULL))),
+    CONSTRAINT searches_check1 CHECK (((kind <> 'contacts'::text) OR (strategy_id IS NOT NULL) OR (segment_id IS NOT NULL))),
     CONSTRAINT searches_kind_check CHECK ((kind = ANY (ARRAY['companies'::text, 'contacts'::text])))
 );
 
@@ -13335,5 +13335,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110003718'),
     ('20261110003800'),
     ('20261110003827'),
+    ('20261110003853'),
     ('20261110005800'),
     ('20261110010757');
