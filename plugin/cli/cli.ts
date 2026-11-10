@@ -290,7 +290,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   calls rename <list-id> --name <n>     the list's name only; one already with the dialer keeps its name there
   calls outcome <list-id> --contact <contact-id> --outcome no_answer|voicemail|wrong_number|not_interested|call_back|meeting|other|none [--note <t>]
   goals | goal set <YYYY-MM> --target <meetings> [--counts qualified|held] | goal done <YYYY-MM> --done <n>   (a person only)
-  contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts"}]
+  contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts",
+                                          "country","timezone"}]   country: ISO 3166 two letters (PL); timezone: IANA
+                                         (Europe/Warsaw) — the lead's send window and meeting times go by them
                                          a phone number is not a fact: facts.phone is refused, numbers go in with bh phones add
   contacts [--q <text>] [--label <name>]
   labels                                 the project's own labels, with how many companies and contacts carry each
@@ -485,14 +487,19 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   calendar archive <id>                  out of booking for good; connecting again writes a new row
   slots [--days <n>] [--calendar <id>] [--limit <n>]   free slots, soonest first (not yet offered to anyone)
   slots offer <thread-id> --slots <iso,iso> [--calendar <id>]
+                                         holds them for this lead for 72 h; a newer offer replaces an older one and
+                                         may keep the times the thread already holds. For times a reply sent later
+                                         offers, use bh reply draft --slots: the 72 h start when it is sent
   slots link <thread-id> [--calendar <id>]   a page for the lead to book a time themselves (a week, one
                                          meeting; calendars of our own): its link and the soonest three
                                          times as links that open it with that time chosen
-                                         holds them for this lead for 72 h; a newer offer replaces an older one
-  meetings [--upcoming]
-  meeting book --thread <id> | --contact <id> --calendar <id> --at <iso>
-                                         asks the calendar again, then writes the event with the lead invited;
-                                         a scheduled agent books only a slot offered to this lead
+  meetings [--upcoming]                  each with its joinUrl and leadTimezone (null when nobody knows the lead's zone)
+  meeting book --calendar <id> --at <iso> --thread <id> [--contact <id>] | --contact <id> [--lead-timezone <iana>]
+                                         asks the calendar again, then writes the event with the guest invited;
+                                         --thread alone: the guest is whoever wrote the thread's last reply (the lead,
+                                         or a colleague at their company, made a contact); --thread with --contact:
+                                         that contact, the meeting counted for the thread's plan; a scheduled agent
+                                         books only a slot offered in the thread (or to this lead)
   meeting record --thread <id> | --contact <id> --at <iso> --calendar <external id> | --through <where>
                  [--minutes <n>] [--sender <id>] [--notes <t>]
                                          a meeting booked outside Home (an external calendar, the client's own
@@ -506,7 +513,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   meeting transcript <id>                what a meeting through the organizer left: who came and how long, the
                                          host bot's comings and goings, the transcript, Meet's Docs
   meeting update <id> [--status held|no_show] [--outcome qualified|not_qualified|opportunity|won|lost]
-                  [--feedback <client's words>] [--notes <t>]      (a person only)
+                  [--feedback <client's words>] [--notes <t>] [--thread <id>] [--lead-timezone <iana>]   (a person only)
+                                         --thread ties it to the thread it came from: it counts for that thread's
+                                         plan, and takes its sender when it has none
   mailboxes                              each mailbox, with its ladder day, placement and outreachHeldAt (and why),
                                          disconnectedReason, and a warning the provider gave ahead of a disconnect
   mailbox connect --provider google|microsoft [--sender <id>] [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
@@ -806,6 +815,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
        [--attach <file>]…                 a file to send with it (repeat for more): only in an answer to a lead who
                                          wrote in this email thread; PDF, PNG, JPEG, .docx, .xlsx or .pptx, at most
                                          3 and 2 MB together, no macros, scripts or passwords
+       [--slots <iso,iso> [--calendar <id>]]   the times it offers (from bh slots, or the thread's own): held with
+                                         it while it waits and for 72 h once it is sent; dropped, they are let go
   replies [--status draft|approved|sent|failed|discarded]
   reply approve <id> [--body <final text>] [--cc …] [--bcc …] [--subject <s>] [--send-at <iso|"">]
        [--approve-by <iso|"">]           (a person only); --send-at "" sends it as soon as it may
@@ -1509,6 +1520,7 @@ async function main(argv: string[]): Promise<void> {
       'html-file': { type: 'string' },
       'reply-to': { type: 'string' },
       'send-at': { type: 'string' },
+      'lead-timezone': { type: 'string' },
       'delay-min': { type: 'string' },
       'delay-max': { type: 'string' },
       warmed: { type: 'boolean' },
@@ -3377,6 +3389,15 @@ async function main(argv: string[]): Promise<void> {
             ...copies(o),
             ...(o.subject !== undefined ? { subject: o.subject } : {}),
             ...(await attached(o)),
+            ...(o.slots
+              ? {
+                  slots: String(o.slots)
+                    .split(',')
+                    .map((x) => x.trim())
+                    .filter(Boolean),
+                  ...(o.calendar ? { calendarId: o.calendar } : {}),
+                }
+              : {}),
           }),
         )
       }
@@ -3666,6 +3687,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.contact ? { contactId: o.contact } : {}),
             calendarId: o.calendar,
             at: o.at,
+            ...(o['lead-timezone'] ? { leadTimezone: o['lead-timezone'] } : {}),
           }),
         )
       if (sub === 'record')
@@ -3700,6 +3722,8 @@ async function main(argv: string[]): Promise<void> {
             ...(o.outcome ? { outcome: o.outcome } : {}),
             ...(o.feedback ? { feedback: o.feedback } : {}),
             ...(o.notes ? { notes: o.notes } : {}),
+            ...(o.thread ? { threadId: o.thread } : {}),
+            ...(o['lead-timezone'] ? { leadTimezone: o['lead-timezone'] } : {}),
           }),
         )
       break

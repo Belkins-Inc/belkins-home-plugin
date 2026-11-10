@@ -127,13 +127,22 @@ Mark it handled with `bh triage` and say why in `--note`.
   times in a browser, offer two in the body, book the one the lead confirms on that page in the
   lead's name, and record it with `bh meeting record --calendar <id>`.
   [external-calendars.md](external-calendars.md) is the whole procedure.
-- Hold what you offer: with the draft, run `bh slots offer <thread-id> --slots <iso>,<iso>
-  [--calendar <id>]`. The slots are then kept for this lead — nobody else is offered them — for 72
-  hours; a newer offer to the same thread replaces the older one. Set `--approve-by` on the draft to
-  within that hold, and say in `--note` which slots are offered.
+- Hold what you offer, with the draft itself: `bh reply draft <thread-id> … --slots <iso>,<iso>
+  [--calendar <id>]`. The slots are kept for this lead — nobody else is offered them — while the
+  draft waits, however far ahead its `--send-at`, and for 72 hours once it is sent; a discarded
+  draft lets them go, and a new version keeps them unless it offers its own. Times the thread
+  already holds may be offered again (a follow-up repeating one). Say in `--note` which slots are
+  offered. `bh slots offer <thread-id> --slots …` holds times with no draft, for 72 hours from now.
 - Book when the lead plainly confirms one of the slots offered to them ("Tuesday 15:00 works"):
   `bh meeting book --thread <id> --calendar <id> --at <iso>`. The engine asks the calendar again
-  and writes the event.
+  and writes the event. The guest is whoever wrote the thread's last reply: a colleague the lead
+  passed it to is invited (made a contact if needed) and the meeting still counts for the lead's
+  plan; the answer's `attendee` says who. Add `--contact <id>` to name another guest, still with
+  `--thread`. A meeting already booked without its thread is tied to it with
+  `bh meeting update <id> --thread <id>` (a person), never a second `meeting record`.
+- When the lead sends their own invitation (a Teams or Zoom invite in the thread), the engine books
+  it by itself, with its time and `joinUrl` (`bh meetings`): do not record it again; answer only if
+  the invitation needs an answer.
   - **A calendar of our own** (`provider` `gcal`, `outlook`, `freebusy`, `ics` or `hours` in
     `bh calendars`): the meeting is our organizer's event with a Google Meet, and the engine
     itself answers in the thread

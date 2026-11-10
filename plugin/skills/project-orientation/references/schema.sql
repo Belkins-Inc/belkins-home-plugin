@@ -1,6 +1,6 @@
 \restrict dbmate
 
--- Dumped from database version 18.4
+-- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
@@ -744,6 +744,8 @@ CREATE TABLE public.meetings (
     brief_ref text,
     dialer_meeting_id text,
     call_id uuid,
+    invite_uid text,
+    join_url text,
     CONSTRAINT meetings_check CHECK (((outcome IS NULL) OR (status = 'held'::text))),
     CONSTRAINT meetings_lead_response_check CHECK ((lead_response = ANY (ARRAY['accepted'::text, 'declined'::text, 'tentative'::text]))),
     CONSTRAINT meetings_no_show_by_check CHECK ((no_show_by = ANY (ARRAY['lead'::text, 'rep'::text, 'both'::text]))),
@@ -766,8 +768,9 @@ CREATE VIEW public.calendar_free_slots WITH (security_invoker='true') AS
    FROM (public.calendars c
      JOIN public.calendar_offers o ON ((o.calendar_id = c.id)))
   WHERE ((c.archived_at IS NULL) AND (c.disconnected_at IS NULL) AND (o.starts_at > now()) AND (NOT (EXISTS ( SELECT 1
-           FROM public.meetings m
-          WHERE ((m.calendar_id = c.id) AND (m.status = 'scheduled'::text) AND (tstzrange(m.scheduled_at, (m.scheduled_at + make_interval(mins => m.minutes))) && tstzrange(o.starts_at, (o.starts_at + make_interval(mins => (o.minutes)::integer)))))))) AND (NOT (EXISTS ( SELECT 1
+           FROM (public.meetings m
+             LEFT JOIN public.calendars mc ON ((mc.id = m.calendar_id)))
+          WHERE ((m.status = 'scheduled'::text) AND ((m.calendar_id = c.id) OR ((c.sender_id IS NOT NULL) AND (COALESCE(m.sender_id, mc.sender_id) = c.sender_id))) AND (tstzrange(m.scheduled_at, (m.scheduled_at + make_interval(mins => m.minutes))) && tstzrange(o.starts_at, (o.starts_at + make_interval(mins => (o.minutes)::integer)))))))) AND (NOT (EXISTS ( SELECT 1
            FROM public.meeting_slots ms
           WHERE ((ms.calendar_id = c.id) AND (ms.status = ANY (ARRAY['offered'::text, 'accepted'::text])) AND (tstzrange(ms.starts_at, (ms.starts_at + make_interval(mins => ms.minutes))) && tstzrange(o.starts_at, (o.starts_at + make_interval(mins => (o.minutes)::integer)))))))));
 
@@ -1532,13 +1535,16 @@ CREATE VIEW public.enrollment_outcomes WITH (security_invoker='true') AS
            FROM (public.threads t
              JOIN public.thread_messages tm ON ((tm.thread_id = t.id)))
           WHERE ((t.enrollment_id = e.id) AND (tm.direction = 'in'::text) AND (tm.kind = 'reply'::text) AND (tm.classification = ANY (ARRAY['interested'::text, 'meeting'::text, 'question'::text, 'referral'::text]))))) AS positive,
-    (((contact_id, strategy_id) IN ( SELECT mt.contact_id,
+    ((((contact_id, strategy_id) IN ( SELECT mt.contact_id,
             mt.strategy_id
            FROM public.meetings mt
           WHERE ((mt.strategy_id IS NOT NULL) AND (mt.status = ANY (ARRAY['scheduled'::text, 'held'::text]))))) AND (EXISTS ( SELECT 1
            FROM (public.meetings mt
              LEFT JOIN public.threads t ON ((t.id = mt.thread_id)))
-          WHERE ((mt.contact_id = e.contact_id) AND (mt.strategy_id = e.strategy_id) AND (mt.status = ANY (ARRAY['scheduled'::text, 'held'::text])) AND ((t.enrollment_id IS NULL) OR (t.enrollment_id = e.id)))))) AS meeting
+          WHERE ((mt.contact_id = e.contact_id) AND (mt.strategy_id = e.strategy_id) AND (mt.status = ANY (ARRAY['scheduled'::text, 'held'::text])) AND ((t.enrollment_id IS NULL) OR (t.enrollment_id = e.id)))))) OR (EXISTS ( SELECT 1
+           FROM (public.meetings mt
+             JOIN public.threads t ON ((t.id = mt.thread_id)))
+          WHERE ((t.enrollment_id = e.id) AND (mt.status = ANY (ARRAY['scheduled'::text, 'held'::text])))))) AS meeting
    FROM public.enrollments e;
 
 
@@ -6354,6 +6360,13 @@ CREATE INDEX ix_meetings__cancel_at ON public.meetings USING btree (cancel_at) W
 --
 
 CREATE INDEX ix_meetings__contact ON public.meetings USING btree (contact_id);
+
+
+--
+-- Name: ix_meetings__invite_uid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_meetings__invite_uid ON public.meetings USING btree (project_id, invite_uid) WHERE (invite_uid IS NOT NULL);
 
 
 --
@@ -13365,6 +13378,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110003800'),
     ('20261110003827'),
     ('20261110003853'),
+    ('20261110004602'),
     ('20261110005720'),
     ('20261110005800'),
     ('20261110010000'),
