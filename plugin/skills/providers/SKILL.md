@@ -1,6 +1,6 @@
 ---
 name: providers
-description: How to call the paid data providers (Apollo, Generect, BetterContact, FullEnrich, Bouncer, Scrubby, Firecrawl, Bright Data, TheirStack) through `bh call`, what each costs and which one answers which question. Use before any provider call, when choosing a provider, or when reading what a call cost.
+description: How to call the paid data providers (Apollo, Generect, BetterContact, FullEnrich, Bouncer, Scrubby, Firecrawl, Bright Data, TheirStack, Twilio Lookup) through `bh call`, what each costs and which one answers which question. Use before any provider call, when choosing a provider, or when reading what a call cost.
 ---
 
 # Providers through `bh call`
@@ -123,6 +123,7 @@ Check it before a large order and mention it in `bh session end`.
 | A phone number (when phones are wanted) | Apollo `bulk_match` with `reveal_phone_number`, $0.032 per number found; BetterContact for whom Apollo has none, ~$0.50 per number | [apollo](references/apollo.md) |
 | A third try for an address or a number | **off** — Apollo and BetterContact only; what they miss goes by LinkedIn | [fullenrich](references/fullenrich.md) |
 | Is this address deliverable, is the domain catch-all | Bouncer, $0.0056/address | [bouncer](references/bouncer.md) |
+| Does this phone number exist, is it a mobile, whose name is it registered to | `bh phones check <phone-id>` (Twilio Lookup), $0.018; off until its key is set | [twilio](references/twilio.md) |
 | Settle a catch-all / unknown address, confirm a guess | **off for now** — such an address goes by LinkedIn | [scrubby](references/scrubby.md) |
 | A web page as text, a site's page list | Firecrawl scrape / map, $0.0009 each | [firecrawl](references/firecrawl.md) |
 | Companies with bad (or good) Trustpilot reviews | Bright Data Trustpilot dataset, $2.50 / 1,000 rows | [brightdata](references/brightdata.md) |

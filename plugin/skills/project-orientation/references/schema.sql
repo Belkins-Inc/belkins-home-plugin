@@ -3568,7 +3568,7 @@ CREATE TABLE public.spend (
     actor_user_id uuid,
     data jsonb DEFAULT '{}'::jsonb NOT NULL,
     cost_usd numeric(12,6) DEFAULT 0 NOT NULL,
-    CONSTRAINT spend_operation_check CHECK ((operation = ANY (ARRAY['company_search'::text, 'contact_search'::text, 'email_find'::text, 'phone_find'::text, 'verification'::text, 'enrichment'::text, 'llm'::text, 'subscription'::text, 'data_purchase'::text, 'infrastructure'::text, 'other'::text])))
+    CONSTRAINT spend_operation_check CHECK ((operation = ANY (ARRAY['company_search'::text, 'contact_search'::text, 'email_find'::text, 'phone_find'::text, 'phone_check'::text, 'verification'::text, 'enrichment'::text, 'llm'::text, 'subscription'::text, 'data_purchase'::text, 'infrastructure'::text, 'other'::text])))
 );
 
 
@@ -13401,4 +13401,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110010000'),
     ('20261110010757'),
     ('20261110011559'),
-    ('20261110020000');
+    ('20261110020000'),
+    ('20261110030000');

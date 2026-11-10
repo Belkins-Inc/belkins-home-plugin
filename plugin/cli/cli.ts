@@ -314,6 +314,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          it also goes on dnc. Apollo's delivered numbers go in by themselves
   phones set <phone-id> [--state active|invalid --reason <why>] [--rank <n>] [--kind <k>]
                                          a dead number (a caller's wrong number marks it by itself), the dial order
+  phones check <phone-id> [--again]      line type and registered name from Twilio Lookup (a person; $0.018): an invalid
+                                         number is marked dead, a landline or VoIP one goes last in the dial order
   esp                                    how many companies and contacts are on each email provider (MX:
                                          google, microsoft, proofpoint, mimecast…; pending = not looked up yet)
   dnc [list] [--q <text>] [--kind email|domain|phone|linkedin] [--reason <r>]
@@ -2628,6 +2630,12 @@ async function main(argv: string[]): Promise<void> {
             ...(o.rank ? { rank: Number(o.rank) } : {}),
             ...(o.kind ? { kind: o.kind } : {}),
           }),
+        )
+      }
+      if (sub === 'check') {
+        if (!arg) throw new BhError('Which number?', { hint: 'bh phones check <phone-id>' }, 2)
+        return out(
+          await call(config, 'POST', `/phones/${arg}/check`, o.again ? { again: true } : {}),
         )
       }
       if (!sub) throw new BhError('Whose numbers?', { hint: 'bh phones <contact-id>' }, 2)

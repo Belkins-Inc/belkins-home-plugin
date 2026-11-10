@@ -226,9 +226,15 @@ new BetterContact search is a person's session.
    its country code, `kind` mobile|direct|company|other, `source`, `confidence`, `dnc`). Each goes
    after the contact's numbers already there, so the first found is dialled first; `bh phones set
    <phone-id> --rank 1` reorders. A number is never a fact: `facts.phone` is refused.
-4. **Do Not Call**: a provider saying a number is on a registry → `"dnc": true` on the row; the
+4. **Check before anyone dials** (when the key is set, a person's session): `bh phones check
+   <phone-id>` asks Twilio Lookup for the line type and the registered name, $0.018 a number
+   (twilio.md). Apollo marks nearly every number `valid_number` / `high`, so its flags tell nothing
+   apart; the lookup marks a number that does not exist dead, sends a landline or VoIP number last
+   in the dial order, and says whether the registered name is the contact's (`callerMatches`).
+   Check the numbers a call list will dial first, not every number found.
+5. **Do Not Call**: a provider saying a number is on a registry → `"dnc": true` on the row; the
    number goes on do-not-contact and no call list takes it.
-5. Record a miss — no delivery ten minutes on means Apollo found no number for anyone in the call:
+6. Record a miss — no delivery ten minutes on means Apollo found no number for anyone in the call:
    `"facts":{"phone_search":{"result":"not_found","source":"apollo,bettercontact","seenAt":"…"}}`.
 
 ## Before you stop
