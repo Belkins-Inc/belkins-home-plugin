@@ -141,6 +141,7 @@ CREATE FUNCTION public.count_placement_sent() RETURNS trigger
     AS $$
 begin
   perform count_daily_send((new.sent_at at time zone 'UTC')::date, 'mailbox', new.mailbox_id::text);
+  perform count_daily_send((new.sent_at at time zone 'UTC')::date, 'mailbox_placement', new.mailbox_id::text);
   return null;
 end
 $$;
@@ -1188,7 +1189,7 @@ CREATE TABLE public.daily_sends (
     scope text NOT NULL,
     key text NOT NULL,
     sent integer DEFAULT 0 NOT NULL,
-    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'mailbox_outreach'::text, 'domain_outreach'::text, 'mailbox_intake'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text, 'organisation_leads'::text])))
+    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'mailbox_outreach'::text, 'mailbox_placement'::text, 'domain_outreach'::text, 'mailbox_intake'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text, 'organisation_leads'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
@@ -13383,4 +13384,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110005800'),
     ('20261110010000'),
     ('20261110010757'),
+    ('20261110011559'),
     ('20261110020000');

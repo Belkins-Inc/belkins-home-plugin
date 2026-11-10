@@ -132,7 +132,8 @@ mailbox: ordered → creating → created → connecting → connected   (a `bh 
 DKIM is minted in the tenant's console by our console service, and a task asks a person only when
 it cannot. A domain never sends before `ready`.
 Once mailboxes are connected, warm-up starts by itself — it is always on (`bh warmup status` shows
-the ladder) — and the strategy can use them. A new mailbox sends warm-up alone on its first three
+the ladder, why a mailbox is behind its rung, and each domain's `mailHealth`: read that, not only
+`placementState`, which sees our Google seeds alone) — and the strategy can use them. A new mailbox sends warm-up alone on its first three
 sending days and outreach from its fourth (`bh behaviour limits-and-pacing`). Enrollment, referrals
 and `bh strategy repick-mailboxes` give a lead its sender's least-loaded mailbox that sends outreach
 on the lead's first day, so a mailbox still warming alone, or one whose outreach is held, takes new

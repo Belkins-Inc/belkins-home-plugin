@@ -646,7 +646,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          then 3 a day to 15 beside 15 notes (every other one the project's copy);
                                          warmed once its domain's notes are in the inbox, it keeps 8 notes a day
                                          going. Notes in spam hold the ladder; below 70% in the inbox the engine
-                                         holds the domain's outreach
+                                         holds the domain's outreach. Per mailbox: today's rung, the warm-up due
+                                         by now, placement tests today (they count against the daily limit, not
+                                         the rung), why it is behind (behind.why), and its domain's mail-health
+                                         state and issues; pool: what the seed network carries today, and why
+                                         it does not grow when short (held)
   warmup seeds                           our own seed organisations, Google and Microsoft 365: seeds held and
                                          ready, today's notes, spam and tabs (an admin)
   warmup seeds <admin email> [--count <n>]   adds an organisation lent to us, or tends it again: the engine keeps
