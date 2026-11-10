@@ -858,6 +858,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          3 and 2 MB together, no macros, scripts or passwords
        [--slots <iso,iso> [--calendar <id>]]   the times it offers (from bh slots, or the thread's own): held with
                                          it while it waits and for 72 h once it is sent; dropped, they are let go
+  reply draft --contact <id> --subject <s> --body <text> | --body-file <path> [--mailbox <address>]
+       [--note …] [--send-at …] [--approve-by …] [--reviewer …] [--cc …] [--bcc …]
+                                         a first email to a lead we have no email thread with (met on a call,
+                                         sequence not started): opens a thread on the mailbox their plan writes
+                                         from (--mailbox: another of the project's), approved and sent as an
+                                         answer; refused when a thread exists (write in it), no files or times
   replies [--status draft|approved|sent|failed|discarded]
   reply approve <id> [--body <final text>] [--cc …] [--bcc …] [--subject <s>] [--send-at <iso|"">]
        [--approve-by <iso|"">]           (a person only); --send-at "" sends it as soon as it may
@@ -3523,6 +3529,33 @@ async function main(argv: string[]): Promise<void> {
         ),
       )
     case 'reply':
+      if (sub === 'draft' && o.contact) {
+        // A first email to a lead we have no email thread with: it opens one.
+        if (arg)
+          throw new BhError(
+            'A thread or a contact, not both',
+            { hint: 'bh reply draft <thread-id> answers in it; --contact <id> writes first' },
+            2,
+          )
+        if (!o.subject)
+          throw new BhError(
+            'What is its subject?',
+            { hint: '--subject <s>: a first email has no "Re:"' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/contacts/${o.contact}/threads`, {
+            body: o['body-file'] ? await readFile(o['body-file'], 'utf8') : need(o.body),
+            subject: o.subject,
+            ...(o.mailbox ? { mailbox: o.mailbox } : {}),
+            ...(o.note ? { note: o.note } : {}),
+            ...(o['send-at'] ? { sendAt: o['send-at'] } : {}),
+            ...(o['approve-by'] ? { approveBy: o['approve-by'] } : {}),
+            ...(o.reviewer ? { reviewer: o.reviewer } : {}),
+            ...copies(o),
+          }),
+        )
+      }
       if (sub === 'draft') {
         const text = o['body-file'] ? await readFile(o['body-file'], 'utf8') : need(o.body)
         return out(

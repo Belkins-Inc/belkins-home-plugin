@@ -562,7 +562,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     '*': ['status'],
   },
   reply: {
-    '*': [],
+    '*': ['contact'],
     agent: ['ask'],
     approve: ['allow-dnc', 'approve-by', 'bcc', 'body', 'cc', 'reason', 'send-at', 'subject'],
     ask: ['ask'],
@@ -576,6 +576,8 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'body-file',
       'calendar',
       'cc',
+      'contact',
+      'mailbox',
       'no-attach',
       'note',
       'reviewer',
