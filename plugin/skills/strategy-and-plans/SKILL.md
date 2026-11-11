@@ -154,17 +154,21 @@ anything was sent, it is refused, so settle the steps before launch. Accepted va
 - `hypothesis`: what this step is expected to prove (read back when judging results).
 - `variants` (2 to 4): an A/B test of the step. Each `{ "name": "…", "withoutNote": …,
   "guidance": "…" }` sets what differs; the step's leads take the variants in turn as they are
-  enrolled, half and half for two. An invitation with a note against a bare one is
+  enrolled, half and half for two. **Default on every new or unproven email strategy:** put 2
+  `variants` on Step 1 email (`poke`: 35–55w sharp benchmark/pain poke + free deliverable vs
+  `signal_asset`: 55–80w verifiable external signal + free deliverable) so `bh strategy show`
+  measures reply rate per variant head-to-head on the first 300-lead sprint. An invitation with a
+  note against a bare one is
   `"variants": [{ "name": "note", "withoutNote": false, "guidance": "Connection note …" },
   { "name": "bare", "withoutNote": true }]`; only an invitation's variants may set `withoutNote`.
   `bh copy queue` shows each message's `variant` and the variant's guidance; `bh strategy show`
-  lists per variant its leads, sent, accepted and replied, which is how the test is read. A test
-  of wording alone needs no variants: the writer's `angle` per message already splits copy.
+  lists per variant its leads, sent, accepted and replied, which is how the test is read.
 - `track` (`linkedin_invite` and `linkedin_message` only, default `main`): `"linkedin"` runs the
   step beside the emails instead of in line with them. A step on the LinkedIn track is timed from
   the step before it on that track (the first from the lead's start) and never holds an email; the
-  emails are timed from the email before them. Use it for every LinkedIn step of an
-  `email_and_linkedin` plan (see below).
+  emails are timed from the email before them. **Always set `"track": "linkedin"` on every LinkedIn
+  step of an `email_and_linkedin` plan** (`beforeLaunch` flags `linkedin_track` when any LinkedIn
+  step is left on `main` alongside email).
 
 Steps get positions in array order. Examples per template: [references/plans.md](references/plans.md).
 
@@ -272,10 +276,15 @@ of them, a domain under 60 days old at most 840 however many mailboxes it has, s
 six warmed mailboxes on old domains or five young domains of two mailboxes each — and 67 LinkedIn
 account days if every lead gets an invite.
 
-Record the arithmetic in a `decision` note with `--strategy`, and set `targetActive` from it. Where
-the senders fall short of the goal, that goes in front of a person before enrolling (section 1):
-more mailboxes (bought and ordered through the `sending-domains` skill, a person approving the
-spend), a smaller batch, or a later goal.
+Record the arithmetic in a `decision` note with `--strategy`, and set `targetActive` from it.
+**Sprint batch cap (house rule):** cap initial enrollment on any new or unproven strategy at **≤ 300
+leads** (or **≤ 7 send days** of currently clear, sending mailbox capacity, whichever is smaller).
+Scale past 300 leads only after the first sprint clears **≥ 1.5% reply rate** (or **≥ 0.4% positive
+reply rate**); never preload 600–1,000+ leads into a draft or fresh-mailbox strategy where they sit
+behind warm-up ladders for weeks. Where the senders fall short of the goal, that goes in front of a
+person before enrolling (section 1): more mailboxes (bought and ordered through the
+`sending-domains` skill, pairing aged closeouts for Day-1 gateway/M365 placement alongside brand
+lookalikes), a smaller sprint batch, or a later goal.
 
 ### 6. Enroll
 
@@ -324,12 +333,16 @@ After enrolling, every step of every lead needs copy — hand over to the `copyw
 
 ### 7. Readiness and launch (a person launches)
 
-`bh strategy show <id>` → `beforeLaunch` lists four checks, all must be `ok`:
+`bh strategy show <id>` → `beforeLaunch` lists four blocking checks, all must be `ok`:
 plan templates with steps; senders with an active mailbox; leads enrolled (active, paused or
 scheduled); copy for every step of those leads. `bh strategy launch <id>` is refused with the
-missing items otherwise, and only a person's token may launch or pause. Before asking a person to
-launch also check: client's DNC list received (`bh questions`), exclusions set (`bh exclusions`),
-a few `bh preview <message-id>` read end to end.
+missing items otherwise, and only a person's token may launch or pause. Also read and resolve the
+advisory (`blocks: false`) warnings in `beforeLaunch` before asking a person to launch:
+`linkedin_track` (move LinkedIn steps onto `"track": "linkedin"` so they never hold emails),
+`held_mailboxes` (0 active mailboxes clear to send outreach today — attach a clear sender or wait
+for the hold to lift), `linkedin` (missing LinkedIn account), and `zones` (missing contact/company
+time zones). Also check: client's DNC list received (`bh questions`), exclusions set
+(`bh exclusions`), and a few `bh preview <message-id>` read end to end.
 
 ### 8. Keep the pipeline full
 

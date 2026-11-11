@@ -15,11 +15,15 @@ message; the rest is the writer's to hold. Read your copy against every line, th
    case study or result of your own. A plausible invention is still an invention.
 2. **A role's concerns come from the persona angle and the brief, never from the job title.**
    The title is a label.
-3. **Specific or silent.** Where there is a signal or facts, at least one sentence is about them
+3. **Specific or silent (never recite "About Us").** Where there is a verifiable operational signal
+   or fact (sites, open roles, reviews, carriers, filings), at least one sentence is about it
    specifically enough that it would be false or meaningless at another company. A compliment, the
-   title, the industry or the company name dropped into a generic sentence does not count. Where
-   there is nothing, make no observation at all. A lead with no signal is flagged in the copy queue
-   (`problem`) and by `bh copy check` (a warning); tell the person how many the batch has.
+   title, the industry, the founding year, a homepage summary ("Acme provides end-to-end logistics
+   across North America") or the company name dropped into a generic sentence does **not** count —
+   executives spot their own website copy immediately. Where `signal` is missing or generic, make
+   no observation about the company and write Archetype A from the brief and persona angle instead.
+   A lead with no signal is flagged in the copy queue (`problem`) and by `bh copy check` (a
+   warning); tell the person how many the batch has.
 4. **One ask, as direct as the step's place.** One question, never two. First step: a
    low-friction question about interest (asking for the meeting here is too much). Middle steps: a
    reason or a proof, and a soft ask. Last step: one offer, asked for directly ("Want me to set it
@@ -38,12 +42,19 @@ message; the rest is the writer's to hold. Read your copy against every line, th
    that names another client of the organisation (a problem) and step guidance that does (a
    warning).
 
-## The first email: three beats, then the offer as a question
+## The first email: two archetypes (test them with Step-1 `variants`), then the offer as a question
 
-1. **Why we write to them, their footprint**: a fact from the signal or the lead's facts (sites,
-   markets, reviews), in their terms. "Northwind Dental runs 34 clinics across three states." It
-   may open reason first: "I'm writing to you because Northwind Dental opened nine clinics this
-   year ...", then who we are and the offer in the next beats.
+### Archetype A — Sharp Benchmark / Pain Poke (target 35–55 words; use when `signal` is absent or generic, or as Variant A)
+1. **Sharp peer benchmark or operational pain** from the brief/persona angle (one concise sentence,
+   never a homepage summary).
+2. **What they get for a yes**: one concrete, free deliverable or diagnostic matched to that pain.
+3. **The question** (`<10` words) asking for it.
+
+### Archetype B — Verifiable External Signal + Free Asset (target 55–80 words; three beats, then the question)
+1. **Why we write to them, their footprint**: a verifiable operational fact from `signal` or `facts`
+   (sites, markets, open roles, reviews), in their terms. "Northwind Dental runs 34 clinics across
+   three states." It may open reason first: "I'm writing to you because Northwind Dental opened
+   nine clinics this year ...", then who we are and the offer in the next beats.
 2. **What that scale means for the problem the client solves**, hedged because it is an
    inference: "That is usually 34 front desks booking, confirming and chasing no-shows their own
    way."
@@ -55,8 +66,9 @@ message; the rest is the writer's to hold. Read your copy against every line, th
    not confirmed goes to them as a question the same day.
 4. **The question** that asks for it (below).
 
-Going straight from the observation to the question reads as a trick: the reader cannot see why
-you ask. With no signal, beat one is missing; open on beat two, from the brief, and invent nothing.
+Going straight from an observation to a bare question with no bridge or value reads as a trick:
+the reader cannot see why you ask. With no signal (or only a generic "About Us" blurb), use
+Archetype A and invent nothing.
 
 ## The question (checked)
 

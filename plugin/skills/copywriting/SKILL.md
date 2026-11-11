@@ -108,22 +108,32 @@ These are the floor. The house rules below are stricter; `bh copy write` does no
 
 ## Rules that matter most
 
-- **Specific or silent.** Where there is a signal or facts, one sentence is about them and could
-  not be sent to any other company. Where there is none, take the angle from the brief and invent
-  no observation: they can tell.
+- **Specific or silent (never recite "About Us").** Where there is a verifiable operational signal
+  or fact (a live job opening, review count/rating, clinic/store footprint, tech stack, filing or
+  named expansion), one sentence is about it and could not be sent to any other company. Where
+  `signal` is empty **or** merely restates the company's homepage tagline, founding year or generic
+  trade ("Acme builds custom software for mid-market teams"), do **not** paraphrase their own
+  "About Us" back to them — open directly on the sharp peer benchmark or role pain instead
+  (Archetype A below).
 - **Only what the brief supports.** No claim, number, customer or result that is not in the
   strategy brief, persona angle, client notes or the lead's facts. A role's concerns come from the
   persona angle, never from the job title.
 - **No signal, say so.** A lead whose queue item has `problem` set (no signal) gets copy from the
   brief and the persona angle only, and the person hears how many such leads the batch has.
-- **The first email connects the dots, in three beats, then the question**: why we write to this
-  company (their footprint: a fact from the signal or facts, and it may open reason first, "I'm
-  writing to you because <company> <the fact it qualified on>"), who we are and what that scale
-  means for this reader (hedged: "usually", "often"), what the reader gets free for a yes (a
-  concrete deliverable from the client, matched to the reader's pain), then the question that asks
-  for it. Going straight from the observation to the question was refused in onboarding.
-- **Simple beats clever.** The reader gets the email in one read and answers without thinking:
-  plain words, one idea, nothing to work out.
+- **Two Step-1 archetypes (A/B test them on new strategies via step `variants`)**:
+  1. **Archetype A — Sharp Benchmark / Pain Poke (target 35–55 words):** one crisp peer benchmark
+     or operational bottleneck from the brief/persona angle + one concrete free deliverable the
+     reader gets for a yes + one `<10`-word question asking for it. Use whenever `signal` is absent
+     or generic, or as Variant A against Archetype B.
+  2. **Archetype B — Verifiable External Signal + Free Asset (target 55–80 words):** three tight
+     beats, then the question — why we write to this company (a specific operational fact from
+     `signal` or `facts`; may open reason-first, "I'm writing to you because <company> <fact>"),
+     what that footprint usually means for this reader (hedged: "usually", "often"), what the
+     reader gets free for a yes (a concrete diagnostic or deliverable matched to that pain), then
+     the question. Going straight from an observation to a bare question with no bridge or value
+     was refused in onboarding.
+- **Simple beats clever.** The reader gets the email in one read on a phone screen and answers
+  without thinking: plain words, one idea, nothing to work out.
 - **Every email ends on one short question**: under ten words, with one obvious answer (a yes, a
   date or a name). Never either/or, never two questions. **The first email offers value for a yes**:
   something concrete and free the reader gets by answering (a review of last month's no-shows, a
@@ -144,9 +154,11 @@ These are the floor. The house rules below are stricter; `bh copy write` does no
   `{"greeting": "Hey {first},"}` (`null` goes back to "Hi {first},"). No first
   name → no greeting at all ("Hi there" is worse). The first sentence does not start with "I" or
   "We", except the reason-first opener "I'm writing to you because ...", which is about them.
-- **Short.** A first email at most 120 words, a follow-up 100, the last 70 (after the greeting); a
-  few short paragraphs of uneven length, one idea, one ask. Plain text, blank lines between
-  paragraphs; no markdown, lists, HTML; no link on step 1.
+- **Short.** Aim for **35–80 words** on a first email (35–55 for Archetype A, 55–80 for Archetype
+  B) and **30–65 words** on follow-ups; `bh copy check` enforces hard ceilings of 120 words on the
+  first email, 100 on a follow-up, and 70 on the last (after the greeting). A few short paragraphs
+  of uneven length, one idea, one ask. Plain text, blank lines between paragraphs; no markdown,
+  lists, HTML; no link on step 1.
 - **American spelling for US recipients** (center, fueled, program, organize).
 - **No sign-off, no signature.** The engine appends the sender's `signature` to every email; the
   body ends on its last sentence. No "Best regards". Where a client rule asks for a short sign-off
