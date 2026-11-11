@@ -430,6 +430,12 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   meetings: {
     '*': ['upcoming'],
   },
+  'microsoft-seeds': {
+    '': [],
+    '*': ['retry'],
+    make: ['seeds'],
+    update: [],
+  },
   network: {
     '': [],
     '*': [],
@@ -789,7 +795,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   warmup: {
     '': [],
     '*': [],
-    grow: ['max-orgs'],
+    grow: ['max-microsoft', 'max-orgs'],
     off: [],
     on: [],
     seeds: [

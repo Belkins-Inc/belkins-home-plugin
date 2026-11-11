@@ -133,6 +133,15 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   google-org details --company <legal name> --address <street[; line 2]> --city <c> [--region <r>]
        --postal-code <p> --country <US> --first <n> --last <n> --email <e> [--phone <p>] [--org <slug>]
                                          what Google is told about the company, its customer of record (its admin)
+  microsoft-seeds                       Microsoft 365 warm-up seed tenants the engine makes through Pax8, how far each
+                                         is and what holds it, and the ceiling (platform admin)
+  microsoft-seeds make [<domain>] [--seeds <n>]   orders "Belkins Group NN" through Pax8 (Exchange Online
+                                         (Plan 1), 12 seats unless said, a 1-year commitment) on an aged domain (none
+                                         given: one held for these tenants, else a closeout of 5+ years), signs in as
+                                         its first admin, sets the app up, connects the domain and hands it to
+                                         warm-up on an egress with room (platform admin)
+  microsoft-seeds update <ref> --retry   the console service signs in now, not after a refused sign-in's wait;
+                                         <ref> is the number, the domain or the id (platform admin)
   google-org record <org> --customer-id <C0…>   Google's customer, made in Partner Sales Console: the engine gives
                                          the customer the terms link and carries on (platform admin)
   google-orgs                           Google organisations of ours the engine makes as reseller, and how far each is
@@ -717,6 +726,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          domains; its Admin console grants the WARMUP_SEED_KEY service account
                                          domain-wide delegation first. One pool serves every mailbox; the list
                                          shows what the warming mailboxes want of it against 70% of its caps
+  warmup grow [--max-microsoft <n>]      the ceiling on Microsoft 365 seed tenants (bh microsoft-seeds) the engine
+                                         has made in all, those made by hand included; below it the engine orders
+                                         the next itself, one at a time, in your name; 0 stops it (platform admin)
   warmup grow [--max-orgs <n>]           the ceiling on Google seed organisations of ours the engine orders by
                                          itself when the seeds cannot carry the warming mailboxes: daily, enough
                                          for today's want and a fifth more, at most five a day and ten being made
@@ -1636,6 +1648,7 @@ async function main(argv: string[]): Promise<void> {
       upcoming: { type: 'boolean' },
       count: { type: 'string' },
       'max-orgs': { type: 'string' },
+      'max-microsoft': { type: 'string' },
       'free-users': { type: 'string' },
       seeds: { type: 'string' },
       licences: { type: 'string' },
@@ -2473,6 +2486,27 @@ async function main(argv: string[]): Promise<void> {
       throw new BhError(
         'bh google-orgs make --for seeds|sending [<domain>] [--company <name>] [--seeds <n>] [--licences <n>] [--key-from <tenant>] [--ip <address>]',
         { hint: 'bh google-orgs lists them' },
+        2,
+      )
+    }
+    case 'microsoft-seeds': {
+      if (!sub) return out(await call(config, 'GET', '/microsoft-seeds'))
+      if (sub === 'make')
+        return out(
+          await call(config, 'POST', '/microsoft-seeds', {
+            ...(arg ? { domain: arg } : {}),
+            ...(o.seeds !== undefined ? { seeds: Number(o.seeds) } : {}),
+          }),
+        )
+      if (sub === 'update' && arg && o.retry)
+        return out(
+          await call(config, 'PATCH', `/microsoft-seeds/${encodeURIComponent(arg)}`, {
+            retry: true,
+          }),
+        )
+      throw new BhError(
+        'bh microsoft-seeds [make [<domain>] [--seeds <n>] | update <ref> --retry]',
+        { hint: 'bh microsoft-seeds lists them' },
         2,
       )
     }
@@ -4611,6 +4645,12 @@ async function main(argv: string[]): Promise<void> {
         )
       // The ceiling on the seed organisations the engine orders by itself when the network is short.
       if (sub === 'grow') {
+        if (o['max-microsoft'] !== undefined)
+          return out(
+            await call(config, 'PUT', '/microsoft-seeds/growth', {
+              maxTenants: Number(o['max-microsoft']),
+            }),
+          )
         if (o['max-orgs'] === undefined)
           return out(((await call(config, 'GET', '/warmup/seeds')) as { growth: unknown }).growth)
         return out(await call(config, 'PUT', '/warmup/growth', { maxOrgs: Number(o['max-orgs']) }))
