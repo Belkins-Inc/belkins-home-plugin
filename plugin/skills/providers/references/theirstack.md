@@ -1,7 +1,10 @@
 # TheirStack — companies by the jobs they post
 
 Job postings from company sites, ATS boards and job boards, joined to firmographics. Use it when a
-segment is defined by hiring: "100–1,000 employees with several open engineering roles". Base
+segment is defined by hiring: "100–1,000 employees with several open engineering roles" — after
+`bh hiring companies` (free: our own copy of Greenhouse, Lever, Ashby and Workable boards,
+segment-design's hiring reference), for what that copy lacks: Workday and other enterprise ATSs,
+postings only on LinkedIn or job sites, a firmographic filter. Base
 `https://api.theirstack.com`; the key as `Authorization: Bearer …` (the engine adds it). OpenAPI:
 `https://api.theirstack.com/openapi.json`.
 

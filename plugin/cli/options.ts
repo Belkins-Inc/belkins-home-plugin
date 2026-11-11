@@ -297,6 +297,13 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   health: {
     '*': [],
   },
+  hiring: {
+    '': [],
+    '*': ['body', 'body-file', 'domain'],
+    boards: ['domain', 'file', 'source'],
+    companies: [],
+    postings: [],
+  },
   hypothesis: {
     '*': [
       'evidence',

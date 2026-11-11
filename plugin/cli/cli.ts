@@ -912,6 +912,16 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          is answered from here by itself (--again buys it anew)
   cache company <linkedin-url> | cache company --domain <d>    the same for a company
   cache people <company-url|linkedin-id> [--former]           the people bought so far who work there (not all of them)
+  hiring                                 our copy of companies' public job boards (Greenhouse, Lever, Ashby,
+                                         Workable): boards and open postings per ATS, and how fresh; free
+  hiring companies --body <json> | --body-file <path|->
+                                         companies by the postings they have open: titles, notTitles (regex),
+                                         departments, postedWithinDays, countries, remote, ats, domains,
+                                         minPostings, employees {from,to}, withDomain, limit, offset
+  hiring postings --body <json> | --body-file <path|->    the matching postings themselves, newest first
+  hiring boards --domain <d> | hiring boards <ats> <slug>  the boards we hold and how their reads went
+  hiring boards add --file <jsonl> [--source import:<list>]
+                                         boards to read from now on: {"ats","slug","name"?,"domain"?} a line
   spend [--from <date>] [--to <date>]    this month's spend by provider unless dates are given, and credits left;
                                          perLead: provider spend per lead enrolled with a valid address, by step,
                                          against the project's limit
@@ -3272,6 +3282,50 @@ async function main(argv: string[]): Promise<void> {
         'Which page?',
         {
           hint: 'bh cache person https://www.linkedin.com/in/<name> | cache company <url> | cache people <company-url>',
+        },
+        2,
+      )
+    }
+    case 'hiring': {
+      const body = async () =>
+        o['body-file'] ? await readInput(o['body-file']) : o.body ? JSON.parse(o.body) : {}
+      if (!sub) return out(await call(config, 'GET', '/hiring'))
+      if (sub === 'companies' || sub === 'postings')
+        return out(await call(config, 'POST', `/hiring/${sub}`, await body()))
+      if (sub === 'boards' && pos[2] === 'add') {
+        if (!o.file)
+          throw new BhError(
+            'Which boards?',
+            {
+              hint: 'bh hiring boards add --file boards.jsonl ({"ats":"lever","slug":"acme"} a line)',
+            },
+            2,
+          )
+        const rows = await readRows(o.file)
+        const totals = { boards: 0, added: 0, known: 0 }
+        for (let i = 0; i < rows.length; i += 5000) {
+          const r = (await call(config, 'POST', '/hiring/boards', {
+            boards: rows.slice(i, i + 5000),
+            ...(o.source ? { source: o.source } : {}),
+          })) as typeof totals
+          totals.boards += r.boards
+          totals.added += r.added
+          totals.known += r.known
+        }
+        return out(totals)
+      }
+      if (sub === 'boards' && (o.domain || (pos[2] && pos[3])))
+        return out(
+          await call(
+            config,
+            'GET',
+            `/hiring/boards?${o.domain ? `domain=${encodeURIComponent(o.domain)}` : `ats=${encodeURIComponent(pos[2]!)}&slug=${encodeURIComponent(pos[3]!)}`}`,
+          ),
+        )
+      throw new BhError(
+        'Which part of the job boards?',
+        {
+          hint: 'bh hiring | hiring companies --body-file q.json | hiring postings --body-file q.json | hiring boards --domain <d> | hiring boards add --file boards.jsonl',
         },
         2,
       )

@@ -57,8 +57,10 @@ press mention.
   boards for hiring). A search bounded to nothing is money spent on noise.
 - A web search costs several times a page read: use it where the company's own site would not answer.
 - Query: `{"q":"\"series A\" logistics software 2026","sites":["techcrunch.com","crunchbase.com"]}`.
-- A segment defined by hiring (several open roles of a kind) is not a web search: TheirStack finds
-  the companies and their job posts in one query (`providers` skill, theirstack reference).
+- A segment defined by hiring (several open roles of a kind) is not a web search: `bh hiring
+  companies` finds the companies and their job posts in one free query from our copy of their public
+  job boards ([hiring.md](hiring.md)); TheirStack (`providers` skill, theirstack reference) for what
+  that copy lacks — Workday and other enterprise ATSs, postings only on job sites.
 
 ## import
 

@@ -127,7 +127,7 @@ Check it before a large order and mention it in `bh session end`.
 | Settle a catch-all / unknown address, confirm a guess | **off for now** — such an address goes by LinkedIn | [scrubby](references/scrubby.md) |
 | A web page as text, a site's page list | Firecrawl scrape / map, $0.0009 each | [firecrawl](references/firecrawl.md) |
 | Companies with bad (or good) Trustpilot reviews | Bright Data Trustpilot dataset, $2.50 / 1,000 rows | [brightdata](references/brightdata.md) |
-| Companies hiring for given roles now (a hiring signal), with the job posts | TheirStack company search with `job_filters`, $0.06/company; or Apollo company search with job titles, one credit ($0.0065) a page | [theirstack](references/theirstack.md), [apollo](references/apollo.md) |
+| Companies hiring for given roles now (a hiring signal), with the job posts | `bh hiring companies` first (free, our copy of Greenhouse, Lever, Ashby and Workable boards); then TheirStack company search with `job_filters`, $0.06/company, for Workday and job-site postings; or Apollo company search with job titles, one credit ($0.0065) a page | [segment-design hiring](../segment-design/references/hiring.md), [theirstack](references/theirstack.md), [apollo](references/apollo.md) |
 | People with given titles in a segment defined by industry, country and size | Apollo people search (free), then `bulk_match` by id, $0.0065 a match | [apollo](references/apollo.md) |
 
 Rules that cut across providers:

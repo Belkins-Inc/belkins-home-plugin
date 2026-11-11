@@ -59,6 +59,8 @@ below). Paid enrichment stays a person's.
    - `trustpilot` — defined by presence or reputation on Trustpilot: rating, review count, category;
    - `directory` — members of an association, exhibitors or speakers of a conference, a ranked list;
    - `web` — companies only a web search surfaces (a funding round, a job ad, a technology);
+     a segment defined by hiring is `web` too, found with `bh hiring companies` (free,
+     [references/hiring.md](references/hiring.md));
    - `import` — a list the client gave.
 
    A market with no LinkedIn industry (data centres have none) is not a `linkedin` source: take the

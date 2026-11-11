@@ -1736,6 +1736,61 @@ CREATE TABLE public.google_orgs (
 
 
 --
+-- Name: hiring_boards; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hiring_boards (
+    ats text NOT NULL,
+    slug text NOT NULL,
+    name text,
+    domain public.citext,
+    website_checked_at timestamp with time zone,
+    source text NOT NULL,
+    added_at timestamp with time zone DEFAULT now() NOT NULL,
+    added_by uuid,
+    added_via public.actor_via,
+    checked_at timestamp with time zone,
+    answered_at timestamp with time zone,
+    failures integer DEFAULT 0 NOT NULL,
+    gone_at timestamp with time zone,
+    open_postings integer,
+    CONSTRAINT hiring_boards_ats_check CHECK ((ats = ANY (ARRAY['greenhouse'::text, 'lever'::text, 'ashby'::text, 'workable'::text])))
+);
+
+
+--
+-- Name: hiring_postings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hiring_postings (
+    ats text NOT NULL,
+    slug text NOT NULL,
+    id text NOT NULL,
+    title text NOT NULL,
+    url text NOT NULL,
+    location text,
+    countries text[] DEFAULT '{}'::text[] NOT NULL,
+    remote boolean,
+    department text,
+    posted_at timestamp with time zone,
+    first_seen_at timestamp with time zone NOT NULL,
+    last_seen_at timestamp with time zone NOT NULL,
+    closed_at timestamp with time zone
+);
+
+
+--
+-- Name: hiring_probes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hiring_probes (
+    domain public.citext NOT NULL,
+    probed_at timestamp with time zone NOT NULL,
+    found integer NOT NULL
+);
+
+
+--
 -- Name: hypotheses; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4698,6 +4753,30 @@ ALTER TABLE ONLY public.google_orgs
 
 
 --
+-- Name: hiring_boards hiring_boards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hiring_boards
+    ADD CONSTRAINT hiring_boards_pkey PRIMARY KEY (ats, slug);
+
+
+--
+-- Name: hiring_postings hiring_postings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hiring_postings
+    ADD CONSTRAINT hiring_postings_pkey PRIMARY KEY (ats, slug, id);
+
+
+--
+-- Name: hiring_probes hiring_probes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hiring_probes
+    ADD CONSTRAINT hiring_probes_pkey PRIMARY KEY (domain);
+
+
+--
 -- Name: hypotheses hypotheses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5995,6 +6074,34 @@ CREATE INDEX events_default_strategy_id_type_at_idx ON public.events_default USI
 --
 
 CREATE INDEX google_orgs_in_flight ON public.google_orgs USING btree (purpose, created_at) WHERE (state <> ALL (ARRAY['ready'::text, 'failed'::text]));
+
+
+--
+-- Name: hiring_boards_checked_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX hiring_boards_checked_at ON public.hiring_boards USING btree (checked_at NULLS FIRST);
+
+
+--
+-- Name: hiring_boards_domain; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX hiring_boards_domain ON public.hiring_boards USING btree (domain);
+
+
+--
+-- Name: hiring_postings_closed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX hiring_postings_closed ON public.hiring_postings USING btree (closed_at) WHERE (closed_at IS NOT NULL);
+
+
+--
+-- Name: hiring_postings_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX hiring_postings_open ON public.hiring_postings USING btree (COALESCE(posted_at, first_seen_at)) WHERE (closed_at IS NULL);
 
 
 --
@@ -8695,6 +8802,22 @@ ALTER TABLE ONLY public.google_orgs
 
 ALTER TABLE ONLY public.google_orgs
     ADD CONSTRAINT google_orgs_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.workspace_tenants(id) ON DELETE SET NULL;
+
+
+--
+-- Name: hiring_boards hiring_boards_added_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hiring_boards
+    ADD CONSTRAINT hiring_boards_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id);
+
+
+--
+-- Name: hiring_postings hiring_postings_ats_slug_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hiring_postings
+    ADD CONSTRAINT hiring_postings_ats_slug_fkey FOREIGN KEY (ats, slug) REFERENCES public.hiring_boards(ats, slug) ON DELETE CASCADE;
 
 
 --
@@ -13513,4 +13636,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110210019'),
     ('20261111121918'),
     ('20261111131320'),
-    ('20261111142713');
+    ('20261111142713'),
+    ('20261111145757');
