@@ -6781,10 +6781,24 @@ CREATE INDEX ix_projects__organisation ON public.projects USING btree (organisat
 
 
 --
+-- Name: ix_provider_calls__callback; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_provider_calls__callback ON public.provider_calls USING btree (provider, ((params ->> 'callback'::text))) WHERE ((params ->> 'callback'::text) IS NOT NULL);
+
+
+--
 -- Name: ix_provider_calls__credits_left; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_provider_calls__credits_left ON public.provider_calls USING btree (provider, at DESC) WHERE (credits_left IS NOT NULL);
+
+
+--
+-- Name: ix_provider_calls__delivery_of; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_provider_calls__delivery_of ON public.provider_calls USING btree (((params ->> 'deliveryOf'::text)), at) WHERE ((params ->> 'deliveryOf'::text) IS NOT NULL);
 
 
 --
@@ -13694,4 +13708,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111161359'),
     ('20261111170455'),
     ('20261111171405'),
-    ('20261111174041');
+    ('20261111174041'),
+    ('20261111175205');
