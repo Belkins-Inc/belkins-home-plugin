@@ -6178,6 +6178,20 @@ CREATE INDEX ix_dialer_leads__project ON public.dialer_leads USING btree (projec
 
 
 --
+-- Name: ix_dnc__complaints; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_dnc__complaints ON public.dnc USING btree (value) WHERE ((kind = 'email'::text) AND (reason = 'complaint'::text) AND (removed_at IS NULL));
+
+
+--
+-- Name: ix_dnc__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_dnc__project ON public.dnc USING btree (project_id, created_at DESC, id DESC) INCLUDE (kind) WHERE (removed_at IS NULL);
+
+
+--
 -- Name: ix_domains__company; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13453,4 +13467,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110121004'),
     ('20261110202945'),
     ('20261110210019'),
-    ('20261111121918');
+    ('20261111121918'),
+    ('20261111131320');
