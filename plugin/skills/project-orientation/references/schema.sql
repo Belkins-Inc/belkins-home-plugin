@@ -4043,7 +4043,7 @@ CREATE TABLE public.tasks (
     handed_run_id uuid,
     CONSTRAINT tasks_check CHECK (((status = 'open'::text) = (closed_at IS NULL))),
     CONSTRAINT tasks_priority_check CHECK ((priority = ANY (ARRAY['normal'::text, 'urgent'::text]))),
-    CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text, 'stalled'::text])) AND (strategy_id IS NOT NULL)) OR ((signal = 'lead_cost'::text) AND (strategy_id IS NULL)))),
+    CONSTRAINT tasks_signal_check CHECK (((signal IS NULL) OR ((signal = ANY (ARRAY['pipeline'::text, 'health'::text, 'stalled'::text])) AND (strategy_id IS NOT NULL)) OR ((signal = ANY (ARRAY['lead_cost'::text, 'slack_channel'::text])) AND (strategy_id IS NULL)))),
     CONSTRAINT tasks_status_check CHECK ((status = ANY (ARRAY['open'::text, 'done'::text, 'cancelled'::text])))
 );
 
@@ -7548,6 +7548,13 @@ CREATE UNIQUE INDEX ux_tasks__open_segment ON public.tasks USING btree (segment_
 --
 
 CREATE UNIQUE INDEX ux_tasks__open_signal ON public.tasks USING btree (strategy_id, signal) WHERE ((status = 'open'::text) AND (signal IS NOT NULL));
+
+
+--
+-- Name: ux_tasks__open_slack_channel; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_tasks__open_slack_channel ON public.tasks USING btree (project_id) WHERE ((status = 'open'::text) AND (signal = 'slack_channel'::text));
 
 
 --
@@ -13686,4 +13693,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111145757'),
     ('20261111161359'),
     ('20261111170455'),
-    ('20261111171405');
+    ('20261111171405'),
+    ('20261111174041');
