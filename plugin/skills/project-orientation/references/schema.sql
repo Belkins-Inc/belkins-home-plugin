@@ -832,9 +832,13 @@ CREATE TABLE public.call_list_contacts (
     closed_reason text,
     closed_at timestamp with time zone,
     attempts integer,
+    script text,
+    briefed_by uuid,
+    briefed_via public.actor_via,
     CONSTRAINT call_list_contacts_outcome_check CHECK ((outcome = ANY (ARRAY['no_answer'::text, 'voicemail'::text, 'wrong_number'::text, 'not_interested'::text, 'call_back'::text, 'meeting'::text, 'other'::text]))),
     CONSTRAINT call_list_contacts_outcome_recorded CHECK ((((outcome IS NULL) = (outcome_at IS NULL)) AND ((outcome IS NULL) = (outcome_via IS NULL)))),
-    CONSTRAINT call_list_contacts_position_check CHECK (("position" >= 1))
+    CONSTRAINT call_list_contacts_position_check CHECK (("position" >= 1)),
+    CONSTRAINT call_list_contacts_script_length CHECK ((char_length(script) <= 10000))
 );
 
 
@@ -13739,4 +13743,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111174041'),
     ('20261111175205'),
     ('20261111180208'),
-    ('20261111180331');
+    ('20261111180331'),
+    ('20261111192704');

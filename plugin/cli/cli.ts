@@ -312,11 +312,16 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
        [--attempts <1-10>] [--spacing <minutes>] [--open-days <n>]   in a project linked to a dialer workspace the list
                                          goes to the dialer too: tries per person (3), minutes between them (1440),
                                          days it stays open (14); its "dialer" says what went and who was left out
-  calls push <list-id> [--attempts …]   hand the list to the dialer again after a push that failed (a person only)
-                                         [{"contactId","phone","reason"}] in call order; phone is optional: without it
+                                         [{"contactId","phone","reason","script"}] in call order; phone is optional: without it
                                          the contact's first live number not on do-not-call, with it one of theirs (bh phones);
-                                         all or nothing: a contact on dnc, outside the project, with no such number or
-                                         already on a list is refused (--allow-repeat lets the last through)
+                                         reason: why this person, now (≤2,000 characters; the dialer's brief for this list);
+                                         script: what to say to them (≤10,000, line breaks kept; the dialer's calling script,
+                                         shown first on the call); all or nothing: a contact on dnc, outside the project,
+                                         with no such number or already on a list is refused (--allow-repeat lets the last through)
+  calls push <list-id> [--attempts …]   hand the list to the dialer again after a push that failed (a person only)
+  calls briefs <list-id> --file <json|jsonl|->   [{"contactId","reason","script"}] change what callers read for people
+                                         on the list; null clears one, a field left out stays; a list the dialer has gets it
+                                         at once ("dialer": scripts and briefs sent, who it has no lead for, an error to send again)
   calls show <list-id> [--out <file.csv>]   its people in call order; --out writes the caller's CSV
   calls rename <list-id> --name <n>     the list's name only; one already with the dialer keeps its name there
   calls outcome <list-id> --contact <contact-id> --outcome no_answer|voicemail|wrong_number|not_interested|call_back|meeting|other|none [--note <t>]
@@ -2272,6 +2277,12 @@ async function main(argv: string[]): Promise<void> {
       if (!arg) throw new BhError('Which call list?', { hint: 'bh calls' }, 2)
       if (sub === 'push')
         return out(await call(config, 'POST', `/call-lists/${arg}/dialer`, attemptsOf(o)))
+      if (sub === 'briefs')
+        return out(
+          await call(config, 'PUT', `/call-lists/${arg}/briefs`, {
+            contacts: await readRows(need(o.file)),
+          }),
+        )
       if (sub === 'rename') {
         if (!o.name) throw new BhError('What is it called now?', { hint: '--name <n>' }, 2)
         return out(await call(config, 'PATCH', `/call-lists/${arg}`, { name: o.name }))
