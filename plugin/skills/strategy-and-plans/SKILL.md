@@ -89,7 +89,11 @@ and calling), calling starts in the lead's first week, never at the end of the s
 goes to the callers once it has had two emails and the LinkedIn invite, or two emails where the
 plan has no LinkedIn. Put a `call` step in the plan right after those steps (example in
 [references/plans.md](references/plans.md)); the engine puts each lead on the strategy's call list
-when it gets there, and the dialer's callers see it. Find the numbers before that point
+when it gets there, and the dialer's callers see it. A strategy that calls keeps the **base of its
+calling script** beside its emails and LinkedIn: `bh strategy update <id> --file` with
+`{"callScript": "..."}`, written with the call-scripts skill before the first lead reaches the step.
+The engine sends it to the dialer for each lead its call step lists, with `{first}`, `{full}`,
+`{company}` and `{title}` filled in; scripts written for one person replace it. Find the numbers before that point
 (`bh phones`; a paid phone lookup is quoted to a person before it runs). For leads enrolled before
 the plan had a call step, build the list by hand from "Leads with their first steps sent" in
 [references/queries.md](references/queries.md) with `bh calls create` (a person only).
@@ -112,8 +116,8 @@ anything was sent, it is refused, so settle the steps before launch. Accepted va
 - `appliesWhen`: `email_and_linkedin`, `email_only`, `linkedin_only` (one template each at most).
 - step `channel`: `email`, `linkedin_invite`, `linkedin_message`, `call`. A `call` step puts the
   lead on the strategy's call list when the lead reaches it (one list a strategy, handed to the
-  dialer when the project is linked); its `guidance` is what the caller reads first, and it has no
-  copy. A lead with no live number off do-not-call has it skipped (`no_phone`). Numbers come before
+  dialer when the project is linked); its `guidance` is the caller's brief (why we call now), the
+  strategy's `callScript` what they say, and it has no copy. A lead with no live number off do-not-call has it skipped (`no_phone`). Numbers come before
   the step falls due: `bh phones` (a paid lookup is quoted to a person first).
 - `delayDays` (default 3): send days after the anchor; forced to 0 on step 1.
 - `delayHours` (0 to 23, default 0): hours on top of `delayDays`, then the next moment the send

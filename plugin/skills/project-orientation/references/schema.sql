@@ -3834,6 +3834,8 @@ CREATE TABLE public.strategies (
     greeting text,
     blackout_dates date[] DEFAULT '{}'::date[] NOT NULL,
     company_size_caps jsonb DEFAULT '[]'::jsonb NOT NULL,
+    call_script text,
+    CONSTRAINT strategies_call_script_length CHECK ((char_length(call_script) <= 10000)),
     CONSTRAINT strategies_catch_all_policy_check CHECK ((catch_all_policy = ANY (ARRAY['hold'::text, 'linkedin_only'::text, 'send'::text]))),
     CONSTRAINT strategies_company_size_caps_check CHECK ((jsonb_typeof(company_size_caps) = 'array'::text)),
     CONSTRAINT strategies_greeting_check CHECK (((greeting IS NULL) OR ((length(greeting) <= 80) AND (greeting ~ '\{(first|full|name)\}'::text) AND (greeting !~ '\n'::text)))),
@@ -13969,4 +13971,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111180331'),
     ('20261111192704'),
     ('20261111195316'),
-    ('20261111201206');
+    ('20261111201206'),
+    ('20261111213412');

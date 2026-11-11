@@ -1,6 +1,6 @@
 ---
 name: call-scripts
-description: How to write the calling script and the brief for every person on a call list (what the caller says to this person, in the language they are called in, and why we call them now) and hand both to the Belkins Dialer with bh calls create / bh calls briefs. Use when a call list is being made, when numbers were found for people a caller will dial, when a caller or a client lead asks for call scripts, when a strategy's call-step list gains people, or when a list's scripts need changing.
+description: How to write a strategy's base calling script (kept on the strategy beside its emails and LinkedIn) and, from it, the script and the brief for every person on a call list (what the caller says to this person, in the language they are called in, and why we call them now), and hand them to the Belkins Dialer with bh strategy update / bh calls create / bh calls briefs. Use when a strategy gets a call step or starts calling, when a call list is being made, when numbers were found for people a caller will dial, when a caller or a client lead asks for call scripts, when a strategy's call-step list gains people, or when a script needs changing.
 ---
 
 # Call scripts
@@ -12,6 +12,11 @@ A caller in the Belkins Dialer sees two texts of ours on the call:
 | `script` | the lead's **calling script** | first, large, line breaks kept: read aloud mid-call; also on the lead's card | 10,000 characters |
 | `reason` | the **brief** of their membership of this list | under the script, only on calls from this list | 2,000 characters |
 
+Both start from the **base** a strategy keeps (`callScript`, beside its emails and LinkedIn): the
+script every person of the strategy is called from, its blocks and wording in the call's language,
+with slots for what changes per person. The engine sends the base, slots filled, for each lead its
+call step lists, so a caller always has a script; a script written for one person replaces it.
+
 The script is what to say to this person. The reason is one or two lines on why we call them now
 (the signal, what they already got from us), for the caller's eyes only. Both are plain text: no
 markdown, no links the caller cannot use. Write them for **one named person**, like copy: a script
@@ -21,9 +26,9 @@ the caller could read to anyone is the template we were asked not to send.
 
 1. `bh brief` — rules (`kind = rule` notes) and exclusions bind scripts as they bind copy; the
    offer, proof, and what the meeting is for.
-2. When the people are on a strategy: `bh strategy show <id>` — its `brief` (offer, tone, avoid,
-   proof), each persona's `angle`, the steps' `guidance`. A call step's guidance is the
-   skeleton every script of that list follows.
+2. When the people are on a strategy: `bh strategy show <id>` — its `callScript` (the base every
+   script of that strategy is written from), its `brief` (offer, tone, avoid, proof), each
+   persona's `angle`, the steps' `guidance` (a call step's is the brief for its list).
 3. `bh note list --kind client_feedback` — what the client liked or banned.
 4. The people and what is known of them (one select, no trailing semicolon):
 
@@ -32,7 +37,7 @@ the caller could read to anyone is the template we were asked not to send.
      c.facts as contact_facts, co.name as company, co.domain, co.facts as company_facts,
      (select jsonb_agg(sc.signal) from segment_companies sc
        where sc.company_id = co.id and sc.signal <> '{}'::jsonb) as signals,
-     x.reason, x.script
+     x.reason, x.script, x.briefed_via
    from call_list_contacts x
    join contacts c on c.id = x.contact_id
    left join companies co on co.id = c.company_id
@@ -93,12 +98,34 @@ VOICEMAIL
 - The reason: one or two lines for the caller ("Hiring 4 drivers in Munich since October; got 2
   emails from Anna, no reply"), never a second script.
 
+## The base on the strategy
+
+A strategy that calls has a base before its first lead reaches the call step, and before the first
+list of its people is made by hand. Write it in the shape below, in the call's language, from the
+brief and the personas' angles: the blocks every person gets, with these slots where the person
+changes it (the engine refuses any other `{…}`):
+
+| Slot | Filled with | When the contact lacks it |
+| --- | --- | --- |
+| `{first}` | first name | `[first name]` |
+| `{last}` | last name | `[last name]` |
+| `{full}` | first and last name | `[name]` |
+| `{company}` | company name | `[company]` |
+| `{title}` | job title | `[title]` |
+
+What the caller fills in aloud stays in brackets (`[your name]`, `[your number]`). WHY YOU in a base
+names the role and the problem the brief says that role has; the specific observation is what a
+script written for one person adds. Show the base to the person you work with, take their edits,
+then set it: `bh strategy update <strategy-id> --file base.json` with `{"callScript": "..."}`
+(`null` takes it off). Leads already on the call list keep what they have; the base reaches those
+listed after, and `bh calls briefs` changes the others.
+
 ## Procedure
 
 1. **Sample gate.** Write the script and reason for **one person per persona** first and show them
-   to the person you work with as plain text. Take their edits into the strategy's call-step
-   `guidance` (`bh plan set`) when the people are on a strategy, and write the samples again until
-   they approve. Then write the rest.
+   to the person you work with as plain text, beside the strategy's base. Take edits that hold for
+   everyone into the base (`bh strategy update`), and write the samples again until they approve.
+   Then write the rest, each from the base.
 2. Put the batch in a file, one object per person (JSON array or JSONL):
    `{"contactId","reason","script"}`, with `"phone"` too when making a list and a number other than
    the first live one should be dialled.
@@ -112,5 +139,6 @@ VOICEMAIL
 5. `bh calls show <list-id>` shows each person's `reason` and `script` as they stand.
 
 A strategy's call-step list (`<strategy> (call steps)`) gains people as they reach the step, each
-with the step's guidance as their reason. Find those still without a script in the select above
-(`x.script is null`) and write theirs with `bh calls briefs`.
+with the step's guidance as their reason and the base, filled in, as their script. Find those
+still on the base (`x.briefed_via = 'engine'` in the select above, or `x.script is null` when the
+strategy had no base) and write theirs with `bh calls briefs`.

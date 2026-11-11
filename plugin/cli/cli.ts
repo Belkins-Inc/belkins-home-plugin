@@ -212,6 +212,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          "greeting": the line its emails open with, one name slot: "Hey {first},",
                                          "Guten Tag {full},", "Добрий день, {name}!" ({name}: as the language writes it);
                                          null: the house's "Hi {first},"
+                                         "callScript": the base of the calling script for its people (OPENER, WHY YOU,
+                                         QUESTION, …, in the call's language, up to 10,000 characters); slots {first},
+                                         {last}, {full}, {company}, {title} are filled per person when a call step
+                                         puts a lead on the call list; scripts for one person are written from it
+                                         (call-scripts skill); null takes it off
   strategy launch <id> | strategy pause <id> [--reason <t>] | strategy archive <id>   (a person only); launch
                                          answers firstTouches: leads starting on each day, beside the daily limit
   strategy exclude <id> --company <id|domain> --reason <t>   keep a company out of this strategy only (a person only)
