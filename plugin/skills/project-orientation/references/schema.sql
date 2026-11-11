@@ -6557,6 +6557,27 @@ CREATE INDEX ix_mailbox_orders__waiting ON public.mailbox_orders USING btree (st
 
 
 --
+-- Name: ix_mailboxes__disconnected; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_mailboxes__disconnected ON public.mailboxes USING btree (project_id) WHERE (status = 'disconnected'::text);
+
+
+--
+-- Name: ix_mailboxes__project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_mailboxes__project ON public.mailboxes USING btree (project_id);
+
+
+--
+-- Name: ix_mailboxes__sender; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_mailboxes__sender ON public.mailboxes USING btree (sender_id);
+
+
+--
 -- Name: ix_meeting_slots__open; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6876,6 +6897,13 @@ CREATE INDEX ix_segment_companies__new ON public.segment_companies USING btree (
 --
 
 CREATE INDEX ix_segment_companies__qualified ON public.segment_companies USING btree (segment_id, company_id) WHERE (status = 'qualified'::text);
+
+
+--
+-- Name: ix_segment_companies__source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_segment_companies__source ON public.segment_companies USING btree (source_id, status) INCLUDE (company_id) WHERE (source_id IS NOT NULL);
 
 
 --
@@ -13709,4 +13737,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111170455'),
     ('20261111171405'),
     ('20261111174041'),
-    ('20261111175205');
+    ('20261111175205'),
+    ('20261111180208'),
+    ('20261111180331');
