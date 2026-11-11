@@ -2,8 +2,8 @@
 
 Checks a phone number before anyone dials it: whether the number exists, what kind of line it is,
 the carrier, and the name it is registered to (US numbers). Base `https://lookups.twilio.com/v2`;
-the engine signs in with an API key (HTTP Basic). **Off until a person sets `TWILIO_LOOKUP_KEY`** on
-the engine: until then the call answers `503 not_configured`.
+the engine signs in with a standard API key (HTTP Basic, `TWILIO_LOOKUP_KEY`), set on both engines
+since 2026-11-11.
 
 ## Check a contact's number (a person's session)
 
@@ -31,8 +31,8 @@ days, for any contact of the organisation, is not paid again: its earlier answer
 ## Price
 
 Twilio's list prices per request: line type $0.008, caller name $0.01 (US only); the format and
-validity are free. A check is $0.018, booked as `phone_check` in `bh spend`. Not yet measured on our
-account.
+validity are free. A check is $0.018, booked as `phone_check` in `bh spend`. The first check
+(2026-11-11, a US mobile) was booked at $0.018 and took 0.3 s.
 
 ## Raw calls
 
