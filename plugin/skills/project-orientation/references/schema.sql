@@ -1,6 +1,6 @@
 \restrict dbmate
 
--- Dumped from database version 18.4
+-- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
@@ -3577,6 +3577,7 @@ CREATE TABLE public.spend (
     actor_user_id uuid,
     data jsonb DEFAULT '{}'::jsonb NOT NULL,
     cost_usd numeric(12,6) DEFAULT 0 NOT NULL,
+    results integer,
     CONSTRAINT spend_operation_check CHECK ((operation = ANY (ARRAY['company_search'::text, 'contact_search'::text, 'email_find'::text, 'phone_find'::text, 'phone_check'::text, 'verification'::text, 'enrichment'::text, 'llm'::text, 'subscription'::text, 'data_purchase'::text, 'infrastructure'::text, 'other'::text])))
 );
 
@@ -13451,4 +13452,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110120821'),
     ('20261110121004'),
     ('20261110202945'),
-    ('20261110210019');
+    ('20261110210019'),
+    ('20261111121918');
