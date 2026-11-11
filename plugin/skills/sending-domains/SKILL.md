@@ -73,13 +73,26 @@ bh domain approve getacme.com tryacme.com --max-cents 1500 --redirect https://ac
 Nothing is bought by the command itself: the row is the approval, and the engine buys on its next
 pass.
 
-### Aged domains (closeouts)
+### Aged domains (closeouts) — Day-1 gateway & Microsoft inbox pair
 
 An expired domain several years old, sold at a fixed price, starts with a much better domain
-reputation than a new one. Spamhaus scores a new domain about −1.9 on age alone, and a 15–20 year
-old one +8 to +12. It does not carry the client's brand, so it suits a company of the agency's own
-(a generic company-like name) better than a lookalike. Use it only when the person asks for aged
-domains.
+reputation than a new one. Spamhaus scores a new domain about −1.9 on age alone, and a 10–20 year
+old one +5 to +12; security gateways (Proofpoint, Mimecast, Barracuda) and Microsoft Defender
+heavily filter cold mail from domains under 90 days old. Enrollment and `bh strategy
+repick-mailboxes` automatically route gateway and Microsoft leads to domains at least 90 days old
+(`firstRegisteredAt`) first, and flag gateway leads placed on younger domains as `youngDomain`.
+
+**House standard for fast Day-1 delivery:** when setting up a new project (or unblocking one whose
+audience includes Microsoft 365 or security gateways) that has no ≥90-day sending domain yet, pair
+both tracks upfront in your quote to the person:
+1. **Immediate Day-1 inbox track:** quote 1–2 clean ≥5-year company-named `.com` closeout domains
+   (paired across `google` and `microsoft` when the ICP uses Outlook/M365) — or attach an aged
+   agency sending-network sender when appropriate — so gateway and Microsoft leads land in the
+   inbox as soon as mailboxes finish their 3-day warm-up, without waiting 60–90 days for domain age.
+2. **Brand lookalike track:** quote 2–3 brand lookalikes (`getacme.com`, `tryacme.com`) that warm in
+   parallel for Month 2+ branded capacity while carrying Google-hosted leads right away.
+A closeout does not carry the client's brand, so show the person both tracks and let them approve
+the names they want.
 
 ```sh
 bh domain closeouts --age-min 10 --price-max-cents 500 [--query <word>] [--limit 20]

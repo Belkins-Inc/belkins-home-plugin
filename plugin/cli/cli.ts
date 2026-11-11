@@ -225,9 +225,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          later; a sendDays or companyStaggerDays update does it by itself (a person only)
   strategy repick-mailboxes <id> [--dry-run]   give each lead that has sent nothing yet a mailbox of its sender
                                          that serves its provider (mailbox update --recipients), sends outreach
-                                         on its first day and is hosted there (Gmail on Google, Outlook on
-                                         Microsoft) when one is: off held, badly placed and still warming-alone
-                                         mailboxes when the sender has another; each move says why; a person only
+                                         on its first day, sits on an aged domain (>=90d) for gateway and
+                                         Microsoft leads when one does, and is hosted there (Gmail on Google,
+                                         Outlook on Microsoft) when one is: off held, badly placed, warming-alone
+                                         and young-domain mailboxes when the sender has another; a person only
                  [--even]                   also spread leads on mailboxes that send, so mailboxes added after
                                          enrollment get their share (a lead moves while another carries 2 fewer)
                  [--to-provider google|microsoft] [--only <mailbox-id,…>] [--skip <mailbox-id,…>]
@@ -393,8 +394,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          whose state changed updated; runs pass after pass until done
   crm sync <crm> --auto on|off           the same every hour by itself, until switched off (a person)
   enroll <strategy-id> --file <json|jsonl|-> [--dry-run]    [{"contactId","segmentId","personaId"}]
-                                         a lead goes first to a sender with a mailbox for its mail provider;
+                                         a lead goes first to a sender with a mailbox for its mail provider,
+                                         and on an aged domain (>=90d) for gateway and Microsoft leads when one sends;
                                          unserved counts leads no sender's mailboxes serve (put on any);
+                                         youngDomain counts gateway leads placed on a domain under 90 days old;
                                          zoneWarning on a lead timed by the project's zone or a guess at its
                                          country's (US, CA, AU…): set its timezone or the company's hq_state
   stand <strategy-id> --contact <id> --status candidate|held|rejected [--persona <id>] [--reason <t>]
