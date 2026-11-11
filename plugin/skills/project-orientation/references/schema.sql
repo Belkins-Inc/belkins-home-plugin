@@ -3569,6 +3569,7 @@ CREATE TABLE public.sending_egresses (
     created_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     region text,
+    for_seeds boolean DEFAULT false NOT NULL,
     CONSTRAINT sending_egresses_status_check CHECK ((status = ANY (ARRAY['active'::text, 'spare'::text, 'retired'::text])))
 );
 
@@ -13972,4 +13973,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111192704'),
     ('20261111195316'),
     ('20261111201206'),
-    ('20261111213412');
+    ('20261111213412'),
+    ('20261111213627');

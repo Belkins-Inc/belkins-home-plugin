@@ -246,12 +246,13 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   egress: {
     '': [],
     '*': [],
-    add: ['ip', 'proxy', 'region', 'spare'],
+    add: ['for-seeds', 'ip', 'proxy', 'region', 'spare'],
     assign: ['company', 'mailbox', 'project'],
     list: [],
     quota: [],
     region: [],
     regions: [],
+    seeds: [],
   },
   enroll: {
     '*': ['dry-run', 'file'],
@@ -433,6 +434,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   'microsoft-seeds': {
     '': [],
     '*': ['retry'],
+    mailbox: [],
     make: ['seeds'],
     update: [],
   },

@@ -140,6 +140,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          given: one held for these tenants, else a closeout of 5+ years), signs in as
                                          its first admin, sets the app up, connects the domain and hands it to
                                          warm-up on an egress with room (platform admin)
+  microsoft-seeds mailbox                makes PAX8_MAILBOX (where Pax8 writes new tenants' admin logins) if it is
+                                         missing, and lists its last week's subjects, bodies never (platform admin)
   microsoft-seeds update <ref> --retry   the console service signs in now, not after a refused sign-in's wait;
                                          <ref> is the number, the domain or the id (platform admin)
   google-org record <org> --customer-id <C0…>   Google's customer, made in Partner Sales Console: the engine gives
@@ -785,8 +787,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          docs/decisions/sending-identity.md); an egress of seed tenants carries
                                          up to five of them and nothing of our sending (bh warmup seeds <admin>
                                          --egress <host name>)
-  egress add <host name> --ip <ipv4> --proxy <http://user:pass@host:port> [--region <region>] [--spare]
+  egress add <host name> --ip <ipv4> --proxy <http://user:pass@host:port> [--region <region>] [--spare|--for-seeds]
                                          a host whose reverse DNS is <host name>, reached through its CONNECT proxy
+  egress seeds <id> [off]               keeps the egress for the next group of Microsoft seed tenants' answers
+                                         (out of the spares; never our sending's); the engine starts the next group
+                                         there once the groups that have one are full (platform admin)
   egress active|spare|retire <id>        put an egress in use, set it aside as a spare, or retire it
   egress region <id> <region|none>       the cloud region the egress's address belongs to
   egress regions                         each region with the addresses the cloud lets us hold there
@@ -1654,6 +1659,7 @@ async function main(argv: string[]): Promise<void> {
       count: { type: 'string' },
       'max-orgs': { type: 'string' },
       'max-microsoft': { type: 'string' },
+      'for-seeds': { type: 'boolean' },
       'free-users': { type: 'string' },
       seeds: { type: 'string' },
       licences: { type: 'string' },
@@ -2503,6 +2509,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.seeds !== undefined ? { seeds: Number(o.seeds) } : {}),
           }),
         )
+      if (sub === 'mailbox') return out(await call(config, 'POST', '/microsoft-seeds/mailbox', {}))
       if (sub === 'update' && arg && o.retry)
         return out(
           await call(config, 'PATCH', `/microsoft-seeds/${encodeURIComponent(arg)}`, {
@@ -4517,8 +4524,19 @@ async function main(argv: string[]): Promise<void> {
             proxy: String(o.proxy),
             status: o.spare ? 'spare' : 'active',
             ...(o.region ? { region: String(o.region) } : {}),
+            ...(o['for-seeds'] ? { forSeeds: true } : {}),
           }),
         )
+      }
+      // Kept for the next group of Microsoft seed tenants' answers, out of the spares.
+      if (sub === 'seeds') {
+        if (!arg)
+          throw new BhError(
+            'Which egress?',
+            { hint: 'bh egress seeds <id> [off] (bh egress list prints the ids)' },
+            2,
+          )
+        return out(await call(config, 'PATCH', `/egresses/${arg}`, { forSeeds: pos[3] !== 'off' }))
       }
       if (sub === 'regions') return out(await call(config, 'GET', '/egresses/regions'))
       if (sub === 'region') {
