@@ -734,7 +734,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     'console-login': [],
     'console-retry': [],
     seats: [],
-    update: ['admin-email', 'status'],
+    update: ['admin-email', 'pax8-subscription', 'status'],
     users: [],
   },
   tenants: {
@@ -790,7 +790,17 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     grow: ['max-orgs'],
     off: [],
     on: [],
-    seeds: ['cert', 'client-id', 'count', 'egress', 'key', 'name', 'provider', 'tenant-id'],
+    seeds: [
+      'cert',
+      'client-id',
+      'count',
+      'egress',
+      'key',
+      'name',
+      'pax8-subscription',
+      'provider',
+      'tenant-id',
+    ],
     status: [],
   },
   whoami: {

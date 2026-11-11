@@ -666,7 +666,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          Exchange before it is kept; --admin-email records its administrator (an admin)
   tenant seats <id> --provider microsoft   its licences: bought and used; new mailboxes wait for a free one
   tenant update <id> --provider microsoft [--status active|paused] [--max-domains <n>] [--default-pool yes|no]
-                     [--role clients|network] [--admin-email <e>] [--seat-usd <n>]
+                     [--role clients|network] [--admin-email <e>] [--seat-usd <n>] [--pax8-subscription <id|none>]
+                                         --pax8-subscription: a tenant bought through Pax8 has its seats bought by
+                                         setting that Pax8 subscription's quantity, not on an Azure bill
   tenant users <id>                      every user Google holds in a Google tenant, last sign-in, and the mailbox
                                          or order the engine holds of it; ones it holds nothing of come first,
                                          the longest unused first: where seats are freed (an admin)
@@ -713,6 +715,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          from the wallet; after approval) or off (a person only)
   warmup seeds <admin email> --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id>
       --key <private key PEM> --cert <certificate PEM> [--count <n>] [--egress <host name|none>]
+      [--pax8-subscription <id|none>]
                                          adds a Microsoft 365 seed tenant of ours (never a sending one), proved
                                          against Graph and Exchange first: the engine keeps n users of department
                                          home-seeds on its own domain (default 4), licensed with Exchange Online
@@ -721,7 +724,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          allows. Answers leave only through --egress, an egress of a group of up
                                          to five seed tenants that nothing of our sending holds; without one they
                                          are not sent. Without
-                                         --key and --cert, tends it again, --count and --egress changed (an admin)
+                                         --key and --cert, tends it again, --count and --egress changed (an admin);
+                                         --pax8-subscription: one bought through Pax8 has its seats bought there
   agent stats [--hours <n>]              across projects: runs, cost, queued / running, wait from reply to run
   placement [--days <n>]                 inbox placement on our own seeds, per environment, over the last days (an admin)
   placement seeds                        the seed mailboxes: environment, status, last note
@@ -1101,6 +1105,16 @@ function tenantRole(value: string | undefined): { role?: 'clients' | 'network' }
   throw new BhError(`--role takes clients or network, not ${value}`, {}, 2)
 }
 
+/**
+ * The Pax8 subscription a Microsoft tenant bought through Pax8 holds its seats in, so the engine
+ * buys them there; `none` puts it back on its Azure bill.
+ */
+function pax8Subscription(o: Record<string, unknown>): { pax8Subscription?: string | null } {
+  const given = o['pax8-subscription']
+  if (typeof given !== 'string') return {}
+  return { pax8Subscription: given === 'none' ? null : given }
+}
+
 /** A closeout search's filters as a query string; what is not given is left to the engine. */
 function closeoutQuery(o: Record<string, unknown>): URLSearchParams {
   const q = new URLSearchParams()
@@ -1409,6 +1423,7 @@ async function main(argv: string[]): Promise<void> {
       'paid-until': { type: 'string' },
       'usd-month': { type: 'string' },
       'seat-usd': { type: 'string' },
+      'pax8-subscription': { type: 'string' },
       remove: { type: 'boolean' },
       project: { type: 'string' },
       name: { type: 'string' },
@@ -4134,6 +4149,7 @@ async function main(argv: string[]): Promise<void> {
               ...(o['admin-email'] ? { adminEmail: o['admin-email'] } : {}),
               ...room,
               ...seatUsd,
+              ...pax8Subscription(o),
             }),
           )
         throw new BhError(
@@ -4572,6 +4588,7 @@ async function main(argv: string[]): Promise<void> {
                 ...(o.cert ? { cert: await readFile(o.cert, 'utf8') } : {}),
                 // The egress its answers leave through; none takes it away (they are then not sent).
                 ...(o.egress ? { egress: o.egress === 'none' ? null : o.egress } : {}),
+                ...pax8Subscription(o),
               })
             : await call(config, 'GET', '/warmup/seeds'),
         )

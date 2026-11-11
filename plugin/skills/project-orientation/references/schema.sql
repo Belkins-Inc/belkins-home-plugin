@@ -2374,6 +2374,9 @@ CREATE TABLE public.microsoft_tenants (
     graph_probe_from public.citext,
     seat_usd numeric(8,2) DEFAULT 4.80 NOT NULL,
     role text DEFAULT 'clients'::text NOT NULL,
+    pax8_subscription_id uuid,
+    pax8_subscription_by uuid,
+    pax8_subscription_via public.actor_via,
     CONSTRAINT microsoft_tenants_max_domains_check CHECK (((max_domains >= 1) AND (max_domains <= 900))),
     CONSTRAINT microsoft_tenants_role_check CHECK ((role = ANY (ARRAY['clients'::text, 'network'::text]))),
     CONSTRAINT microsoft_tenants_role_pool_check CHECK (((NOT default_pool) OR (role = 'clients'::text))),
@@ -4270,6 +4273,9 @@ CREATE TABLE public.warmup_seed_tenants (
     graph_probe_sent_at timestamp with time zone,
     graph_probe_token text,
     graph_probe_from public.citext,
+    pax8_subscription_id uuid,
+    pax8_subscription_by uuid,
+    pax8_subscription_via public.actor_via,
     CONSTRAINT warmup_seed_tenants_microsoft_check CHECK (((provider = 'google'::text) OR ((name IS NOT NULL) AND (directory_id IS NOT NULL) AND (client_id IS NOT NULL) AND (initial_domain IS NOT NULL) AND (credential IS NOT NULL)))),
     CONSTRAINT warmup_seed_tenants_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
     CONSTRAINT warmup_seed_tenants_seeds_wanted_check CHECK (((seeds_wanted >= 0) AND (seeds_wanted <= 20))),
@@ -13679,4 +13685,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111142713'),
     ('20261111145757'),
     ('20261111161359'),
-    ('20261111170455');
+    ('20261111170455'),
+    ('20261111171405');
