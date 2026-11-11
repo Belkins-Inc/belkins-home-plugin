@@ -119,6 +119,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     create: ['allow-repeat', 'attempts', 'file', 'name', 'note', 'open-days', 'spacing'],
     outcome: ['contact', 'note', 'outcome'],
     push: ['attempts', 'open-days', 'spacing'],
+    remove: [],
     rename: ['name'],
     show: ['out'],
   },

@@ -319,6 +319,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          shown first on the call); all or nothing: a contact on dnc, outside the project,
                                          with no such number or already on a list is refused (--allow-repeat lets the last through)
   calls push <list-id> [--attempts …]   hand the list to the dialer again after a push that failed (a person only)
+  calls remove <list-id>                take back a list nobody called from: off the dialer's queue and archived there,
+                                         then gone from Home with its people (a person only)
   calls briefs <list-id> --file <json|jsonl|->   [{"contactId","reason","script"}] change what callers read for people
                                          on the list; null clears one, a field left out stays; a list the dialer has gets it
                                          at once ("dialer": scripts and briefs sent, who it has no lead for, an error to send again)
@@ -2277,6 +2279,7 @@ async function main(argv: string[]): Promise<void> {
       if (!arg) throw new BhError('Which call list?', { hint: 'bh calls' }, 2)
       if (sub === 'push')
         return out(await call(config, 'POST', `/call-lists/${arg}/dialer`, attemptsOf(o)))
+      if (sub === 'remove') return out(await call(config, 'DELETE', `/call-lists/${arg}`))
       if (sub === 'briefs')
         return out(
           await call(config, 'PUT', `/call-lists/${arg}/briefs`, {
