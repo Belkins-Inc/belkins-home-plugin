@@ -212,7 +212,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   leads [--q <text>] [--strategy <id>] [--state in_plan|paused|stuck|replied|ended] [--label <name>] [--limit <n>] [--offset <n>]
                                          --label: the lead or its company carries it
   lead show <enrollment-id>              one lead's plan step by step
-  lead resume <enrollment-id>            put back a lead a reply stopped when the reply needed nothing (a person only)
+  lead resume <enrollment-id>            put back a lead a reply stopped when the reply needed nothing, or one stopped as
+                                         the wrong person once they are known to be at the company (a person only)
   lead pause <enrollment-id> [--until <YYYY-MM-DD>] | lead unpause <enrollment-id>   hold a lead by hand, and let it
                                          go on (a person only; unpause also lets go one paused with thread
                                          pause-colleagues); with --until the engine lets it go on when that day
