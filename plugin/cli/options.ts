@@ -290,6 +290,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   'google-orgs': {
     '': [],
     '*': ['for'],
+    grow: ['free-users'],
     make: ['company', 'for', 'ip', 'key-from', 'licences', 'seeds'],
     update: ['ip', 'retry'],
   },

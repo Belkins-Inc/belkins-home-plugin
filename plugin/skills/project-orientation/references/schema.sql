@@ -3399,6 +3399,21 @@ CREATE TABLE public.sending_egresses (
 
 
 --
+-- Name: sending_tenant_growth; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sending_tenant_growth (
+    id boolean DEFAULT true NOT NULL,
+    free_users integer NOT NULL,
+    set_by uuid NOT NULL,
+    set_via public.actor_via NOT NULL,
+    set_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT sending_tenant_growth_free_users_check CHECK (((free_users >= 0) AND (free_users <= 3000))),
+    CONSTRAINT sending_tenant_growth_id_check CHECK (id)
+);
+
+
+--
 -- Name: sessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5480,6 +5495,14 @@ ALTER TABLE ONLY public.sending_egresses
 
 ALTER TABLE ONLY public.sending_egresses
     ADD CONSTRAINT sending_egresses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sending_tenant_growth sending_tenant_growth_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_tenant_growth
+    ADD CONSTRAINT sending_tenant_growth_pkey PRIMARY KEY (id);
 
 
 --
@@ -10451,6 +10474,14 @@ ALTER TABLE ONLY public.sending_egresses
 
 
 --
+-- Name: sending_tenant_growth sending_tenant_growth_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sending_tenant_growth
+    ADD CONSTRAINT sending_tenant_growth_set_by_fkey FOREIGN KEY (set_by) REFERENCES public.users(id);
+
+
+--
 -- Name: sessions sessions_preview_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11664,6 +11695,13 @@ CREATE POLICY engine ON public.seed_network_growth TO bhn_tenant USING (true) WI
 --
 
 CREATE POLICY engine ON public.sending_egresses TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: sending_tenant_growth engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.sending_tenant_growth TO bhn_tenant USING (true) WITH CHECK (true);
 
 
 --
@@ -12968,6 +13006,12 @@ ALTER TABLE public.sending_companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sending_egresses ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: sending_tenant_growth; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sending_tenant_growth ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: sessions; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -13468,4 +13512,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261110202945'),
     ('20261110210019'),
     ('20261111121918'),
-    ('20261111131320');
+    ('20261111131320'),
+    ('20261111142713');

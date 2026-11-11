@@ -144,6 +144,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          tenant for the network, out of the pool and capped at 250 users (platform admin)
   google-orgs update <domain> [--ip <address>|none] [--retry]   the IP its admin signs in through; --retry: the
                                          console service tries now, not after a refused sign-in's wait (platform admin)
+  google-orgs grow [--free-users <n>]    the room the clients' Google tenants have, and the free users the engine keeps
+                                         there by ordering sending organisations itself, one at a time, in your name;
+                                         0 stops it. Domains whose mailboxes wait in a full tenant move to one with room
+                                         by themselves (platform admin)
   org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
   dialer users <dialer-org-id>          its people, their roles and workspaces: who can work a queue (platform admin)
@@ -1591,6 +1595,7 @@ async function main(argv: string[]): Promise<void> {
       upcoming: { type: 'boolean' },
       count: { type: 'string' },
       'max-orgs': { type: 'string' },
+      'free-users': { type: 'string' },
       seeds: { type: 'string' },
       licences: { type: 'string' },
       retry: { type: 'boolean' },
@@ -2401,6 +2406,14 @@ async function main(argv: string[]): Promise<void> {
             ...(o['key-from'] ? { keyFrom: o['key-from'] } : {}),
             ...(o.ip ? { ip: o.ip } : {}),
           }),
+        )
+      if (sub === 'grow')
+        return out(
+          o['free-users'] === undefined
+            ? await call(config, 'GET', '/google-orgs/growth')
+            : await call(config, 'PUT', '/google-orgs/growth', {
+                freeUsers: Number(o['free-users']),
+              }),
         )
       if (sub === 'update' && arg)
         return out(
