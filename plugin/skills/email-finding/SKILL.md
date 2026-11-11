@@ -151,6 +151,12 @@ The engine saves such an address anyway and says so: each row of the `bh contact
 whose address is not at its company carries a `warnings` entry. Read the warnings; a warned row you
 did not mean is a contact to fix now (`bh behaviour contacts`).
 
+Before the first step of any lead, and before an email to such an address, the engine itself reads
+the contact's LinkedIn profile and checks they still work at the company: one shown elsewhere is
+marked departed and their leads stop; one it cannot confirm (no profile) is held, stuck as "Not
+confirmed to work at the company" (`bh behaviour enrollment-and-plans`). So a contact without a
+LinkedIn profile needs one, or a person's `bh contacts employer <id> --confirm --note <how>`.
+
 Why Apollo goes first and Bouncer decides (measured 2026-10-07 against what our sends delivered and
 bounced): Apollo agreed with 99 of 127 addresses BetterContact had found and we had delivered to, at
 a seventh of the price — but its own `verified` covered 8 addresses that had bounced `no_such_user`,

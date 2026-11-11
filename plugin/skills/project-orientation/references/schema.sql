@@ -49,6 +49,38 @@ CREATE TYPE public.actor_via AS ENUM (
 
 
 --
+-- Name: address_at_company(text, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.address_at_company(email text, company_domain text, related jsonb) RETURNS boolean
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    AS $_$
+  with a as (
+    select regexp_replace(regexp_replace(lower(trim(split_part(email, '@', 2))), '^www\.', ''), '\.$', '') as at
+  ),
+  r as (
+    select case when jsonb_typeof(related) = 'object' then related -> 'value' else related end as v
+  ),
+  d as (
+    select regexp_replace(regexp_replace(lower(trim(company_domain)), '^www\.', ''), '\.$', '') as dom
+    union all
+    select regexp_replace(regexp_replace(lower(trim(x)), '^www\.', ''), '\.$', '')
+      from r, jsonb_array_elements_text(case when jsonb_typeof(r.v) = 'array' then r.v else '[]'::jsonb end) x
+    union all
+    select regexp_replace(regexp_replace(lower(trim(x)), '^www\.', ''), '\.$', '')
+      from r, regexp_split_to_table(case when jsonb_typeof(r.v) = 'string' then r.v #>> '{}' else '' end, '[\s,;]+') x
+  )
+  select case
+    when email is null or position('@' in email) = 0 or company_domain is null or trim(company_domain) = '' then true
+    else exists (
+      select 1 from a, d
+       where d.dom <> ''
+         and (a.at = d.dom or a.at like '%.' || d.dom or d.dom like '%.' || a.at))
+  end
+$_$;
+
+
+--
 -- Name: count_copy_test_sent(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1115,9 +1147,17 @@ CREATE TABLE public.contacts (
     deal_stage_via public.actor_via,
     erasure_id uuid,
     linkedin_key text,
+    employer_check text,
+    employer_checked_at timestamp with time zone,
+    employer_check_note text,
+    employer_check_by uuid,
+    employer_check_via public.actor_via,
+    employer_check_retry_at timestamp with time zone,
     CONSTRAINT contacts_check CHECK (((email IS NOT NULL) OR (linkedin_url IS NOT NULL) OR (erasure_id IS NOT NULL))),
     CONSTRAINT contacts_deal_stage_check CHECK ((deal_stage = ANY (ARRAY['opportunity'::text, 'proposal'::text, 'won'::text, 'lost'::text]))),
-    CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text])))
+    CONSTRAINT contacts_email_status_check CHECK ((email_status = ANY (ARRAY['valid'::text, 'catch_all'::text, 'invalid'::text, 'bounced'::text, 'unknown'::text]))),
+    CONSTRAINT contacts_employer_check_at CHECK (((employer_check IS NULL) = (employer_checked_at IS NULL))),
+    CONSTRAINT contacts_employer_check_check CHECK ((employer_check = ANY (ARRAY['current'::text, 'elsewhere'::text, 'unconfirmed'::text])))
 )
 WITH (autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
@@ -1385,7 +1425,7 @@ CREATE TABLE public.enrollments (
     CONSTRAINT enrollments_pause_reason_check CHECK ((pause_reason = ANY (ARRAY['out_of_office'::text, 'company_meeting'::text, 'manual'::text, 'held_back'::text, 'call_follow_up'::text, 'colleague_replied'::text]))),
     CONSTRAINT enrollments_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'active'::text, 'paused'::text, 'completed'::text, 'stopped'::text]))),
     CONSTRAINT enrollments_stop_reason_check CHECK ((stop_reason = ANY (ARRAY['replied'::text, 'unsubscribed'::text, 'dnc'::text, 'no_channel_left'::text, 'sender_gone'::text, 'manual'::text, 'wrong_person'::text]))),
-    CONSTRAINT enrollments_stuck_code_check CHECK ((stuck_code = ANY (ARRAY['no_copy'::text, 'linkedin_not_configured'::text, 'mailbox_disconnected'::text, 'linkedin_disconnected'::text, 'mailbox_room'::text, 'other'::text]))),
+    CONSTRAINT enrollments_stuck_code_check CHECK ((stuck_code = ANY (ARRAY['no_copy'::text, 'linkedin_not_configured'::text, 'mailbox_disconnected'::text, 'linkedin_disconnected'::text, 'mailbox_room'::text, 'employer_unconfirmed'::text, 'other'::text]))),
     CONSTRAINT enrollments_stuck_code_with_reason CHECK ((((stuck_code IS NULL) = (stuck_reason IS NULL)) AND ((stuck_step IS NULL) OR (stuck_code IS NOT NULL))))
 )
 WITH (fillfactor='85', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
@@ -13637,4 +13677,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111121918'),
     ('20261111131320'),
     ('20261111142713'),
-    ('20261111145757');
+    ('20261111145757'),
+    ('20261111161359');

@@ -332,6 +332,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          the other is deleted; refused when both have a live lead (a person only)
   contacts depart <id> --reason <how you know> [--undo]   they left the company: never enrolled again; a live
                                          lead is named, not stopped
+  contacts employer <id> [--confirm --note <how you know>]   whether they work at their company, read now
+                                         from their LinkedIn profile ($0.0045, free when read lately), as the
+                                         engine does before a first step; --confirm records that you know they
+                                         do, which lets their held leads go for 90 days (a person only)
   labels                                 the project's own labels, with how many companies and contacts carry each
   label add <name> [--company <id|domain>,…] [--contact <id|email|linkedin-url>,…] [--file <json|jsonl|->]
                                          put it on (made if the project has none of that name, in any case);
@@ -1398,6 +1402,7 @@ async function main(argv: string[]): Promise<void> {
       'postal-code': { type: 'string' },
       phone: { type: 'string' },
       country: { type: 'string' },
+      confirm: { type: 'boolean' },
       undo: { type: 'boolean' },
       port: { type: 'string' },
       'paid-until': { type: 'string' },
@@ -2729,6 +2734,20 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', `/contacts/${arg}/merge`, {
             drop: pos[3],
             dryRun: Boolean(o['dry-run']),
+          }),
+        )
+      }
+      if (sub === 'employer') {
+        if (!arg)
+          throw new BhError(
+            'Which contact?',
+            { hint: 'bh contacts employer <id> [--confirm --note <how you know>]' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/contacts/${arg}/employer`, {
+            ...(o.confirm ? { confirm: true } : {}),
+            ...(o.note ? { note: o.note } : {}),
           }),
         )
       }
