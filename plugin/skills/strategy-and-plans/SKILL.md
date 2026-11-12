@@ -326,7 +326,12 @@ repick-mailboxes <id>` moves them off mailboxes that would not send; `--even` al
 mailboxes connected after enrollment; `--to-provider google|microsoft`, `--only <ids>` and `--skip
 <ids>` say where they may go; `--change-sender` moves a lead whose sender has no mailbox for its
 provider (or left the strategy) to another sender, and its copy then has to be written again
-(`needsCopy`, then `bh copy queue`). No need to stop and re-enroll leads to rebalance them.
+(`needsCopy`, then `bh copy queue`). `--to-sender <id>` moves leads of the strategy's other senders
+to that one (add them to the strategy's senders first) while it evens their mailboxes' load,
+stuck-on-room leads first (`--limit <n>`, `--stuck`, `--only <their mailbox ids>`); a sender with
+no LinkedIn account takes a lead onto the email-only template, or with its LinkedIn steps skipped
+when its emails do not wait on them, otherwise the lead stays (`refused`). Copy is written again
+as the new sender. No need to stop and re-enroll leads to rebalance them.
 
 Catch-all addresses follow `catchAllPolicy`: `hold` (default) holds the lead (`strategy_contacts =
 held`) unless it has LinkedIn, in which case it goes LinkedIn-only; `linkedin_only` never emails a

@@ -257,6 +257,14 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          the strategy, moves to another sender who has one; only leads with nothing
                                          sent on any channel; their written copy is cleared and needs writing again
                                          (needsCopy); without it the answer counts them (couldChangeSender)
+                 [--to-sender <id>]         only this: leads of the strategy's other senders with nothing sent on any
+                                         channel move to this one of its senders, onto their least-loaded mailbox
+                                         (--only/--skip/--to-provider narrow which) while it carries 2 fewer leads
+                                         than the lead's; stuck-on-room leads first. Copy is cleared (needsCopy).
+                                         Their LinkedIn account, or with none the email_only template, or with
+                                         none their LinkedIn steps skipped when emails do not wait on them;
+                                         otherwise the lead stays (refused)
+                 [--limit <n>] [--stuck]    with --to-sender: at most n leads; only leads stuck on mailbox_room
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
                                          a "call" step puts the lead on the strategy's call list when reached
@@ -1517,6 +1525,8 @@ async function main(argv: string[]): Promise<void> {
       even: { type: 'boolean' },
       'to-provider': { type: 'string' },
       'change-sender': { type: 'boolean' },
+      'to-sender': { type: 'string' },
+      stuck: { type: 'boolean' },
       summary: { type: 'string' },
       for: { type: 'string' },
       email: { type: 'string' },
@@ -2083,6 +2093,9 @@ async function main(argv: string[]): Promise<void> {
             ...(o.only ? { only: list(o.only) } : {}),
             ...(o.skip ? { skip: list(o.skip) } : {}),
             ...(o['change-sender'] ? { changeSender: true } : {}),
+            ...(o['to-sender'] ? { toSender: o['to-sender'] } : {}),
+            ...(o.limit ? { limit: Number(o.limit) } : {}),
+            ...(o.stuck ? { stuck: true } : {}),
           }),
         )
       if (sub === 'launch') return out(await call(config, 'POST', `/strategies/${arg}/launch`, {}))
