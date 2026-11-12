@@ -596,9 +596,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   mailbox reconnect <id>                 a disconnected mailbox connected again: one a person signs in to prints the URL
                                          to open; a seat in one of our Google tenants is tried at once and made
                                          active when Google gives its token (a person only)
-  mailbox import --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
+  mailbox import --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed] [--paused]
                                          from another platform, by the refresh token it holds (same OAuth app):
-                                         [{"provider":"google|microsoft","refreshToken","sender":"<name>"|"senderId"}]
+                                         [{"provider":"google|microsoft","refreshToken","sender":"<name>"|"senderId"}];
+                                         --paused: they arrive switched off, sending and warming nothing until made active
   mailbox smtp --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          a mailbox on any SMTP/IMAP host, signed in with its password; both logins
                                          are tried first. [{"address","password","host":"zoho|zoho-eu|migadu|purelymail|fastmail|belkins"
@@ -1623,6 +1624,7 @@ async function main(argv: string[]): Promise<void> {
       'delay-max': { type: 'string' },
       warmed: { type: 'boolean' },
       'not-warmed': { type: 'boolean' },
+      paused: { type: 'boolean' },
       key: { type: 'string' },
       'event-type': { type: 'string' },
       owner: { type: 'string' },
@@ -4306,6 +4308,7 @@ async function main(argv: string[]): Promise<void> {
               await call(config, 'POST', `/projects/${p()}/mailboxes/import`, {
                 ...one,
                 ...limits,
+                ...(o.paused ? { paused: true } : {}),
               }),
             )
           } catch (error) {

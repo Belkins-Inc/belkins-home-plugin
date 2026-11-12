@@ -398,7 +398,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     cancel: [],
     connect: ['provider', 'sender'],
     hold: [],
-    import: ['file'],
+    import: ['file', 'paused'],
     jmap: ['file'],
     order: ['file', 'first-name', 'last-name', 'sender', 'username'],
     orders: [],
