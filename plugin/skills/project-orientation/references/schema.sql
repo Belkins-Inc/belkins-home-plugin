@@ -1363,6 +1363,7 @@ CREATE TABLE public.domains (
     dmarc_set_via public.actor_via,
     first_registered_at timestamp with time zone,
     move_mailboxes boolean DEFAULT false NOT NULL,
+    moving_to_microsoft_tenant_id uuid,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
     CONSTRAINT domains_company_check CHECK (((company_id IS NULL) OR (organisation_id IS NOT NULL))),
     CONSTRAINT domains_dmarc_policy_check CHECK (((dmarc_policy IS NULL) OR (dmarc_policy = ANY (ARRAY['none'::text, 'quarantine'::text, 'reject'::text])))),
@@ -9065,6 +9066,14 @@ ALTER TABLE ONLY public.domains
 
 
 --
+-- Name: domains domains_moving_to_microsoft_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.domains
+    ADD CONSTRAINT domains_moving_to_microsoft_tenant_id_fkey FOREIGN KEY (moving_to_microsoft_tenant_id) REFERENCES public.microsoft_tenants(id);
+
+
+--
 -- Name: domains domains_moving_to_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14402,4 +14411,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112141542'),
     ('20261112143726'),
     ('20261112165145'),
-    ('20261112175149');
+    ('20261112175149'),
+    ('20261112175918');

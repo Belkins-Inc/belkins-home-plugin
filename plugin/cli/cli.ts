@@ -641,12 +641,15 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   domain dkim <name> --record <TXT value> [--selector google]   publish the DKIM record minted in the
                                          Admin console (the task the engine opened says when)
   domain release <name>                  let it lapse at expiry; refused while a mailbox sends from it (a person only)
-  domain move <name> --tenant <name|id> [--with-mailboxes]   a bought domain goes to another Google tenant, one
+  domain move <name> --tenant <name|id> [--with-mailboxes] [--confirm]   a bought domain goes to another Google tenant, one
                                          with room: the engine takes it out of its tenant and sets it up again,
                                          DKIM included; then retry its failed orders (an admin). Only a domain
                                          nothing lives on moves, unless --with-mailboxes: its mailboxes pause,
                                          their users are deleted there and made again in the new tenant, and each
-                                         comes back as it was, warm-up kept; its waiting orders go along
+                                         comes back as it was, warm-up kept; its waiting orders go along.
+                                         A Microsoft domain goes to another Microsoft tenant, only with no
+                                         mailbox on it: without --confirm it only says what would be done;
+                                         its waiting orders are made there once it is ready
   domain platform <name> google|microsoft   a bought domain no tenant has taken yet goes on the other platform,
                                          its orders not yet begun with it; its DNS is redressed (an admin)
   domain retry <name>                    a bought domain that failed on its way into a tenant goes back on it once
@@ -4168,6 +4171,7 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', `/domains/${await domainId(arg)}/move`, {
             tenant: o.tenant,
             ...(o['with-mailboxes'] ? { withMailboxes: true } : {}),
+            ...(o.confirm ? { confirm: true } : {}),
           }),
         )
       }

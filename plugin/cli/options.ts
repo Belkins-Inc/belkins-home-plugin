@@ -234,7 +234,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     dkim: ['record', 'selector'],
     dmarc: ['dry-run', 'policy'],
     dns: ['content', 'host', 'ttl', 'type'],
-    move: ['tenant', 'with-mailboxes'],
+    move: ['confirm', 'tenant', 'with-mailboxes'],
     platform: [],
     quote: [],
     redirect: [],
