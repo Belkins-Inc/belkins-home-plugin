@@ -166,9 +166,10 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   dialer queue <name> [--hours 08:00-18:00] --project <p>   makes the project's queue in its workspace and attaches its lists (platform admin)
   dialer key <dialer-org-id>            what our key opens there: scopes, writes, workspaces, expiry (platform admin)
   dialer read <dialer-org-id> <path[?query]>   reads what the dialer holds there, e.g. workspaces/<id>/numbers, coverage (platform admin)
-  dialer invite <email,…> [--role operator|manager] --project <p>   invites people to the project's dialer workspace (platform admin)
+  dialer invite <email,…> [--role operator|manager] --project <p>   invites people to the project's dialer workspace (its organisation's admin)
+  dialer people --project <p>           who is in the project's dialer workspace, and who works its queue (its organisation's admin)
   dialer numbers buy <1-10> [--country US|CA] [--region NY] [--area-code 212] [--city <c>] --project <p>   caller numbers for the project's workspace, a month of rent each from the dialer budget (platform admin, a person)
-  dialer agents <email,…> --project <p>  who works the project's queue; replaces the set (platform admin)
+  dialer agents <email,…> --project <p>  who works the project's queue; replaces the set (its organisation's admin)
   dialer orgs                           the dialer organizations our key can see, and the organisation linked to each (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
   dialer link <workspace-id> [--queue <queue-id>] | dialer link none   link the project to a dialer workspace: its new
@@ -2426,9 +2427,14 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       }
+      if (sub === 'people') return out(await call(config, 'GET', `/projects/${p()}/dialer/people`))
       if (sub === 'agents') {
         if (!arg)
-          throw new BhError('Who works the queue?', { hint: 'bh dialer users <dialer-org-id>' }, 2)
+          throw new BhError(
+            'Who works the queue?',
+            { hint: 'bh dialer people --project <project>' },
+            2,
+          )
         return out(
           await call(config, 'PUT', `/projects/${p()}/dialer/agents`, {
             agents: pos

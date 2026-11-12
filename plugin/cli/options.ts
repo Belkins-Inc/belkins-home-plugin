@@ -211,6 +211,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     link: ['queue'],
     numbers: ['area-code', 'city', 'country', 'region'],
     orgs: [],
+    people: [],
     queue: ['hours'],
     read: [],
     snapshot: [],
