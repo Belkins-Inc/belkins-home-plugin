@@ -2308,6 +2308,7 @@ CREATE TABLE public.mailboxes (
     warning text,
     warning_at timestamp with time zone,
     moving_from_status text,
+    read_failed_at timestamp with time zone,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 60))),
     CONSTRAINT mailboxes_moving_from_status_check CHECK ((moving_from_status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text]))),
@@ -14412,4 +14413,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112143726'),
     ('20261112165145'),
     ('20261112175149'),
-    ('20261112175918');
+    ('20261112175918'),
+    ('20261112182947');
