@@ -845,6 +845,12 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   telegram reconnect <id>                a link to link a disconnected account again, as the same account
   telegram update <id> [--message-limit <n>] [--delay-min <s>] [--delay-max <s>] [--status active|paused|archived]
                                          at most 100 a day, delays at least 20 s
+  telegram peers <id> [--search <text>] [--unmatched] [--set-aside] [--refresh]   the people the account
+                                         already talks to, the latest first, and the contacts each is;
+                                         --refresh: reads its chats now
+  telegram match <peer-id> --contact <id>     says which contact the peer is (the account may write to them)
+  telegram unmatch <peer-id> --contact <id>   takes it back
+  telegram set-aside <peer-id> [--undo]  never offered, never written to (family, friends)
   linkedin login <id> [--username <address>] [--totp]   stores its LinkedIn login, sealed (password and key hidden)
   linkedin sign-in <id> [--browser]      signs it in to Unipile on its own IP now (the engine also does, every 6 h);
                                          --browser: with the session its remote browser holds
@@ -1466,6 +1472,9 @@ async function main(argv: string[]): Promise<void> {
       country: { type: 'string' },
       confirm: { type: 'boolean' },
       undo: { type: 'boolean' },
+      refresh: { type: 'boolean' },
+      unmatched: { type: 'boolean' },
+      'set-aside': { type: 'boolean' },
       port: { type: 'string' },
       'paid-until': { type: 'string' },
       'usd-month': { type: 'string' },
@@ -4727,7 +4736,39 @@ async function main(argv: string[]): Promise<void> {
           : `/projects/${p()}/telegram-accounts/connect`
         return out(await call(config, 'POST', path, { senderId: o.sender }))
       }
+      if (sub === 'set-aside') {
+        if (!arg) throw new BhError('Which peer?', { hint: 'bh telegram peers <account-id>' }, 2)
+        return out(
+          await call(
+            config,
+            'POST',
+            `/telegram-peers/${arg}/set-aside`,
+            o.undo ? { undo: true } : {},
+          ),
+        )
+      }
+      if (sub === 'match' || sub === 'unmatch') {
+        if (!arg) throw new BhError('Which peer?', { hint: 'bh telegram peers <account-id>' }, 2)
+        if (!o.contact)
+          throw new BhError(
+            'Which contact?',
+            { hint: '--contact <id>: bh lead show, bh contacts' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/telegram-peers/${arg}/${sub}`, { contactId: o.contact }),
+        )
+      }
       if (!arg) throw new BhError('Which account?', { hint: 'bh telegram lists their ids' }, 2)
+      if (sub === 'peers') {
+        if (o.refresh) await call(config, 'POST', `/telegram-accounts/${arg}/peers/read`, {})
+        const q = new URLSearchParams({
+          ...(o.search ? { search: String(o.search) } : {}),
+          ...(o.unmatched ? { unmatched: 'true' } : {}),
+          ...(o['set-aside'] ? { setAside: 'true' } : {}),
+        })
+        return out(await call(config, 'GET', `/telegram-accounts/${arg}/peers?${q}`))
+      }
       if (sub === 'reconnect')
         return out(await call(config, 'POST', `/telegram-accounts/${arg}/reconnect`, {}))
       if (sub === 'update')

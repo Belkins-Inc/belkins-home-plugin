@@ -742,7 +742,11 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     '': [],
     '*': [],
     connect: ['org', 'sender'],
+    match: ['contact'],
+    peers: ['refresh', 'search', 'set-aside', 'unmatched'],
     reconnect: [],
+    'set-aside': ['undo'],
+    unmatch: ['contact'],
     update: ['delay-max', 'delay-min', 'message-limit', 'status'],
   },
   tenant: {

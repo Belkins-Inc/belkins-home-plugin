@@ -4167,6 +4167,9 @@ CREATE TABLE public.telegram_accounts (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     connected_by uuid,
     connected_via public.actor_via,
+    peers_read_at timestamp with time zone,
+    peers_read_error text,
+    contacts_served boolean,
     CONSTRAINT telegram_accounts_check CHECK ((delay_max_seconds >= delay_min_seconds)),
     CONSTRAINT telegram_accounts_daily_message_limit_check CHECK (((daily_message_limit >= 1) AND (daily_message_limit <= 100))),
     CONSTRAINT telegram_accounts_delay_min_seconds_check CHECK ((delay_min_seconds >= 20)),
@@ -4187,6 +4190,46 @@ CREATE TABLE public.telegram_connect_links (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     used_at timestamp with time zone,
     unipile_account_id text
+);
+
+
+--
+-- Name: telegram_peer_contacts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.telegram_peer_contacts (
+    peer_id uuid NOT NULL,
+    contact_id uuid NOT NULL,
+    telegram_account_id uuid NOT NULL,
+    project_id uuid NOT NULL,
+    linked_at timestamp with time zone DEFAULT now() NOT NULL,
+    linked_by uuid,
+    linked_via public.actor_via
+);
+
+
+--
+-- Name: telegram_peers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.telegram_peers (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    telegram_account_id uuid NOT NULL,
+    telegram_user_id text NOT NULL,
+    chat_id text,
+    display_name text,
+    username text,
+    phone text,
+    kind text,
+    mutual_contact boolean,
+    in_contacts boolean DEFAULT false NOT NULL,
+    last_activity_at timestamp with time zone,
+    first_seen_at timestamp with time zone DEFAULT now() NOT NULL,
+    seen_at timestamp with time zone DEFAULT now() NOT NULL,
+    set_aside_at timestamp with time zone,
+    set_aside_by uuid,
+    set_aside_via public.actor_via,
+    CONSTRAINT telegram_peers_kind_check CHECK ((kind = ANY (ARRAY['person'::text, 'bot'::text, 'service'::text, 'flagged'::text])))
 );
 
 
@@ -6101,6 +6144,38 @@ ALTER TABLE ONLY public.telegram_connect_links
 
 
 --
+-- Name: telegram_peer_contacts telegram_peer_contacts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peer_contacts
+    ADD CONSTRAINT telegram_peer_contacts_pkey PRIMARY KEY (peer_id, contact_id);
+
+
+--
+-- Name: telegram_peer_contacts telegram_peer_contacts_telegram_account_id_contact_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peer_contacts
+    ADD CONSTRAINT telegram_peer_contacts_telegram_account_id_contact_id_key UNIQUE (telegram_account_id, contact_id);
+
+
+--
+-- Name: telegram_peers telegram_peers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peers
+    ADD CONSTRAINT telegram_peers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: telegram_peers telegram_peers_telegram_account_id_telegram_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peers
+    ADD CONSTRAINT telegram_peers_telegram_account_id_telegram_user_id_key UNIQUE (telegram_account_id, telegram_user_id);
+
+
+--
 -- Name: terms_acceptances terms_acceptances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7527,6 +7602,20 @@ CREATE INDEX telegram_accounts_project_id_idx ON public.telegram_accounts USING 
 --
 
 CREATE INDEX telegram_accounts_sender_id_idx ON public.telegram_accounts USING btree (sender_id);
+
+
+--
+-- Name: telegram_peer_contacts_contact_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX telegram_peer_contacts_contact_id_idx ON public.telegram_peer_contacts USING btree (contact_id);
+
+
+--
+-- Name: telegram_peer_contacts_project_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX telegram_peer_contacts_project_id_idx ON public.telegram_peer_contacts USING btree (project_id);
 
 
 --
@@ -11535,6 +11624,62 @@ ALTER TABLE ONLY public.telegram_connect_links
 
 
 --
+-- Name: telegram_peer_contacts telegram_peer_contacts_contact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peer_contacts
+    ADD CONSTRAINT telegram_peer_contacts_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: telegram_peer_contacts telegram_peer_contacts_linked_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peer_contacts
+    ADD CONSTRAINT telegram_peer_contacts_linked_by_fkey FOREIGN KEY (linked_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: telegram_peer_contacts telegram_peer_contacts_peer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peer_contacts
+    ADD CONSTRAINT telegram_peer_contacts_peer_id_fkey FOREIGN KEY (peer_id) REFERENCES public.telegram_peers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: telegram_peer_contacts telegram_peer_contacts_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peer_contacts
+    ADD CONSTRAINT telegram_peer_contacts_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: telegram_peer_contacts telegram_peer_contacts_telegram_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peer_contacts
+    ADD CONSTRAINT telegram_peer_contacts_telegram_account_id_fkey FOREIGN KEY (telegram_account_id) REFERENCES public.telegram_accounts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: telegram_peers telegram_peers_set_aside_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peers
+    ADD CONSTRAINT telegram_peers_set_aside_by_fkey FOREIGN KEY (set_aside_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: telegram_peers telegram_peers_telegram_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_peers
+    ADD CONSTRAINT telegram_peers_telegram_account_id_fkey FOREIGN KEY (telegram_account_id) REFERENCES public.telegram_accounts(id) ON DELETE CASCADE;
+
+
+--
 -- Name: terms_acceptances terms_acceptances_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13332,6 +13477,22 @@ CREATE POLICY organisation_fence ON public.telegram_accounts USING (((project_id
 
 
 --
+-- Name: telegram_peer_contacts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.telegram_peer_contacts USING ((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])));
+
+
+--
+-- Name: telegram_peers organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.telegram_peers USING ((EXISTS ( SELECT 1
+   FROM public.telegram_accounts a
+  WHERE (a.id = telegram_peers.telegram_account_id))));
+
+
+--
 -- Name: terms_acceptances organisation_fence; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -13777,6 +13938,18 @@ ALTER TABLE public.telegram_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.telegram_connect_links ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: telegram_peer_contacts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.telegram_peer_contacts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: telegram_peers; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.telegram_peers ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: terms_acceptances; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -14176,4 +14349,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112104314'),
     ('20261112104759'),
     ('20261112121714'),
-    ('20261112124450');
+    ('20261112124450'),
+    ('20261112141542');
