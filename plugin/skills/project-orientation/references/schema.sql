@@ -1,7 +1,7 @@
 \restrict dbmate
 
 -- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1357,6 +1357,7 @@ CREATE TABLE public.domains (
     dmarc_set_by uuid,
     dmarc_set_via public.actor_via,
     first_registered_at timestamp with time zone,
+    move_mailboxes boolean DEFAULT false NOT NULL,
     CONSTRAINT domains_bought_check CHECK (((status = 'external'::text) OR (bought_by IS NOT NULL))),
     CONSTRAINT domains_company_check CHECK (((company_id IS NULL) OR (organisation_id IS NOT NULL))),
     CONSTRAINT domains_dmarc_policy_check CHECK (((dmarc_policy IS NULL) OR (dmarc_policy = ANY (ARRAY['none'::text, 'quarantine'::text, 'reject'::text])))),
@@ -2296,8 +2297,10 @@ CREATE TABLE public.mailboxes (
     tenant_user_state text,
     warning text,
     warning_at timestamp with time zone,
+    moving_from_status text,
     CONSTRAINT mailboxes_check CHECK ((delay_min_seconds <= delay_max_seconds)),
     CONSTRAINT mailboxes_daily_limit_check CHECK (((daily_limit >= 1) AND (daily_limit <= 60))),
+    CONSTRAINT mailboxes_moving_from_status_check CHECK ((moving_from_status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text]))),
     CONSTRAINT mailboxes_placement_state_check CHECK ((placement_state = ANY (ARRAY['good'::text, 'unknown'::text, 'hold'::text, 'bad'::text]))),
     CONSTRAINT mailboxes_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text, 'smtp'::text, 'jmap'::text]))),
     CONSTRAINT mailboxes_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text]))),
@@ -14013,4 +14016,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111213627'),
     ('20261112054506'),
     ('20261112104314'),
-    ('20261112104759');
+    ('20261112104759'),
+    ('20261112121714');
