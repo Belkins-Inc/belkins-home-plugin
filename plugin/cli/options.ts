@@ -376,6 +376,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     login: ['totp', 'username'],
     mailbox: ['workplace'],
     member: ['email', 'name'],
+    open: ['chrome'],
     owner: [],
     pages: [],
     password: [],

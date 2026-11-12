@@ -7,6 +7,7 @@ import { parseArgs } from 'node:util'
 
 import { chunk, merge, refusedIn, sendRows, warnedIn } from './batch.ts'
 import { consoleLogin, meetbotLogin } from './console-login.ts'
+import { linkedinOpen } from './linkedin-chrome.ts'
 import { BhError, call, callFile, callText } from './client.ts'
 import { readDncCsv } from './csv.ts'
 import {
@@ -864,6 +865,9 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   linkedin profile-posts <id> on|off     (a person) posts on its owner's own profile allowed, or not: off, it posts
                                          only as the pages they manage
   linkedin owner <id> <user id|none>     who works in its browser
+  linkedin open <id> [--chrome <path>]   its browser on this computer: your own Google Chrome through its IP, with
+                                         its cookies (an organisation admin); close the window when done and the
+                                         cookies go back. For what the remote browser cannot pass (sign-up's captcha)
   linkedin email-link <id>               opens LinkedIn's latest link to confirm an added address (last 30 minutes,
                                          from its mailbox) in its open browser, on its own IP
   linkedin mailbox <id> --workplace      its LinkedIn codes read from its person's workplace mailbox (an account
@@ -1467,6 +1471,7 @@ async function main(argv: string[]): Promise<void> {
       workplace: { type: 'boolean' },
       'sign-up': { type: 'boolean' },
       browser: { type: 'boolean' },
+      chrome: { type: 'string' },
       first: { type: 'string' },
       last: { type: 'string' },
       'customer-id': { type: 'string' },
@@ -4921,6 +4926,10 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, to === 'on' ? 'PUT' : 'DELETE', path, to === 'on' ? {} : undefined),
         )
+      }
+      if (sub === 'open') {
+        account()
+        return out(await linkedinOpen(config, arg!, o.chrome ? String(o.chrome) : undefined))
       }
       if (sub === 'email-link')
         return out(await call(config, 'POST', `${account()}/browser/email-link`, {}))
