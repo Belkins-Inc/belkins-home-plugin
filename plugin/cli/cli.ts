@@ -159,7 +159,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          there by ordering sending organisations itself, one at a time, in your name;
                                          0 stops it. Domains whose mailboxes wait in a full tenant move to one with room
                                          by themselves (platform admin)
-  org dialer <slug> <dialer-org-id>|none   link the organisation to its Belkins Dialer organization (platform admin)
+  org dialer <slug> <dialer-org-id>|new|none   link the organisation to its Belkins Dialer organization; new makes
+                                         one of its own (an organisation made now gets one by itself) (platform admin)
   dialer | dialer snapshot <dialer-org-id>   the dialer's link, journals and inbox; a new journal mark after an expiry (platform admin)
   dialer users <dialer-org-id>          its people, their roles and workspaces: who can work a queue (platform admin)
   dialer queue <name> [--hours 08:00-18:00] --project <p>   makes the project's queue in its workspace and attaches its lists (platform admin)
@@ -2653,6 +2654,8 @@ async function main(argv: string[]): Promise<void> {
             ? await call(config, 'POST', `/orgs/${arg}/tier`, { priceId: o.price })
             : await call(config, 'GET', `/orgs/${arg}/tier`),
         )
+      if (sub === 'dialer' && pos[3] === 'new')
+        return out(await call(config, 'POST', `/orgs/${arg}/dialer`))
       if (sub === 'dialer')
         return out(
           await call(config, 'PUT', `/orgs/${arg}/dialer`, {

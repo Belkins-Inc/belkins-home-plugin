@@ -2733,6 +2733,8 @@ CREATE TABLE public.organisations (
     google_order_set_via public.actor_via,
     wallet_notice text,
     signup_domain text,
+    dialer_off boolean DEFAULT false NOT NULL,
+    dialer_first_workspace_id text,
     CONSTRAINT organisations_approved_check CHECK ((((approved_at IS NULL) = (approved_by IS NULL)) AND ((approved_at IS NULL) = (approved_via IS NULL)))),
     CONSTRAINT organisations_billing_check CHECK ((billing = ANY (ARRAY['external'::text, 'stripe'::text, 'metered'::text]))),
     CONSTRAINT organisations_daily_lead_cap_check CHECK (((daily_lead_cap IS NULL) OR (daily_lead_cap > 0))),
@@ -13975,4 +13977,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111201206'),
     ('20261111213412'),
     ('20261111213627'),
-    ('20261112054506');
+    ('20261112054506'),
+    ('20261112104314');
