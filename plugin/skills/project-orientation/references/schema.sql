@@ -3342,6 +3342,19 @@ CREATE TABLE public.seed_domains (
 
 
 --
+-- Name: seed_environment_alerts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.seed_environment_alerts (
+    environment text NOT NULL,
+    level bigint NOT NULL,
+    text text NOT NULL,
+    first_sent_at timestamp with time zone NOT NULL,
+    sent_at timestamp with time zone NOT NULL
+);
+
+
+--
 -- Name: seed_network_growth; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5662,6 +5675,14 @@ ALTER TABLE ONLY public.seed_domains
 
 ALTER TABLE ONLY public.seed_domains
     ADD CONSTRAINT seed_domains_pkey PRIMARY KEY (domain);
+
+
+--
+-- Name: seed_environment_alerts seed_environment_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seed_environment_alerts
+    ADD CONSTRAINT seed_environment_alerts_pkey PRIMARY KEY (environment);
 
 
 --
@@ -12116,6 +12137,13 @@ CREATE POLICY engine ON public.seed_domains TO bhn_tenant USING (true) WITH CHEC
 
 
 --
+-- Name: seed_environment_alerts engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.seed_environment_alerts TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
 -- Name: seed_network_growth engine; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -13402,6 +13430,12 @@ ALTER TABLE public.searches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.seed_domains ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: seed_environment_alerts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.seed_environment_alerts ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: seed_network_growth; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -13978,4 +14012,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111213412'),
     ('20261111213627'),
     ('20261112054506'),
-    ('20261112104314');
+    ('20261112104314'),
+    ('20261112104759');
