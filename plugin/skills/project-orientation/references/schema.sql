@@ -119,12 +119,15 @@ declare
 begin
   select e.mailbox_id, lower(split_part(mb.address::text, '@', 2)) as mailbox_domain,
          e.linkedin_account_id, e.sender_id, st.id as strategy_id, st.project_id,
-         coalesce(mb.project_id, la.project_id) as channel_project
+         e.telegram_account_id,
+         case when new.channel = 'telegram_message' then ta.project_id
+              else coalesce(mb.project_id, la.project_id) end as channel_project
     into r
     from enrollments e
     join strategies st on st.id = e.strategy_id
     left join mailboxes mb on mb.id = e.mailbox_id
     left join linkedin_accounts la on la.id = e.linkedin_account_id
+    left join telegram_accounts ta on ta.id = e.telegram_account_id
    where e.id = new.enrollment_id;
   if not found or new.sent_at is null then
     return null;
@@ -150,8 +153,10 @@ begin
       perform count_daily_send(d, 'recipient_domain',
         r.project_id::text || ':' || lower(split_part(new.to_address, '@', 2)));
     end if;
-  elsif r.linkedin_account_id is not null then
+  elsif new.channel in ('linkedin_invite', 'linkedin_message') and r.linkedin_account_id is not null then
     perform count_daily_send(d, new.channel, r.linkedin_account_id::text);
+  elsif new.channel = 'telegram_message' and r.telegram_account_id is not null then
+    perform count_daily_send(d, new.channel, r.telegram_account_id::text);
   end if;
   if new.position = 1 then
     perform count_daily_send(d, 'strategy_first', r.strategy_id::text);
@@ -1239,7 +1244,7 @@ CREATE TABLE public.daily_sends (
     scope text NOT NULL,
     key text NOT NULL,
     sent integer DEFAULT 0 NOT NULL,
-    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'mailbox_outreach'::text, 'mailbox_placement'::text, 'domain_outreach'::text, 'mailbox_intake'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text, 'organisation_leads'::text])))
+    CONSTRAINT daily_sends_scope_check CHECK ((scope = ANY (ARRAY['mailbox'::text, 'mailbox_outreach'::text, 'mailbox_placement'::text, 'domain_outreach'::text, 'mailbox_intake'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'telegram_message'::text, 'strategy_first'::text, 'recipient_domain'::text, 'shared_sender'::text, 'organisation_leads'::text])))
 )
 WITH (fillfactor='70', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
 
@@ -1422,6 +1427,7 @@ CREATE TABLE public.enrollments (
     next_due_at timestamp with time zone,
     planned_until timestamp with time zone,
     replan_at timestamp with time zone,
+    telegram_account_id uuid,
     CONSTRAINT enrollments_check CHECK (((status = 'stopped'::text) = (stop_reason IS NOT NULL))),
     CONSTRAINT enrollments_check1 CHECK (((status <> 'scheduled'::text) OR (starts_at IS NOT NULL))),
     CONSTRAINT enrollments_check2 CHECK (((kind = 'first'::text) OR (follows_enrollment_id IS NOT NULL))),
@@ -1430,7 +1436,7 @@ CREATE TABLE public.enrollments (
     CONSTRAINT enrollments_pause_reason_check CHECK ((pause_reason = ANY (ARRAY['out_of_office'::text, 'company_meeting'::text, 'manual'::text, 'held_back'::text, 'call_follow_up'::text, 'colleague_replied'::text]))),
     CONSTRAINT enrollments_status_check CHECK ((status = ANY (ARRAY['scheduled'::text, 'active'::text, 'paused'::text, 'completed'::text, 'stopped'::text]))),
     CONSTRAINT enrollments_stop_reason_check CHECK ((stop_reason = ANY (ARRAY['replied'::text, 'unsubscribed'::text, 'dnc'::text, 'no_channel_left'::text, 'sender_gone'::text, 'manual'::text, 'wrong_person'::text]))),
-    CONSTRAINT enrollments_stuck_code_check CHECK ((stuck_code = ANY (ARRAY['no_copy'::text, 'linkedin_not_configured'::text, 'mailbox_disconnected'::text, 'linkedin_disconnected'::text, 'mailbox_room'::text, 'employer_unconfirmed'::text, 'other'::text]))),
+    CONSTRAINT enrollments_stuck_code_check CHECK ((stuck_code = ANY (ARRAY['no_copy'::text, 'linkedin_not_configured'::text, 'telegram_not_configured'::text, 'mailbox_disconnected'::text, 'linkedin_disconnected'::text, 'mailbox_room'::text, 'employer_unconfirmed'::text, 'other'::text]))),
     CONSTRAINT enrollments_stuck_code_with_reason CHECK ((((stuck_code IS NULL) = (stuck_reason IS NULL)) AND ((stuck_step IS NULL) OR (stuck_code IS NOT NULL))))
 )
 WITH (fillfactor='85', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
@@ -1481,15 +1487,16 @@ CREATE TABLE public.messages (
     CONSTRAINT messages_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
     CONSTRAINT messages_bounce_class_check CHECK ((bounce_class = ANY (ARRAY['no_such_user'::text, 'mailbox_full'::text, 'temporary'::text, 'blocked'::text, 'other'::text]))),
     CONSTRAINT messages_bounce_kind_check CHECK ((bounce_kind = ANY (ARRAY['hard'::text, 'soft'::text]))),
-    CONSTRAINT messages_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'call'::text]))),
+    CONSTRAINT messages_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'call'::text, 'telegram_message'::text]))),
     CONSTRAINT messages_check CHECK (((status = ANY (ARRAY['needs_copy'::text, 'cancelled'::text, 'skipped'::text])) OR (body IS NOT NULL))),
     CONSTRAINT messages_check1 CHECK (((channel <> 'email'::text) OR (status = ANY (ARRAY['needs_copy'::text, 'cancelled'::text, 'skipped'::text])) OR (subject IS NOT NULL))),
     CONSTRAINT messages_check2 CHECK (((channel <> 'linkedin_invite'::text) OR (length(body) <= 300))),
     CONSTRAINT messages_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT messages_position_check CHECK (("position" >= 1)),
-    CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'wrong_person'::text, 'no_phone'::text, 'no_mail_server'::text, 'other'::text]))),
+    CONSTRAINT messages_skip_code_check CHECK ((skip_code = ANY (ARRAY['replied'::text, 'bounced'::text, 'unsubscribed'::text, 'dnc'::text, 'no_email'::text, 'not_allowlisted'::text, 'no_linkedin_account'::text, 'no_linkedin_profile'::text, 'already_connected'::text, 'not_connected'::text, 'no_invitation'::text, 'invitation_accepted'::text, 'invitation_not_sent'::text, 'invitation_not_accepted'::text, 'wrong_person'::text, 'no_phone'::text, 'no_mail_server'::text, 'no_telegram_peer'::text, 'other'::text]))),
     CONSTRAINT messages_skip_code_with_reason CHECK (((skip_code IS NULL) = (skip_reason IS NULL))),
     CONSTRAINT messages_status_check CHECK ((status = ANY (ARRAY['needs_copy'::text, 'ready'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text, 'cancelled'::text]))),
+    CONSTRAINT messages_telegram_length CHECK (((channel <> 'telegram_message'::text) OR (length(body) <= 4096))),
     CONSTRAINT messages_track_check CHECK (((track = ANY (ARRAY['main'::text, 'linkedin'::text])) AND ((track = 'main'::text) OR (channel = ANY (ARRAY['linkedin_invite'::text, 'linkedin_message'::text])))))
 )
 WITH (fillfactor='90', autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.02');
@@ -1563,9 +1570,11 @@ CREATE TABLE public.threads (
     closed_at timestamp with time zone,
     closed_via public.actor_via,
     closed_note text,
-    CONSTRAINT threads_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin'::text]))),
+    telegram_account_id uuid,
+    CONSTRAINT threads_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin'::text, 'telegram'::text]))),
     CONSTRAINT threads_check CHECK (((channel = 'email'::text) = (mailbox_id IS NOT NULL))),
-    CONSTRAINT threads_status_check CHECK ((status = ANY (ARRAY['open'::text, 'waiting'::text, 'closed'::text])))
+    CONSTRAINT threads_status_check CHECK ((status = ANY (ARRAY['open'::text, 'waiting'::text, 'closed'::text]))),
+    CONSTRAINT threads_telegram_account CHECK (((channel = 'telegram'::text) = (telegram_account_id IS NOT NULL)))
 );
 
 
@@ -4032,7 +4041,7 @@ CREATE TABLE public.strategy_steps (
     variants jsonb,
     thread_of integer,
     CONSTRAINT strategy_steps_anchor_check CHECK ((anchor = ANY (ARRAY['previous_step'::text, 'invite_accepted'::text]))),
-    CONSTRAINT strategy_steps_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'call'::text]))),
+    CONSTRAINT strategy_steps_channel_check CHECK ((channel = ANY (ARRAY['email'::text, 'linkedin_invite'::text, 'linkedin_message'::text, 'call'::text, 'telegram_message'::text]))),
     CONSTRAINT strategy_steps_condition_check CHECK ((condition = ANY (ARRAY['invite_accepted'::text, 'invite_not_accepted'::text]))),
     CONSTRAINT strategy_steps_delay_days_check CHECK ((delay_days >= 0)),
     CONSTRAINT strategy_steps_delay_hours_check CHECK (((delay_hours >= 0) AND (delay_hours <= 23))),
@@ -4170,6 +4179,9 @@ CREATE TABLE public.telegram_accounts (
     peers_read_at timestamp with time zone,
     peers_read_error text,
     contacts_served boolean,
+    next_action_at timestamp with time zone,
+    read_at timestamp with time zone,
+    read_error text,
     CONSTRAINT telegram_accounts_check CHECK ((delay_max_seconds >= delay_min_seconds)),
     CONSTRAINT telegram_accounts_daily_message_limit_check CHECK (((daily_message_limit >= 1) AND (daily_message_limit <= 100))),
     CONSTRAINT telegram_accounts_delay_min_seconds_check CHECK ((delay_min_seconds >= 20)),
@@ -6401,6 +6413,13 @@ CREATE INDEX contact_labels_label_id_idx ON public.contact_labels USING btree (l
 
 
 --
+-- Name: enrollments_telegram_account_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX enrollments_telegram_account_id_idx ON public.enrollments USING btree (telegram_account_id) WHERE (telegram_account_id IS NOT NULL);
+
+
+--
 -- Name: ix_events__project_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7948,6 +7967,13 @@ CREATE UNIQUE INDEX ux_tasks__open_slack_channel ON public.tasks USING btree (pr
 
 
 --
+-- Name: ux_telegram_accounts__id_sender; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_telegram_accounts__id_sender ON public.telegram_accounts USING btree (id, sender_id);
+
+
+--
 -- Name: ux_thread_forwards__message_to; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7959,6 +7985,13 @@ CREATE UNIQUE INDEX ux_thread_forwards__message_to ON public.thread_forwards USI
 --
 
 CREATE UNIQUE INDEX ux_threads__linkedin_chat ON public.threads USING btree (linkedin_account_id, provider_thread_id) WHERE (channel = 'linkedin'::text);
+
+
+--
+-- Name: ux_threads__telegram_chat; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_threads__telegram_chat ON public.threads USING btree (telegram_account_id, provider_thread_id) WHERE (channel = 'telegram'::text);
 
 
 --
@@ -9173,6 +9206,14 @@ ALTER TABLE ONLY public.enrollments
 
 ALTER TABLE ONLY public.enrollments
     ADD CONSTRAINT enrollments_strategy_id_fkey FOREIGN KEY (strategy_id) REFERENCES public.strategies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: enrollments enrollments_telegram_is_the_senders; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.enrollments
+    ADD CONSTRAINT enrollments_telegram_is_the_senders FOREIGN KEY (telegram_account_id, sender_id) REFERENCES public.telegram_accounts(id, sender_id);
 
 
 --
@@ -11808,6 +11849,14 @@ ALTER TABLE ONLY public.threads
 
 
 --
+-- Name: threads threads_telegram_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.threads
+    ADD CONSTRAINT threads_telegram_account_id_fkey FOREIGN KEY (telegram_account_id) REFERENCES public.telegram_accounts(id);
+
+
+--
 -- Name: tool_limits tool_limits_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14350,4 +14399,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112104759'),
     ('20261112121714'),
     ('20261112124450'),
-    ('20261112141542');
+    ('20261112141542'),
+    ('20261112143726');

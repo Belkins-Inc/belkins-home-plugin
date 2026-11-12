@@ -260,6 +260,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
                                          a "call" step puts the lead on the strategy's call list when reached
                                          (handed to the dialer when the project is linked); its guidance is the brief;
+                                         a "telegram_message" step goes from the sender's own Telegram to a lead it
+                                         knows (a peer matched to the contact: bh telegram match), else it is skipped;
                                          a linkedin_invite step goes without a note unless it says "withoutNote": false;
                                          "track": "linkedin" (an invite or LinkedIn message) runs it beside the emails:
                                          timed on its own track, it never holds an email; "delayHours" (0-23) adds
