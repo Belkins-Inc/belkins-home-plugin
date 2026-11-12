@@ -4147,6 +4147,50 @@ CREATE TABLE public.tasks (
 
 
 --
+-- Name: telegram_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.telegram_accounts (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    project_id uuid,
+    sender_id uuid NOT NULL,
+    unipile_account_id text,
+    display_name text,
+    status text DEFAULT 'active'::text NOT NULL,
+    status_changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    disconnected_reason text,
+    daily_message_limit integer DEFAULT 20 NOT NULL,
+    delay_min_seconds integer DEFAULT 60 NOT NULL,
+    delay_max_seconds integer DEFAULT 300 NOT NULL,
+    limited_until timestamp with time zone,
+    limited_reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    connected_by uuid,
+    connected_via public.actor_via,
+    CONSTRAINT telegram_accounts_check CHECK ((delay_max_seconds >= delay_min_seconds)),
+    CONSTRAINT telegram_accounts_daily_message_limit_check CHECK (((daily_message_limit >= 1) AND (daily_message_limit <= 100))),
+    CONSTRAINT telegram_accounts_delay_min_seconds_check CHECK ((delay_min_seconds >= 20)),
+    CONSTRAINT telegram_accounts_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'disconnected'::text, 'archived'::text])))
+);
+
+
+--
+-- Name: telegram_connect_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.telegram_connect_links (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    user_id uuid NOT NULL,
+    project_id uuid,
+    sender_id uuid,
+    known_accounts text[] NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    used_at timestamp with time zone,
+    unipile_account_id text
+);
+
+
+--
 -- Name: terms_acceptances; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6033,6 +6077,30 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: telegram_accounts telegram_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_accounts
+    ADD CONSTRAINT telegram_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: telegram_accounts telegram_accounts_unipile_account_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_accounts
+    ADD CONSTRAINT telegram_accounts_unipile_account_id_key UNIQUE (unipile_account_id);
+
+
+--
+-- Name: telegram_connect_links telegram_connect_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_connect_links
+    ADD CONSTRAINT telegram_connect_links_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: terms_acceptances terms_acceptances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7445,6 +7513,20 @@ CREATE INDEX notices_task ON public.notices USING btree (task_id) WHERE (task_id
 --
 
 CREATE INDEX notices_waiting ON public.notices USING btree (user_id, created_at) WHERE ((mailed_at IS NULL) AND (dropped_at IS NULL));
+
+
+--
+-- Name: telegram_accounts_project_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX telegram_accounts_project_id_idx ON public.telegram_accounts USING btree (project_id);
+
+
+--
+-- Name: telegram_accounts_sender_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX telegram_accounts_sender_id_idx ON public.telegram_accounts USING btree (sender_id);
 
 
 --
@@ -11405,6 +11487,54 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: telegram_accounts telegram_accounts_connected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_accounts
+    ADD CONSTRAINT telegram_accounts_connected_by_fkey FOREIGN KEY (connected_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: telegram_accounts telegram_accounts_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_accounts
+    ADD CONSTRAINT telegram_accounts_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: telegram_accounts telegram_accounts_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_accounts
+    ADD CONSTRAINT telegram_accounts_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: telegram_connect_links telegram_connect_links_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_connect_links
+    ADD CONSTRAINT telegram_connect_links_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: telegram_connect_links telegram_connect_links_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_connect_links
+    ADD CONSTRAINT telegram_connect_links_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.senders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: telegram_connect_links telegram_connect_links_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.telegram_connect_links
+    ADD CONSTRAINT telegram_connect_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: terms_acceptances terms_acceptances_organisation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12193,6 +12323,13 @@ CREATE POLICY engine ON public.slack_workspaces TO bhn_tenant USING (true) WITH 
 --
 
 CREATE POLICY engine ON public.system_mail_domains TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
+-- Name: telegram_connect_links engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.telegram_connect_links TO bhn_tenant USING (true) WITH CHECK (true);
 
 
 --
@@ -13186,6 +13323,15 @@ CREATE POLICY organisation_fence ON public.tasks USING ((project_id = ANY (( SEL
 
 
 --
+-- Name: telegram_accounts organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.telegram_accounts USING (((project_id = ANY (( SELECT public.fence_projects() AS fence_projects)::uuid[])) OR (EXISTS ( SELECT 1
+   FROM public.senders x
+  WHERE (x.id = telegram_accounts.sender_id)))));
+
+
+--
 -- Name: terms_acceptances organisation_fence; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -13619,6 +13765,18 @@ ALTER TABLE public.system_mail_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: telegram_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.telegram_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: telegram_connect_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.telegram_connect_links ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: terms_acceptances; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -14017,4 +14175,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112054506'),
     ('20261112104314'),
     ('20261112104759'),
-    ('20261112121714');
+    ('20261112121714'),
+    ('20261112124450');

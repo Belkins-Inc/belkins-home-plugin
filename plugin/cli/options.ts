@@ -738,6 +738,13 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     open: ['assignee', 'body', 'body-file', 'done-when', 'due', 'priority', 'title'],
     reopen: [],
   },
+  telegram: {
+    '': [],
+    '*': [],
+    connect: ['org', 'sender'],
+    reconnect: [],
+    update: ['delay-max', 'delay-min', 'message-limit', 'status'],
+  },
   tenant: {
     '*': ['default-pool', 'key', 'max-domains', 'max-users', 'provider', 'role', 'seat-usd'],
     add: ['admin-email', 'cert', 'client-id', 'key', 'key-from', 'name', 'tenant-id'],

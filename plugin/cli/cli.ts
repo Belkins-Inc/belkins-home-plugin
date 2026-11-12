@@ -838,6 +838,13 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          password the engine makes and, for a company's person, their workplace mailbox
   linkedin show|history <id>             one account; what was done to it (the id bh linkedin or bh linkedin
                                          accounts prints, for a project's sender's account too)
+  telegram                               this project's Telegram accounts: a sender's own Telegram, written to
+                                         only for people it already knows (docs/decisions/telegram.md)
+  telegram connect --sender <id> [--org <slug>]   a link for the sender's owner to link their Telegram (a QR code
+                                         from the phone, Telegram → Devices); --org: an agency sender's, in Admin
+  telegram reconnect <id>                a link to link a disconnected account again, as the same account
+  telegram update <id> [--message-limit <n>] [--delay-min <s>] [--delay-max <s>] [--status active|paused|archived]
+                                         at most 100 a day, delays at least 20 s
   linkedin login <id> [--username <address>] [--totp]   stores its LinkedIn login, sealed (password and key hidden)
   linkedin sign-in <id> [--browser]      signs it in to Unipile on its own IP now (the engine also does, every 6 h);
                                          --browser: with the session its remote browser holds
@@ -4709,6 +4716,31 @@ async function main(argv: string[]): Promise<void> {
           2,
         )
       break
+    case 'telegram': {
+      // A sender's own Telegram, linked in Unipile (docs/decisions/telegram.md).
+      if (!sub) return out(await call(config, 'GET', `/projects/${p()}/telegram-accounts`))
+      if (sub === 'connect') {
+        if (!o.sender)
+          throw new BhError('Whose Telegram?', { hint: '--sender <id>: bh senders' }, 2)
+        const path = o.org
+          ? `/orgs/${encodeURIComponent(o.org)}/telegram-accounts/connect`
+          : `/projects/${p()}/telegram-accounts/connect`
+        return out(await call(config, 'POST', path, { senderId: o.sender }))
+      }
+      if (!arg) throw new BhError('Which account?', { hint: 'bh telegram lists their ids' }, 2)
+      if (sub === 'reconnect')
+        return out(await call(config, 'POST', `/telegram-accounts/${arg}/reconnect`, {}))
+      if (sub === 'update')
+        return out(
+          await call(config, 'PATCH', `/telegram-accounts/${arg}`, {
+            ...(o['message-limit'] ? { dailyMessageLimit: Number(o['message-limit']) } : {}),
+            ...(o['delay-min'] ? { delayMinSeconds: Number(o['delay-min']) } : {}),
+            ...(o['delay-max'] ? { delayMaxSeconds: Number(o['delay-max']) } : {}),
+            ...(o.status ? { status: o.status } : {}),
+          }),
+        )
+      break
+    }
     case 'linkedin': {
       const limits = {
         ...(o['invite-limit'] ? { dailyInviteLimit: Number(o['invite-limit']) } : {}),
