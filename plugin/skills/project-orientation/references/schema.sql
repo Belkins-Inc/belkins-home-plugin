@@ -2433,9 +2433,27 @@ CREATE TABLE public.microsoft_seed_orders (
     ordered_by uuid NOT NULL,
     ordered_via public.actor_via NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    purpose text DEFAULT 'seeds'::text NOT NULL,
+    microsoft_tenant_id uuid,
     CONSTRAINT microsoft_seed_orders_number_check CHECK (((number >= 1) AND (number <= 99))),
+    CONSTRAINT microsoft_seed_orders_purpose_check CHECK ((purpose = ANY (ARRAY['seeds'::text, 'sending'::text]))),
     CONSTRAINT microsoft_seed_orders_seeds_check CHECK (((seeds >= 1) AND (seeds <= 20))),
     CONSTRAINT microsoft_seed_orders_state_check CHECK ((state = ANY (ARRAY['domain'::text, 'ordering'::text, 'credentials'::text, 'signing_in'::text, 'app'::text, 'connecting'::text, 'handing_over'::text, 'ready'::text, 'failed'::text, 'by_hand'::text])))
+);
+
+
+--
+-- Name: microsoft_sending_growth; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.microsoft_sending_growth (
+    id boolean DEFAULT true NOT NULL,
+    free_domains integer NOT NULL,
+    set_by uuid NOT NULL,
+    set_via public.actor_via NOT NULL,
+    set_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT microsoft_sending_growth_free_domains_check CHECK (((free_domains >= 0) AND (free_domains <= 900))),
+    CONSTRAINT microsoft_sending_growth_id_check CHECK (id)
 );
 
 
@@ -5310,14 +5328,6 @@ ALTER TABLE ONLY public.microsoft_seed_orders
 
 
 --
--- Name: microsoft_seed_orders microsoft_seed_orders_number_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.microsoft_seed_orders
-    ADD CONSTRAINT microsoft_seed_orders_number_key UNIQUE (number);
-
-
---
 -- Name: microsoft_seed_orders microsoft_seed_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5331,6 +5341,14 @@ ALTER TABLE ONLY public.microsoft_seed_orders
 
 ALTER TABLE ONLY public.microsoft_seed_orders
     ADD CONSTRAINT microsoft_seed_orders_prefix_key UNIQUE (prefix);
+
+
+--
+-- Name: microsoft_sending_growth microsoft_sending_growth_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.microsoft_sending_growth
+    ADD CONSTRAINT microsoft_sending_growth_pkey PRIMARY KEY (id);
 
 
 --
@@ -7553,6 +7571,13 @@ CREATE INDEX linkedin_people_slug ON public.linkedin_people USING btree (slug);
 --
 
 CREATE INDEX microsoft_seed_orders_in_flight ON public.microsoft_seed_orders USING btree (created_at) WHERE (state <> ALL (ARRAY['ready'::text, 'failed'::text, 'by_hand'::text]));
+
+
+--
+-- Name: microsoft_seed_orders_purpose_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX microsoft_seed_orders_purpose_number ON public.microsoft_seed_orders USING btree (purpose, number);
 
 
 --
@@ -9987,6 +10012,14 @@ ALTER TABLE ONLY public.microsoft_seed_orders
 
 
 --
+-- Name: microsoft_seed_orders microsoft_seed_orders_microsoft_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.microsoft_seed_orders
+    ADD CONSTRAINT microsoft_seed_orders_microsoft_tenant_id_fkey FOREIGN KEY (microsoft_tenant_id) REFERENCES public.microsoft_tenants(id) ON DELETE SET NULL;
+
+
+--
 -- Name: microsoft_seed_orders microsoft_seed_orders_ordered_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10000,6 +10033,14 @@ ALTER TABLE ONLY public.microsoft_seed_orders
 
 ALTER TABLE ONLY public.microsoft_seed_orders
     ADD CONSTRAINT microsoft_seed_orders_seed_tenant_id_fkey FOREIGN KEY (seed_tenant_id) REFERENCES public.warmup_seed_tenants(id) ON DELETE SET NULL;
+
+
+--
+-- Name: microsoft_sending_growth microsoft_sending_growth_set_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.microsoft_sending_growth
+    ADD CONSTRAINT microsoft_sending_growth_set_by_fkey FOREIGN KEY (set_by) REFERENCES public.users(id);
 
 
 --
@@ -12411,6 +12452,13 @@ CREATE POLICY engine ON public.microsoft_seed_orders TO bhn_tenant USING (true) 
 
 
 --
+-- Name: microsoft_sending_growth engine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY engine ON public.microsoft_sending_growth TO bhn_tenant USING (true) WITH CHECK (true);
+
+
+--
 -- Name: microsoft_tenants engine; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -12733,6 +12781,12 @@ ALTER TABLE public.microsoft_seed_growth ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.microsoft_seed_orders ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: microsoft_sending_growth; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.microsoft_sending_growth ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: microsoft_tenants; Type: ROW SECURITY; Schema: public; Owner: -
@@ -14414,4 +14468,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112165145'),
     ('20261112175149'),
     ('20261112175918'),
-    ('20261112182947');
+    ('20261112182947'),
+    ('20261112184459');

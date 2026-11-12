@@ -134,18 +134,26 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
   google-org details --company <legal name> --address <street[; line 2]> --city <c> [--region <r>]
        --postal-code <p> --country <US> --first <n> --last <n> --email <e> [--phone <p>] [--org <slug>]
                                          what Google is told about the company, its customer of record (its admin)
-  microsoft-seeds                       Microsoft 365 warm-up seed tenants the engine makes through Pax8, how far each
-                                         is and what holds it, and the ceiling (platform admin)
+  microsoft-seeds                       Microsoft 365 tenants the engine makes through Pax8 (warm-up seeds, and the
+                                         clients' sending tenants), how far each is and what holds it, the seed ceiling
+                                         and the sending headroom (platform admin)
   microsoft-seeds make [<domain>] [--seeds <n>]   orders "Belkins Group NN" through Pax8 (Exchange Online
                                          (Plan 1), 12 seats unless said, a 1-year commitment) on an aged domain (none
                                          given: one held for these tenants, else a closeout of 5+ years), signs in as
                                          its first admin, sets the app up, connects the domain and hands it to
                                          warm-up on an egress with room (platform admin)
+  microsoft-seeds make --for sending    orders "Belkins Mail NN" through Pax8 (Exchange Online (Plan 1), one seat, a
+                                         1-year commitment), signs in as its first admin, sets the app up and puts it
+                                         in the default pool as belkinsmailNN; its seats are bought there as mailboxes
+                                         are ordered (platform admin)
+  microsoft-seeds grow [--free-domains <n>]   the room the clients' Microsoft tenants have for more domains, and the
+                                         free domains the engine keeps: below it the engine orders the next sending
+                                         tenant itself, in your name; 0 stops it (platform admin)
   microsoft-seeds mailbox                makes PAX8_MAILBOX (where Pax8 writes new tenants' admin logins) if it is
                                          missing, and lists its last week's subjects, bodies never — but Gmail's
                                          forwarding confirmation's link and code (platform admin)
   microsoft-seeds update <ref> --retry   the console service signs in now, not after a refused sign-in's wait;
-                                         <ref> is the number, the domain or the id (platform admin)
+                                         <ref> is the number, the name (belkinsmailNN), the domain or the id (platform admin)
   google-org record <org> --customer-id <C0…>   Google's customer, made in Partner Sales Console: the engine gives
                                          the customer the terms link and carries on (platform admin)
   google-orgs                           Google organisations of ours the engine makes as reseller, and how far each is
@@ -1709,6 +1717,7 @@ async function main(argv: string[]): Promise<void> {
       'max-microsoft': { type: 'string' },
       'for-seeds': { type: 'boolean' },
       'free-users': { type: 'string' },
+      'free-domains': { type: 'string' },
       seeds: { type: 'string' },
       licences: { type: 'string' },
       retry: { type: 'boolean' },
@@ -2561,9 +2570,18 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'make')
         return out(
           await call(config, 'POST', '/microsoft-seeds', {
+            ...(o.for !== undefined ? { for: o.for } : {}),
             ...(arg ? { domain: arg } : {}),
             ...(o.seeds !== undefined ? { seeds: Number(o.seeds) } : {}),
           }),
+        )
+      if (sub === 'grow')
+        return out(
+          o['free-domains'] === undefined
+            ? await call(config, 'GET', '/microsoft-seeds/sending-growth')
+            : await call(config, 'PUT', '/microsoft-seeds/sending-growth', {
+                freeDomains: Number(o['free-domains']),
+              }),
         )
       if (sub === 'mailbox') return out(await call(config, 'POST', '/microsoft-seeds/mailbox', {}))
       if (sub === 'update' && arg && o.retry)
@@ -2573,7 +2591,7 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       throw new BhError(
-        'bh microsoft-seeds [make [<domain>] [--seeds <n>] | update <ref> --retry]',
+        'bh microsoft-seeds [make [--for seeds|sending] [<domain>] [--seeds <n>] | grow [--free-domains <n>] | update <ref> --retry]',
         { hint: 'bh microsoft-seeds lists them' },
         2,
       )

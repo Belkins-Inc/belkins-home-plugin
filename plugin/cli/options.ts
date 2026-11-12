@@ -436,8 +436,9 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   'microsoft-seeds': {
     '': [],
     '*': ['retry'],
+    grow: ['free-domains'],
     mailbox: [],
-    make: ['seeds'],
+    make: ['for', 'seeds'],
     update: [],
   },
   network: {
