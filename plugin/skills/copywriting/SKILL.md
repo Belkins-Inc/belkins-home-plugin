@@ -91,7 +91,9 @@ A `ready` message can also be cleared back to `needs_copy` by a person (`bh copy
   subject"; subject over 90 — "the subject is longer than 90 characters".
 - `linkedin_invite`: body 1–200 characters on a step set `"withoutNote": false` (1–300 when the lead's LinkedIn account has Premium; over that: "the note is longer than 200 characters, the most LinkedIn takes from an account without Premium"); refused outright
   on any other ("the step sends its invitation without a note"), as invitations go bare by default; `linkedin_message`: body 1–1 900 characters; either with
-  a subject — "a LinkedIn message has no subject".
+  a subject — "a LinkedIn message has no subject"; `telegram_message`: body 1–4 096 characters, no
+  subject — "a Telegram message has no subject"; a LinkedIn or Telegram message with more than one
+  question mark — "N questions; ask one".
 - any channel: "a placeholder was left in the copy" when body or subject contains `{{` or `}}`,
   `[name]` / `[first name]` / `[last name]` / `[full name]`, `[company…]`, or **any square
   brackets holding only letters and spaces** (case-insensitive, so `[see below]` is refused too).
@@ -218,6 +220,13 @@ project has taken carries none.
   connecting; no pitch; no greeting needed.
 - `linkedin_message`: two to four sentences (well under the 1 900 limit); no subject, no greeting
   line, no signature; one ask.
+
+## Telegram
+
+- `telegram_message`: goes from the sender's own Telegram to someone they already talk to. One to
+  three short sentences, as the sender writes to an acquaintance: first name, no greeting block, no
+  subject, no signature, no link in a first message. One question. It may point to the email in a
+  few words; it never pastes the email.
 
 ## Angles
 

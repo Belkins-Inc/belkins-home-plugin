@@ -173,6 +173,13 @@ Valedictions: "Best regards", "Kind regards", "Warm regards", "Warmest regards",
   no greeting line (the thread is headed by their name), no signature. One ask.
 - Never assumes the emails arrived; never mentions them.
 
+## Telegram
+
+- `telegram_message`: ≤ 4 096 characters by the engine; write one to three short sentences. The lead
+  knows the sender (the engine writes only to the sender's own peers), so it reads as a note between
+  acquaintances: their first name, no greeting block, no subject, no signature, no link in a first
+  message. One question (checked). Never pretends there was no email; never pastes it either.
+
 ## Colleagues at one company (checked)
 
 Two people at one company compare notes. No message of theirs, at any step and in any strategy of

@@ -88,6 +88,24 @@ call step is timed from the second email.
 With email and calling only, the call step follows the second email the same way. A lead with no
 number to dial skips the call step and goes on with the emails.
 
+## A Telegram step
+
+A sender whose Telegram knows the lead writes there once the emails have opened the conversation;
+for a lead it does not know, the step is skipped and the plan goes on. Its leads' peers are matched
+before they reach it (telegram-peers skill).
+
+```json
+{
+  "appliesWhen": "email_only",
+  "steps": [
+    { "channel": "email", "guidance": "As step 1 of email_only." },
+    { "channel": "email", "delayDays": 3, "guidance": "Proof step in the email thread." },
+    { "channel": "telegram_message", "delayDays": 2, "guidance": "A short personal note: they know the sender. Points to the email in a few words, asks one easy question." },
+    { "channel": "email", "delayDays": 4, "guidance": "Last touch. Direct ask for a call or a polite close." }
+  ]
+}
+```
+
 ## linkedin_only
 
 ```json

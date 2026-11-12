@@ -844,6 +844,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          only for people it already knows (docs/decisions/telegram.md)
   telegram connect --sender <id> [--org <slug>]   a link for the sender's owner to link their Telegram (a QR code
                                          from the phone, Telegram → Devices); --org: an agency sender's, in Admin
+  telegram invite --sender <id>          a link (7 days, once) for the sender's owner to link their Telegram
+                                         without access to the tool; a disconnected account is linked again
   telegram reconnect <id>                a link to link a disconnected account again, as the same account
   telegram update <id> [--message-limit <n>] [--delay-min <s>] [--delay-max <s>] [--status active|paused|archived]
                                          at most 100 a day, delays at least 20 s
@@ -4737,6 +4739,16 @@ async function main(argv: string[]): Promise<void> {
           ? `/orgs/${encodeURIComponent(o.org)}/telegram-accounts/connect`
           : `/projects/${p()}/telegram-accounts/connect`
         return out(await call(config, 'POST', path, { senderId: o.sender }))
+      }
+      if (sub === 'invite') {
+        if (!o.sender)
+          throw new BhError('Whose Telegram?', { hint: '--sender <id>: bh senders' }, 2)
+        return out(
+          await call(config, 'POST', `/projects/${p()}/invites`, {
+            channel: 'telegram',
+            senderId: o.sender,
+          }),
+        )
       }
       if (sub === 'set-aside') {
         if (!arg) throw new BhError('Which peer?', { hint: 'bh telegram peers <account-id>' }, 2)

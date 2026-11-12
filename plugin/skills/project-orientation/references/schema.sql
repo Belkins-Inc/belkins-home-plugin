@@ -915,7 +915,7 @@ CREATE TABLE public.channel_invites (
     expires_at timestamp with time zone NOT NULL,
     used_at timestamp with time zone,
     revoked_at timestamp with time zone,
-    CONSTRAINT channel_invites_channel_check CHECK ((channel = ANY (ARRAY['calendar'::text, 'linkedin'::text])))
+    CONSTRAINT channel_invites_channel_check CHECK ((channel = ANY (ARRAY['calendar'::text, 'linkedin'::text, 'telegram'::text])))
 );
 
 
@@ -14400,4 +14400,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112121714'),
     ('20261112124450'),
     ('20261112141542'),
-    ('20261112143726');
+    ('20261112143726'),
+    ('20261112165145');

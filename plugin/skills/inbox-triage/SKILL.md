@@ -126,7 +126,9 @@ there are many:
    `--sender` signs it as another sender than the lead's. A LinkedIn thread takes replies the
    same way: the approved answer goes into the same chat from the thread's LinkedIn account, as
    plain text with no signature, so write it as a chat message (short, no greeting block, no
-   sign-off). Nobody pastes it into LinkedIn by hand.
+   sign-off). Nobody pastes it into LinkedIn by hand. A Telegram thread is the same: the answer
+   goes into the lead's chat from the sender's own Telegram, a chat message with no signature; and
+   the lead knows the sender, so it reads like them.
 5. **Follow-ups** (a person's token; a server agent refers a colleague itself, "Referrals in a
    server run" below, and opens a task for the rest):
    - `not_now` with a date: `bh reengage <inbound message id> [--on <yyyy-mm-dd>]` makes a new

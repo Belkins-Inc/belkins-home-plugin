@@ -40,6 +40,7 @@ Being added to the platform, getting a token, which environment to point at and 
 | `sourcing-linkedin`, `sourcing-trustpilot`, `sourcing-web` | finding companies and people |
 | `email-finding` | finding and verifying addresses; replacing one after a bounce |
 | `strategy-and-plans` | strategies, plan templates, enrolling, launch readiness |
+| `telegram-peers` | which contacts a sender's own Telegram already talks to, so its plan steps reach them |
 | `copywriting` | every step's copy, follow-ups, referrals and re-engagement |
 | `call-scripts` | the calling script and brief for each person on a call list, sent to the Belkins Dialer |
 | `sending-domains` | buying lookalike domains and ordering mailboxes on them |

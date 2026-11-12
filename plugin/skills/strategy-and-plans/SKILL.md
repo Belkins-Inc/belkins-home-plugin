@@ -98,6 +98,16 @@ The engine sends it to the dialer for each lead its call step lists, with `{firs
 the plan had a call step, build the list by hand from "Leads with their first steps sent" in
 [references/queries.md](references/queries.md) with `bh calls create` (a person only).
 
+**Telegram in a plan.** A sender who has linked their own Telegram (`bh telegram`) can carry a
+`telegram_message` step in any plan, beside the email and LinkedIn steps: it goes from that
+sender's Telegram, only to a lead it already talks to (a peer matched to the contact, with the
+telegram-peers skill). Enrolling gives a lead a sender whose Telegram knows them when one of the
+strategy's senders does; a lead nobody's Telegram knows has its Telegram steps skipped
+(`no_telegram_peer`) and goes on with the rest. So a Telegram step suits a strategy whose senders
+know many of its contacts (a founder's network, past clients, an event's attendees): match the peers
+before the leads reach the step, and say in the note how many contacts a sender's Telegram knows.
+An account sends at most 20 a day by default, a minute or more apart.
+
 Where email is an order of magnitude behind, an email-only plan needs its reason in that note.
 When the evidence favours LinkedIn and no account is connected, that is a task for a person to
 connect one (`bh task open`), and the proposal says what the plan loses meanwhile — not a quiet
@@ -114,7 +124,9 @@ keeps its channel, and the file must keep every template kind leads are on. Once
 anything was sent, it is refused, so settle the steps before launch. Accepted values:
 
 - `appliesWhen`: `email_and_linkedin`, `email_only`, `linkedin_only` (one template each at most).
-- step `channel`: `email`, `linkedin_invite`, `linkedin_message`, `call`. A `call` step puts the
+- step `channel`: `email`, `linkedin_invite`, `linkedin_message`, `call`, `telegram_message`. A
+  `telegram_message` step is one chat message from the sender's own Telegram to a lead it knows,
+  else skipped (`no_telegram_peer`); it takes no `anchor`, `condition` or `track`. A `call` step puts the
   lead on the strategy's call list when the lead reaches it (one list a strategy, handed to the
   dialer when the project is linked); its `guidance` is the caller's brief (why we call now), the
   strategy's `callScript` what they say, and it has no copy. A lead with no live number off do-not-call has it skipped (`no_phone`). Numbers come before

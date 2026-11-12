@@ -742,6 +742,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     '': [],
     '*': [],
     connect: ['org', 'sender'],
+    invite: ['sender'],
     match: ['contact'],
     peers: ['refresh', 'search', 'set-aside', 'unmatched'],
     reconnect: [],

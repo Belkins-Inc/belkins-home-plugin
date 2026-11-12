@@ -56,7 +56,7 @@ previous session did or did not do something — read it.
 | `queues.emailsBehindInvites` | Leads whose emails wait behind a LinkedIn invitation the account has not sent | They wait at most two send days, then the emails go on and the invitation stays queued. Many → the account is short of invitations for the leads routed to it (`bh behaviour linkedin`). |
 | `queues.needsCopy` | Steps with no copy | A lead waits while its step has no copy — write it (`copywriting` skill). |
 | `queues.activeLeads` | Leads in flight | Compare with the strategies' `target_active`. |
-| `channels` | Mailboxes and LinkedIn accounts with a `problem` | Disconnected or failing reads → a task to a person; sending and reading are stopped for that channel. |
+| `channels` | Mailboxes, LinkedIn and Telegram accounts with a `problem` | Disconnected or failing reads → a task to a person; sending and reading are stopped for that channel. |
 | `lastSessions` | The last five hand-overs, newest first | What was done, left, to watch. Pick up "left" and check "watch". |
 
 Test and noise data — a strategy, reply or task made by the team while testing the engine (internal
