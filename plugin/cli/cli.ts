@@ -141,7 +141,8 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          its first admin, sets the app up, connects the domain and hands it to
                                          warm-up on an egress with room (platform admin)
   microsoft-seeds mailbox                makes PAX8_MAILBOX (where Pax8 writes new tenants' admin logins) if it is
-                                         missing, and lists its last week's subjects, bodies never (platform admin)
+                                         missing, and lists its last week's subjects, bodies never — but Gmail's
+                                         forwarding confirmation's link and code (platform admin)
   microsoft-seeds update <ref> --retry   the console service signs in now, not after a refused sign-in's wait;
                                          <ref> is the number, the domain or the id (platform admin)
   google-org record <org> --customer-id <C0…>   Google's customer, made in Partner Sales Console: the engine gives
