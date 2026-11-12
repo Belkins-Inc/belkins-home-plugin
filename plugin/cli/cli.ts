@@ -889,6 +889,11 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          cookies go back. For what the remote browser cannot pass (sign-up's captcha)
   linkedin email-link <id>               opens LinkedIn's latest link to confirm an added address (last 30 minutes,
                                          from its mailbox) in its open browser, on its own IP
+  linkedin phone <id> --rent             (an organisation admin) rents it a US mobile number of its own at TextVerified,
+                                         renewing monthly, for LinkedIn's texts; only on a US IP, one live number each
+  linkedin phone-number <id>             types its number into LinkedIn's phone form in its open browser and sends it,
+                                         then types the code LinkedIn texts to it
+  linkedin phone-code <id>               types LinkedIn's latest texted code (last 10 minutes) into its open browser
   linkedin mailbox <id> --workplace      its LinkedIn codes read from its person's workplace mailbox (an account
                                          that was theirs before they joined a company; refused until it is
                                          connected); the address on LinkedIn itself is changed in its browser
@@ -1488,6 +1493,7 @@ async function main(argv: string[]): Promise<void> {
       image: { type: 'string' },
       none: { type: 'boolean' },
       workplace: { type: 'boolean' },
+      rent: { type: 'boolean' },
       'sign-up': { type: 'boolean' },
       browser: { type: 'boolean' },
       chrome: { type: 'string' },
@@ -4968,6 +4974,19 @@ async function main(argv: string[]): Promise<void> {
       }
       if (sub === 'email-link')
         return out(await call(config, 'POST', `${account()}/browser/email-link`, {}))
+      if (sub === 'phone') {
+        if (!o.rent)
+          throw new BhError(
+            'Rent a number?',
+            {
+              hint: `bh linkedin phone ${arg ?? '<id>'} --rent: a US mobile number at TextVerified, renewing monthly (bh linkedin show prints the one it has)`,
+            },
+            2,
+          )
+        return out(await call(config, 'POST', `${account()}/phone`, {}))
+      }
+      if (sub === 'phone-number' || sub === 'phone-code')
+        return out(await call(config, 'POST', `${account()}/browser/${sub}`, {}))
       if (sub === 'mailbox') {
         if (!o.workplace)
           throw new BhError(

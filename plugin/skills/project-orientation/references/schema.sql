@@ -2115,6 +2115,28 @@ CREATE TABLE public.linkedin_people (
 
 
 --
+-- Name: linkedin_phones; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_phones (
+    id uuid DEFAULT uuidv7() NOT NULL,
+    linkedin_account_id uuid NOT NULL,
+    number text NOT NULL,
+    provider text NOT NULL,
+    provider_id text NOT NULL,
+    usd_month numeric(8,2) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid NOT NULL,
+    created_via public.actor_via NOT NULL,
+    ended_at timestamp with time zone,
+    ended_reason text,
+    CONSTRAINT linkedin_phones_number_check CHECK ((number ~ '^\+[1-9][0-9]{6,14}$'::text)),
+    CONSTRAINT linkedin_phones_provider_check CHECK ((provider = 'textverified'::text)),
+    CONSTRAINT linkedin_phones_usd_month_check CHECK ((usd_month >= (0)::numeric))
+);
+
+
+--
 -- Name: linkedin_post_images; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5152,6 +5174,22 @@ ALTER TABLE ONLY public.linkedin_people
 
 
 --
+-- Name: linkedin_phones linkedin_phones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_phones
+    ADD CONSTRAINT linkedin_phones_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: linkedin_phones linkedin_phones_provider_provider_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_phones
+    ADD CONSTRAINT linkedin_phones_provider_provider_id_key UNIQUE (provider, provider_id);
+
+
+--
 -- Name: linkedin_post_images linkedin_post_images_linkedin_post_id_position_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7567,6 +7605,13 @@ CREATE INDEX linkedin_people_slug ON public.linkedin_people USING btree (slug);
 
 
 --
+-- Name: linkedin_phones_live; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX linkedin_phones_live ON public.linkedin_phones USING btree (linkedin_account_id) WHERE (ended_at IS NULL);
+
+
+--
 -- Name: microsoft_seed_orders_in_flight; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9585,6 +9630,22 @@ ALTER TABLE ONLY public.linkedin_events
 
 ALTER TABLE ONLY public.linkedin_events
     ADD CONSTRAINT linkedin_events_type_fkey FOREIGN KEY (type) REFERENCES public.event_types(type);
+
+
+--
+-- Name: linkedin_phones linkedin_phones_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_phones
+    ADD CONSTRAINT linkedin_phones_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: linkedin_phones linkedin_phones_linkedin_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_phones
+    ADD CONSTRAINT linkedin_phones_linkedin_account_id_fkey FOREIGN KEY (linkedin_account_id) REFERENCES public.linkedin_accounts(id);
 
 
 --
@@ -12699,6 +12760,12 @@ ALTER TABLE public.linkedin_connect_pages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.linkedin_events ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: linkedin_phones; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.linkedin_phones ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: linkedin_post_images; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -13108,6 +13175,15 @@ CREATE POLICY organisation_fence ON public.linkedin_accounts USING (((project_id
 CREATE POLICY organisation_fence ON public.linkedin_events USING ((EXISTS ( SELECT 1
    FROM public.linkedin_accounts x
   WHERE (x.id = linkedin_events.linkedin_account_id))));
+
+
+--
+-- Name: linkedin_phones organisation_fence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organisation_fence ON public.linkedin_phones USING ((EXISTS ( SELECT 1
+   FROM public.linkedin_accounts x
+  WHERE (x.id = linkedin_phones.linkedin_account_id))));
 
 
 --
@@ -14469,4 +14545,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112175149'),
     ('20261112175918'),
     ('20261112182947'),
-    ('20261112184459');
+    ('20261112184459'),
+    ('20261112193141');
