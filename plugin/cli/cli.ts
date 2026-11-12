@@ -264,7 +264,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          split the step's leads in turn, an A/B test read in strategy show;
                                          on a draft that has sent nothing, its enrolled leads' plans are copied again,
                                          written copy kept where a step keeps its channel (a person only)
-  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread","threadOf","delayDays"}: one step's,
+  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread","threadOf","delayDays","track"}: one step's,
                                          frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
                                          newThread (a follow-up email; a person only): true starts its own thread; false answers
@@ -272,6 +272,7 @@ const USAGE = `bh <command> [options] — JSON out, errors verbatim.
                                          as "Re: <that thread's first subject>"; every email not yet sent follows
                                          delayDays (not the first step; a person only): send days after the step before;
                                          leads enrolled later get it and every lead's unsent message of the step moves
+                                         track ("main" | "linkedin"; a LinkedIn step; a person only): unsent messages of the step move
   plan add-step <strategy-id> --after <position> --file <step.json> [--plan <plan-id>] [--dry-run]
                                          put a step after <position>, running leads too: later steps move one place on,
                                          each live lead that sent nothing past that point gets it (needing copy, bh copy
