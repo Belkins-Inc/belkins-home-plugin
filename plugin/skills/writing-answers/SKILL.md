@@ -61,6 +61,14 @@ day: a lead who wants to talk waits for the next pass, not for the morning.
    - `client` — the client answered a question (`question`, `answer`) the thread waited for.
      Write it in: revise the waiting draft (`draftId`), or draft the follow-up when the holding
      answer went already.
+   - `chase` — a positive or question reply (`interested`, `meeting`, `question`) we answered once
+     at least two working days ago, with no answer back and no booked meeting yet. Read the whole
+     `bh thread <threadId>`, `bh brief` and `rule` notes first. When a follow-up fits, draft one
+     short, conversational nudge (`bh reply draft <threadId> --body-file <path> --note "<for the
+     approver>"`, offering fresh `bh slots` where appropriate; never "just bumping this" or a dash
+     as punctuation). When the thread needs no follow-up (settled on a call, an event already past,
+     or a teammate handling it), close it with `bh thread close <threadId> --note "<why>"`. The
+     engine stops chasing once two unanswered answers have gone.
    - `copy` — a follow-up plan (re-engagement, referral) has `steps` messages with no copy:
      `copywriting` skill (`bh copy queue <strategyId>`, `bh copy write`), with the lead's thread as
      context. A step someone else wrote in the meantime (the teammate who referred the lead, say)
