@@ -361,8 +361,10 @@ missing items otherwise, and only a person's token may launch or pause. Also rea
 advisory (`blocks: false`) warnings in `beforeLaunch` before asking a person to launch:
 `linkedin_track` (move LinkedIn steps onto `"track": "linkedin"` so they never hold emails),
 `held_mailboxes` (0 active mailboxes clear to send outreach today — attach a clear sender or wait
-for the hold to lift), `linkedin` (missing LinkedIn account), and `zones` (missing contact/company
-time zones). Also check: client's DNC list received (`bh questions`), exclusions set
+for the hold to lift), `young_gateway_domains` (>30% Microsoft/gateway leads with 0 clear aged
+>= 90d mailboxes), `queue_depth` (first-email queue exceeds 7 send days of clear mailbox capacity),
+`unverified_emails`, `copy_quality`, `linkedin` (missing LinkedIn account), and `zones` (missing
+contact/company time zones). Also check: client's DNC list received (`bh questions`), exclusions set
 (`bh exclusions`), and a few `bh preview <message-id>` read end to end.
 
 ### 8. Keep the pipeline full
