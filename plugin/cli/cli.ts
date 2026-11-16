@@ -412,6 +412,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          (Europe/Warsaw) — the lead's send window and meeting times go by them
                                          a contact already at a company stays there and the row is warned; add
                                          "moveCompany": true to move them (the answer says companyChanged)
+                                         a row whose address is a contact's but whose name or profile is another
+                                         person's is refused, the contact kept; "samePerson": true if it is them
                                          a phone number is not a fact: facts.phone is refused, numbers go in with bh phones add
   contacts [--q <text>] [--label <name>]   --q: every word in the name, the address or the company's domain
   contacts duplicates                    contacts that hold one LinkedIn profile, the same person saved twice, with live leads

@@ -124,6 +124,11 @@ or another employer's domain passes a check of the company's own domain.
    for another employer: `bh contacts depart <id> --reason "<what shows it>"`, and they are never
    enrolled again. One person held by two contacts: `bh contacts duplicates`, then a person
    decides and runs `bh contacts merge <keep-id> <drop-id>`.
+   A row whose address already belongs to a contact who is someone else — another name, another
+   profile — is `refused` in the answer and nothing of it is saved: a provider gave two people one
+   address, and saving it would turn the contact (and the copy written to greet them) into the
+   other person (#233). The contact stays as it was; this person's address is still to find. Only
+   when it is the same person corrected (a misspelt name) send the row again with `"samePerson": true`.
 9. **Not found** by either →
    `"facts":{"email_search":{"value":"not_found","source":"apollo,bettercontact","note":"2026-10-07"}}`.
    There is no third try: FullEnrich is off (the engine refuses a submission with
