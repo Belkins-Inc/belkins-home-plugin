@@ -654,6 +654,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'subject',
     ],
     reschedule: ['send-at'],
+    resend: ['approve-by', 'mailbox', 'reason', 'reviewer', 'send-at', 'subject'],
     retry: [],
     revise: [
       'approve-by',

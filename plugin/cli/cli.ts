@@ -1108,6 +1108,11 @@ hidden at a terminal, so it stays out of the shell's history.
                                          subject request) on the lead's own thread; recorded, the entry stays
   reply discard <id>                     withdraws a draft, an approved reply not gone yet, or a failed one
   reply retry <id>                       sends a failed reply again as it was, after the undo minute (a person only)
+  reply resend <id> --mailbox <address> --reason <why> [--subject <s>] [--send-at …] [--approve-by …] [--reviewer …]
+                                         a sent answer the lead never received, again from another of the
+                                         project's mailboxes: a new thread there, the same text and copies as its
+                                         draft (--subject: left out, the one it went under), approved and sent as
+                                         any answer (a person only)
   reply reschedule <id> --send-at <iso|now>   moves when a draft or an approved reply goes, same id (now: as
                                          soon as it may; an approved one: a person only)
   reply assign <id> --reviewer <email>   who approves a draft: its Slack notice goes to them, posted anew
@@ -4254,6 +4259,30 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       if (sub === 'retry') return out(await call(config, 'POST', `/replies/${seg(arg)}/retry`, {}))
+      if (sub === 'resend') {
+        if (!o.mailbox)
+          throw new BhError(
+            'Which mailbox should it go from?',
+            { hint: '--mailbox <address>: another of the project’s mailboxes (bh mailboxes)' },
+            2,
+          )
+        if (!o.reason)
+          throw new BhError(
+            'Why is it sent again?',
+            { hint: '--reason "the lead says it never arrived"' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/replies/${seg(arg)}/resend`, {
+            mailbox: o.mailbox,
+            reason: o.reason,
+            ...(o.subject ? { subject: o.subject } : {}),
+            ...(o['send-at'] ? { sendAt: o['send-at'] } : {}),
+            ...(o['approve-by'] ? { approveBy: o['approve-by'] } : {}),
+            ...(o.reviewer ? { reviewer: o.reviewer } : {}),
+          }),
+        )
+      }
       if (sub === 'reschedule') {
         const at = o['send-at']
         if (at === undefined)

@@ -8,10 +8,11 @@ there were more). Money columns are `*_usd`.
 
 ## Inbox — `inbox_queue`
 
-Replies waiting for triage, oldest first, with who and what they answered:
+What waits for triage — replies, automatic replies and reports about our answers, the same
+messages `bh inbox` lists and `bh brief` counts — oldest first, with who and what they answered:
 
 ```sql
-select thread_message_id, thread_id, waiting, first_name, last_name, title, company, domain,
+select thread_message_id, thread_id, kind, waiting, first_name, last_name, title, company, domain,
        strategy_id, replied_to_angle, left(body_text, 300) as body
 from inbox_queue where project_id = @project order by sent_at
 ```
