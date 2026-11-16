@@ -382,15 +382,18 @@ After enrolling, every step of every lead needs copy — hand over to the `copyw
 ### 7. Readiness and launch (a person launches)
 
 `bh strategy show <id>` → `beforeLaunch` lists four blocking checks, all must be `ok`:
-plan templates with steps; senders with an active mailbox; leads enrolled (active, paused or
-scheduled); copy for every step of those leads. `bh strategy launch <id>` is refused with the
+plan templates with steps; senders with what the templates send through (an active mailbox when
+a template has an email step, a connected LinkedIn account when a template has LinkedIn steps and
+no email step, both when the templates need both); leads enrolled (active, paused or scheduled);
+copy for every step of those leads. `bh strategy launch <id>` is refused with the
 missing items otherwise, and only a person's token may launch or pause. Also read and resolve the
 advisory (`blocks: false`) warnings in `beforeLaunch` before asking a person to launch:
 `linkedin_track` (move LinkedIn steps onto `"track": "linkedin"` so they never hold emails),
 `held_mailboxes` (0 active mailboxes clear to send outreach today — attach a clear sender or wait
 for the hold to lift), `young_gateway_domains` (>30% Microsoft/gateway leads with 0 clear aged
 >= 90d mailboxes), `queue_depth` (first-email queue exceeds 7 send days of clear mailbox capacity),
-`unverified_emails`, `copy_quality`, `linkedin` (missing LinkedIn account), and `zones` (missing
+`unverified_emails`, `copy_quality`, `linkedin` (no LinkedIn account for LinkedIn steps that sit
+beside email in a template), and `zones` (missing
 contact/company time zones). Also check: client's DNC list received (`bh questions`), exclusions set
 (`bh exclusions`), and a few `bh preview <message-id>` read end to end.
 
