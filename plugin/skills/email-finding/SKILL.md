@@ -168,6 +168,14 @@ a person at a consumer brand — is not the contact's work address:
    a group page) → record it on the company first, then write the address:
    `bh companies upsert` with `{"domain":"<company>","facts":{"related_domains":{"value":["<group domain>"],"source":"web","note":"parent group, <url>"}}}`.
 
+An address at a platform — a link shortener, a link-in-bio page, a social network, a jobs portal, a
+scheduling tool, a site builder's host (bit.ly, linktr.ee, linkedin.com, calendly.com, wixsite.com)
+— is nobody's own mailbox, whatever Bouncer says: a provider guessed it from a company saved at the
+wrong domain. Do not write it; correct the company's domain first (`bh companies domain <id>
+<domain>`) and search again. The engine refuses to check one (`bh address check` answers
+`not_their_mailbox`), plans no email to it and skips an email due to it. An address at free mail
+(gmail.com, outlook.com) may be the person's own; it is outside the company like any other.
+
 The engine saves such an address anyway and says so: each row of the `bh contacts upsert` answer
 whose address is not at its company carries a `warnings` entry. Read the warnings; a warned row you
 did not mean is a contact to fix now (`bh behaviour contacts`).
@@ -291,6 +299,8 @@ new BetterContact search is a person's session.
 
 - Upserting an address without the contact's LinkedIn URL — a second contact is created.
 - Writing the first deliverable address without comparing its domain with the company's (A2).
+- Buying addresses for a company saved at a platform's domain (bit.ly, linktr.ee, gmail.com): every
+  address found there is a guess at the platform, not the person's (A2).
 - Ignoring `warnings` in the upsert answer: a profile that stayed with another contact, or an
   address at another organisation's domain.
 - Holding an `unknown` or catch-all contact for a deep check — Scrubby is off; it goes by LinkedIn.

@@ -82,7 +82,10 @@ Decide before spending, and write the reason in one sentence (a note or the sess
 
    `cursor` is the next offset to ask for; the source's cursor moves with it. Duplicates: domains
    already in `companies` (check with `bh sql` before recording).
-5. **Upsert** (`bh companies upsert --file rows.jsonl`): `domain`, `name`, `country` from
+5. **Upsert** (`bh companies upsert --file rows.jsonl`): `domain` (the company's own site: a
+   provider's `website` is often a bit.ly, linktr.ee, a jobs portal or a LinkedIn page, which the
+   engine refuses with `not_a_company_domain` — take the site from the company's page or a search,
+   or leave the company out), `name`, `country` from
    `hq_country_code` (ISO-2), `employeeCount` from `headcount_exact`, `industry`, `linkedinUrl`
    (`https://www.linkedin.com/company/<linkedin_urn>` — the lead search needs it), `timezone` when
    the HQ city makes it plain, `source: "generect"`, and `facts` as `{key: {value, source, note}}`

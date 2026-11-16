@@ -150,7 +150,10 @@ below). Paid enrichment stays a person's.
 8. **Search, store, judge** — the loop for every batch:
    1. `bh call <provider> … --segment <id> --source <id>`; note the call ids on stderr.
    2. `bh companies upsert --file companies.jsonl` — `domain` (the company's own site, never the page
-      it was read from), `name`, `industry`, `employeeCount`, `country` (ISO alpha-2), `linkedinUrl`,
+      it was read from: the engine refuses a whole batch, `not_a_company_domain`, with an address, a
+      link shortener, a link-in-bio page, a social network, a directory, a jobs portal, free mail, a
+      scheduling tool or a site builder's host in it, and names the rows; find the company's own
+      site or leave the row out), `name`, `industry`, `employeeCount`, `country` (ISO alpha-2), `linkedinUrl`,
       `facts`. The exclusions read `facts.business_model` (e.g. `"amazon_only"`) and `facts.rating`
       (a number), plain or as `{value, source, note}`.
    3. `bh search record --file search.json` — `{"kind":"companies","sourceId","provider","query",
