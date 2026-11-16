@@ -328,7 +328,12 @@ hidden at a terminal, so it stays out of the shell's history.
                                          none their LinkedIn steps skipped when emails do not wait on them;
                                          otherwise the lead stays (refused). A LinkedIn-only lead (no mailbox)
                                          moves onto their least-loaded LinkedIn account while it carries 2 fewer
-                 [--limit <n>] [--stuck]    with --to-sender: at most n leads; only leads stuck on mailbox_room
+                 [--limit <n>] [--stuck]    at most n leads of the strategy (stuck ones first), so a new mailbox
+                                         is filled with a few days of what it starts; only leads stuck on
+                                         mailbox_room. With --to-sender too.
+                                         The engine itself moves a lead off a mailbox that will never send it
+                                         (held on its side, bad placement, paused, archived, disconnected) to
+                                         another of its sender's; leads waiting a day get a task per strategy
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
                                          a "call" step puts the lead on the strategy's call list when reached
@@ -723,6 +728,8 @@ hidden at a terminal, so it stays out of the shell's history.
                  [--sender <id>]            another sender of the project writes from it
                  [--recipients google,microsoft,…|any]   write only to leads whose mail that provider takes
                                          (none is refused: it is a domain with no MX; to write to nobody, --status paused)
+                 [--intake on|off]          off: it takes no new lead (enroll, repick, a referral, the engine's own
+                                         move) while its started leads finish and its warm-up goes on
                  --not-warmed on a warmed one: the ladder again from its first day; --warmed needs a
                  domain registered 30 days ago or more
                                          (bh esp names them); a lead no mailbox of its sender serves may use any.
@@ -1800,6 +1807,7 @@ const FLAGS = {
   until: { type: 'string' },
   sender: { type: 'string' },
   recipients: { type: 'string' },
+  intake: { type: 'string' },
   signature: { type: 'string' },
   'signature-html-file': { type: 'string' },
   out: { type: 'string' },
@@ -4855,6 +4863,13 @@ async function main(argv: string[]): Promise<void> {
             ...(o.recipients
               ? { recipientEsps: o.recipients === 'any' ? null : list(o.recipients) }
               : {}),
+            ...(o.intake === undefined
+              ? {}
+              : o.intake === 'on' || o.intake === 'off'
+                ? { intake: o.intake === 'on' }
+                : (() => {
+                    throw new BhError('--intake is on or off', { hint: '--intake off' }, 2)
+                  })()),
           }),
         )
       break

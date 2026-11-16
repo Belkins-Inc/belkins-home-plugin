@@ -445,7 +445,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     reconnect: [],
     retry: [],
     smtp: ['file'],
-    update: ['recipients', 'sender', 'status'],
+    update: ['intake', 'recipients', 'sender', 'status'],
   },
   mailboxes: {
     '*': [],
