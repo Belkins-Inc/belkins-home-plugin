@@ -873,9 +873,10 @@ hidden at a terminal, so it stays out of the shell's history.
                                          ten a day and two being made, in your name; 0 stops it (platform admin)
   warmup grow [--max-orgs <n>]           the ceiling on Google seed organisations of ours the engine orders by
                                          itself when the seeds cannot carry the warming mailboxes: daily, enough
-                                         for today's want and a fifth more, Microsoft tenants first while under
-                                         half the seeds and Google for the rest, at most ten a day and twenty
-                                         being made at once, in the name of whoever set it; 0 stops it (an admin)
+                                         for the want two weeks out and a tenth more, Microsoft tenants first
+                                         while under half the seeds and Google for the rest, at most ten a day
+                                         and twenty being made at once, in the name of whoever set it; 0 stops
+                                         it (an admin)
   warmup phase-out [--per-day <n>]       Folderly's lent seed organisations leaving the pool: those whose seeds'
                                          answers land in our spam most go first, n a day at most and only as our
                                          new seeds make up for them (the pool's caps stay at the floor they had
