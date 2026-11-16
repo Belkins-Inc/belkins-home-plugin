@@ -294,11 +294,15 @@ hidden at a terminal, so it stays out of the shell's history.
   strategy repick-mailboxes <id> [--dry-run]   give each lead that has sent nothing yet a mailbox of its sender
                                          that serves its provider (mailbox update --recipients), sends outreach
                                          on its first day, sits on an aged domain (>=90d) for gateway and
-                                         Microsoft leads when one does, and is hosted there (Gmail on Google,
-                                         Outlook on Microsoft) when one is: off held, badly placed, warming-alone
-                                         and young-domain mailboxes when the sender has another; a person only
-                 [--even]                   also spread leads on mailboxes that send, so mailboxes added after
-                                         enrollment get their share (a lead moves while another carries 2 fewer)
+                                         Microsoft leads when one does, and is meant for its provider when one
+                                         is (hosted there, Gmail on Google, or pointed there: --recipients google
+                                         on a Microsoft mailbox): off held, badly placed, warming-alone and
+                                         young-domain mailboxes when the sender has another; a person only
+                 [--even]                   also spread leads on mailboxes that send, by room: a lead moves to the
+                                         sender's mailbox that would send its first email soonest (leads that
+                                         sent nothing over outreach a day), while it starts there no later than
+                                         the ones left behind; so a ramping or placement-held backlog moves to
+                                         warmed mailboxes, and mailboxes added after enrollment get their share
                  [--to-provider google|microsoft] [--only <mailbox-id,…>] [--skip <mailbox-id,…>]
                                          where leads may move to; where they come from is unchanged
                  [--change-sender]          a lead whose sender has no mailbox for its provider, or is no longer on
