@@ -496,7 +496,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   },
   org: {
     '*': [],
-    add: ['email', 'name', 'role'],
+    add: ['email', 'name', 'no-invite', 'role'],
     approve: [],
     autopause: [],
     billing: [],
@@ -504,6 +504,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     dialer: [],
     erase: ['email', 'linkedin', 'note'],
     erasures: ['limit'],
+    invite: [],
     'lead-cap': [],
     leave: ['reason'],
     leaving: [],

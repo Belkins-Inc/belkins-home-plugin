@@ -219,7 +219,10 @@ hidden at a terminal, so it stays out of the shell's history.
                                          clientApp.url is where the client signs in with a code mailed to them, and
                                          clientApp.signInMail says when that code would not be sent. Free for the
                                          client until Stripe is connected; then add needs an active subscription
-  org members <org> | org add <org> --email <e> [--name <n>] [--role admin|member] | org role <org> <user-id> --role admin|member | org remove <org> <user-id>
+  org members <org> | org add <org> --email <e> [--name <n>] [--role admin|member] [--no-invite] | org role <org> <user-id> --role admin|member | org remove <org> <user-id>
+                                         someone new to it is mailed where and how to sign in (invited.sent; reason
+                                         when it could not go: tell them by hand); --no-invite mails nothing
+  org invite <org> <user-id>             mail a member again where and how to sign in (its admin; a person only)
   project update [--name <n>] [--timezone <tz>] [--domain-cap <n>] [--brief <text> | --brief-file <path>]   (a person only)
        [--reply-bcc a@x.com,b@y.com]     every answer in its email threads copies them without the lead seeing
                                          them ("" for nobody)
@@ -1705,6 +1708,7 @@ const FLAGS = {
   selector: { type: 'string' },
   username: { type: 'string' },
   'no-admin': { type: 'boolean' },
+  'no-invite': { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
   provider: { type: 'string' },
   file: { type: 'string' },
@@ -3065,8 +3069,20 @@ async function main(argv: string[]): Promise<void> {
             email: o.email,
             ...(o.name ? { name: o.name } : {}),
             ...(o.role ? { role: o.role } : {}),
+            ...(o['no-invite'] ? { invite: false } : {}),
           }),
         )
+      if (sub === 'invite') {
+        if (!pos[3])
+          throw new BhError(
+            'Which member?',
+            { hint: 'bh org members <org> lists them, with ids' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/orgs/${seg(arg)}/members/${seg(pos[3])}/invite`, {}),
+        )
+      }
       if (sub === 'role')
         return out(
           await call(config, 'PATCH', `/orgs/${seg(arg)}/members/${seg(pos[3])}`, { role: o.role }),
