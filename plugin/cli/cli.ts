@@ -403,6 +403,7 @@ hidden at a terminal, so it stays out of the shell's history.
                                          with no such number or already on a list is refused (--allow-repeat lets the last through)
   calls push <list-id> [--attempts …]   hand the list to the dialer again after a push that failed (a person only)
   calls remove <list-id>                take back a list nobody called from: off the dialer's queue and archived there,
+                                         its people's leads on no other live list archived too (leadsArchived),
                                          then gone from Home with its people (a person only)
   calls briefs <list-id> --file <json|jsonl|->   [{"contactId","reason","script"}] change what callers read for people
                                          on the list; null clears one, a field left out stays; a list the dialer has gets it
