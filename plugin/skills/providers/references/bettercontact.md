@@ -32,6 +32,9 @@ bh call bettercontact POST / --strategy <strategy-id> --body-file /tmp/bc/batch1
 - Put the contact id in `custom_fields.contact`: the answers come back keyed by it. The echo comes
   back as a **list** — `"custom_fields": [{"name": "contact", "value": "<id>", "position": 0}]` —
   read it by `name`, never by position. A row whose key you cannot read is dropped, not guessed.
+  The engine reads the same field (and the row's `linkedin_url`) to stamp each contact as searched
+  (`contact_searches`, `pending` until a collect finds the batch `terminated`, then `found` or
+  `not_found` per kind), so the next session skips them (email-finding, step A1).
 - Give it everything you have: a LinkedIn URL raises the hit rate; a name plus domain works without.
 - **`enrich_phone_number` stays false** unless a person wants phones and Apollo found none for these
   people: a number here costs ten credits ($0.50), Apollo's $0.032 (apollo.md). On one project's 280

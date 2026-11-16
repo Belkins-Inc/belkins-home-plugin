@@ -49,18 +49,30 @@ or another employer's domain passes a check of the company's own domain.
            from strategy_contacts x join contacts k on k.id = x.contact_id
            left join companies c on c.id = k.company_id
            where x.strategy_id = '<strategy>' and x.status = 'candidate'
-             and k.email is null and not (k.facts ? 'email_search')" --limit 100
+             and k.email is null and not (k.facts ? 'email_search')
+             and not exists (select 1 from contact_searches s
+                              where s.contact_id = k.id and s.kind = 'email')" --limit 100
    ```
 
    (Contacts just found and not yet in `strategy_contacts`: select them by `company_id` or
-   `created_at` instead.)
-2. **Hold out incomplete names before paying.** A waterfall needs a last name to build an address
-   from. A contact whose last name is missing or a single letter (with or without a period) —
-   LinkedIn initials like "Karen A", "Grant R.", "Ben L" — is not submitted: several of 15 misses in a
-   batch of 128 were these. **A two-letter last name is a real surname and goes in**: Wu, Li, Ng, Qu,
+   `created_at` instead.) `contact_searches` is the engine's own stamp: every Apollo `match` /
+   `bulk_match` and BetterContact batch marks the contacts it named — by LinkedIn profile or address,
+   so upsert contacts before the call — with the provider, the kind (`email`, `phone`), when, and the
+   outcome (`found`, `not_found`, `pending` until the batch or the phones come back, `unknown` for a
+   call stamped after its answer was cleared). A session needs no fact of its own to skip them;
+   `facts.email_search` still records why a contact was held out without a call.
+2. **Hold out incomplete names from the providers that need them.** BetterContact and a pattern guess
+   build an address from the last name. A contact whose last name is missing or a single letter
+   (with or without a period) — LinkedIn initials like "Karen A", "Grant R.", "Ben L" — is not
+   submitted to them: several of 15 misses in a batch of 128 were these. **Apollo still takes them**:
+   `bulk_match` finds a person by `linkedin_url` whatever the last name (one project, 2026-11-11: 92
+   held-out people, 84 matched, 71 with an address, 57 at the company's domain, 34 deliverable, for
+   $0.54). So a contact with a LinkedIn URL goes to step 4 first; when Apollo's match returns a full
+   `last_name` that starts with the held initial, write it on the contact (`lastName` in the upsert)
+   so BetterContact can use it next. **A two-letter last name is a real surname and goes in**: Wu, Li, Ng, Qu,
    Xu, Ha, La and the like are common in Chinese, Korean and Vietnamese names (BetterContact found
-   addresses for 6 of 7 such people held back on one project). Record a held contact so the query
-   above skips it,
+   addresses for 6 of 7 such people held back on one project). Record a contact held from
+   BetterContact (no profile, or Apollo found no full name) so the query above skips it,
    `"facts":{"email_search":{"value":"name_incomplete","source":"linkedin","note":"last name \"A\" on LinkedIn, 2026-09-24"}}`,
    then either find the full name first (the profile, the company's team page) and submit it in a
    later batch, or work that person through LinkedIn only.
@@ -84,16 +96,18 @@ or another employer's domain passes a check of the company's own domain.
 5. **Verify every Apollo address with Bouncer**, one call each, tied to the contact:
    `bh call bouncer GET "/email/verify?email=<urlencoded>&timeout=20" --contact <id>`. Map the answer
    (bouncer.md): deliverable → `valid`; undeliverable → `invalid`; risky + `acceptAll: "yes"` →
-   `catch_all`; anything else → `unknown`. (For an address already on the contact,
-   `bh address check <contact-id> --address <a> --reason new_contact` does the same check and writes
-   the status itself.) **Only `deliverable` settles the contact**: write it
-   (`"source":"apollo"`, step 8). Everyone else — no match, no email, catch-all, unknown,
+   `catch_all`; anything else → `unknown`. When the address is the one the contact already holds,
+   the engine writes that status to `contacts.email_status` itself (as `bh address check
+   <contact-id> --address <a> --reason new_contact` does). An Apollo candidate is not on the contact
+   yet, so nothing is written for it: **only `deliverable` settles the contact** — write the address
+   with `emailStatus: "valid"` (`"source":"apollo"`, step 8). Everyone else — no match, no email, catch-all, unknown,
    undeliverable — goes on to BetterContact; do not write Apollo's address for them.
    **Deliverable is not enough when the address is at another organisation** (section A2): Bouncer
    says only that the mailbox exists, and Apollo often answers with a person's address at a new or
    second employer.
 6. **Submit the rest to BetterContact** (≤ 100 per batch; `custom_fields.contact` = the contact id;
-   LinkedIn URL, name, domain, company name). One account serves every project: the engine refuses a
+   LinkedIn URL, name, domain, company name — the engine stamps each row's contact by its
+   `linkedin_url`, so send it whenever the contact has one). One account serves every project: the engine refuses a
    batch that could take more credits than it holds (`409 credits_short`) — send a smaller batch or
    ask a person to top up. Keep the request id: write it down with
    `bh note add --kind todo --title "Collect BetterContact batch <id>" --body "<strategy>, <n> contacts"`
@@ -184,9 +198,11 @@ Scrubby is off for now (the engine refuses its paid calls), so neither is settle
   it: that is a person's choice for the strategy, not yours.
 - Checks submitted before Scrubby was switched off still come back: `bh address collect`, then
   `bh address checks <contact-id>`; a `valid` → upsert the contact with `emailStatus: "valid"`.
-  A Bouncer verdict on the contact's own address updates `contacts.email_status` by itself (`valid`,
-  `invalid`, `catch_all` when `acceptAll` is yes, `unknown` for other risky); Scrubby's answers from
-  `bh address collect` do not — write those with the upsert.
+  A Bouncer verdict on the contact's own address — `bh address check`, or `bh call bouncer … --contact
+  <id>` asking about the address the contact holds — updates `contacts.email_status` by itself
+  (`valid`, `invalid`, `catch_all` when `acceptAll` is yes, `unknown` for other risky); a verdict
+  on any other address does not, and neither do Scrubby's answers from `bh address collect` — write
+  those with the upsert.
 
 **Two spellings on a catch-all domain is not an address.** When two sources give one person two
 addresses at the same domain — our waterfall against the client's list, BetterContact against
@@ -233,8 +249,9 @@ new BetterContact search is a person's session.
 ## D. Phone numbers (when a person wants phones)
 
 1. **Apollo first**: the same `bulk_match` with `"reveal_phone_number": true` — the emails come at
-   once, the phones within seconds to the engine, **which puts them on the contacts itself** (by the
-   LinkedIn URL you asked with, else Apollo's address) and puts a number on the Do Not Call registry
+   once, the phones later (seconds once, ten minutes or more since 2026-11-10; apollo.md) to the
+   engine, **which puts them on the contacts itself** (by the LinkedIn profile you asked with,
+   however it is spelled or percent-encoded, else Apollo's address) and puts a number on the Do Not Call registry
    on do-not-contact. Check with `bh phones <contact-id>`; a person who is not yet a contact keeps
    their numbers only in `bh call show <call-id>` (`deliveries`, apollo.md) — upsert the contact,
    then add them by hand (3). Five credits ($0.032) per person a number was found for.
@@ -252,8 +269,12 @@ new BetterContact search is a person's session.
    Check the numbers a call list will dial first, not every number found.
 5. **Do Not Call**: a provider saying a number is on a registry → `"dnc": true` on the row; the
    number goes on do-not-contact and no call list takes it.
-6. Record a miss — no delivery ten minutes on means Apollo found no number for anyone in the call:
-   `"facts":{"phone_search":{"result":"not_found","source":"apollo,bettercontact","seenAt":"…"}}`.
+6. **Misses are recorded by the engine**: each contact's `contact_searches` row of kind `phone` reads
+   `pending` until Apollo's delivery comes, then `found` or `not_found`; a BetterContact batch's
+   rows settle when it is collected. Do not count an empty `deliveries` as a miss while
+   `bh call apollo GET /webhook_result/<request_id_str>` (free) is still pending — Apollo is still
+   working. Who still needs a phone:
+   `bh sql "select c.id from contacts c where c.project_id = @project and not exists (select 1 from contact_searches s where s.contact_id = c.id and s.kind = 'phone' and s.outcome <> 'unknown')"`.
 
 ## Before you stop
 
@@ -269,7 +290,8 @@ new BetterContact search is a person's session.
 - Ignoring `warnings` in the upsert answer: a profile that stayed with another contact, or an
   address at another organisation's domain.
 - Holding an `unknown` or catch-all contact for a deep check — Scrubby is off; it goes by LinkedIn.
-- Paying to search a contact whose last name is an initial (one letter; two letters is a surname).
+- Paying BetterContact to search a contact whose last name is an initial (one letter; two letters is
+  a surname) — Apollo by LinkedIn URL is fine.
 - Choosing between two spellings on a catch-all domain because both "verified".
 - Reading Bouncer's `risky` as invalid (it is catch-all or unknown) or Scrubby's `Risky` as valid.
 - Paying `--again` for an address the organisation checked within 30 days: `bh address check`

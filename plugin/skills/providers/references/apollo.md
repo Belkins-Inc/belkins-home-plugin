@@ -51,17 +51,25 @@ bh call apollo POST /people/bulk_match --strategy <id> --body '{"details":[…],
 
 - Apollo reveals phones **only to a webhook**: the engine adds its own `webhook_url` (never pass one)
   and books the delivery as a call of its own. The answer itself carries the emails at once; the
-  phones arrive within seconds.
+  phones come later.
 - **The engine puts them on the contacts** (`bh phones <contact-id>`): each person Apollo matched
-  is found among the project's contacts by the `linkedin_url` you asked with (or Apollo's), else by
-  Apollo's email — so upsert the contacts before the call. The raw delivery stays readable with
-  `bh call show <call-id>`: `deliveries[].response.people[]` is
+  is found among the project's contacts by the LinkedIn profile you asked with (or Apollo's) —
+  scheme, `www`, case, a trailing slash and percent-encoding (`j%C3%B6rg` and `jörg`) do not matter —
+  else by Apollo's email, else it is the `--contact` of a one-person call. So upsert the contacts
+  before the call. The raw delivery stays readable with `bh call show <call-id>`:
+  `deliveries[].response.people[]` is
   `{id, phone_numbers: [{sanitized_number, type_cd, confidence_cd, status_cd, dnc_status_cd}]}`,
   `people[].id` joined to `matches[].id` of the answer; a person with empty `phone_numbers` has none.
-- **When Apollo finds no number for anyone in the call, it sends nothing** — `deliveries` stays empty
-  and no phone credits are charged. A delivery comes within seconds when there is one (production,
-  2026-10-07: one in 2 s; none after 17 minutes for two people without numbers). So an empty
-  `deliveries` ten minutes on means no numbers: record the miss (email-finding, section D).
+- **A delivery can take ten minutes or more.** It came in 2–38 s until 2026-11-09; on 2026-11-10 it
+  took about 8 minutes. The answer now carries `phone_enrichment: {status: "pending", …}` and a
+  top-level `request_id_str`; `bh call apollo GET /webhook_result/<request_id_str>` (free) shows
+  Apollo's progress — `404 result_pending` while it works, then `in_progress`, then `success` once
+  it has sent the delivery. Use `request_id_str` as it is: the numeric `request_id` answers
+  `400 invalid_request_id`. A pending result is Apollo still working, not a failure.
+- **When Apollo finds no number for anyone in the call, it may send nothing** — `deliveries` stays
+  empty and no phone credits are charged. Since deliveries got slower, an empty `deliveries` is not
+  a verdict by itself: wait until `webhook_result` says `success` (or a day has passed) before you
+  record the miss (email-finding, section D). Each contact's stamp says the same (below).
 - **Five credits ($0.032) per person a number was found for**, nothing otherwise — so there is no
   need to check first whether a phone exists.
 - `type_cd`: `mobile`, `work_direct`, `home`, `other`. The engine ranks a mobile first, then
@@ -83,6 +91,23 @@ bh phones add <contact-id> --number +12015550100 --kind mobile --source apollo -
 
 A contact keeps every number it was given, in the order found; the same number twice is counted,
 not added again.
+
+### Who was already searched — `contact_searches`
+
+Every `people/match` and `people/bulk_match` stamps the contacts it named (found by LinkedIn profile
+or address, as above): one row per contact, provider and kind (`email`, and `phone` when
+`reveal_phone_number` asked), with when and what it found — `found`, `not_found`, `pending` (the
+phones are still to come) or `unknown` (stamped from a call whose answer was no longer kept).
+BetterContact batches stamp the same way (bettercontact.md). Before paying for a contact, skip the
+ones already searched:
+
+```sh
+bh sql "select c.id, c.linkedin_url from contacts c
+         where c.project_id = (select id from projects where slug = '<slug>')
+           and c.email is null and c.linkedin_url is not null
+           and not exists (select 1 from contact_searches s
+                            where s.contact_id = c.id and s.kind = 'email')"
+```
 
 ## Which LinkedIn profile is this named person — `people/match`
 
@@ -161,6 +186,25 @@ Its traps, from that run:
   true` — do not pay Bouncer for those; they go by LinkedIn (email-finding, section B).
 - Both leaks show only after the match is paid for, so match in small batches first and stop when
   the band or the catch-all share makes a segment expensive.
+
+## Company enrichment — one credit a company
+
+`POST /organizations/bulk_enrich` with `{"domains": [...]}` (up to 10) returns one organization per
+domain, `null` for a domain Apollo does not know. `GET /organizations/enrich?domain=<domain>`
+answers one as `organization`. **One credit ($0.0065) per company enriched**, nothing for a miss;
+the engine books it by `unique_enriched_records` (the companies that came back). Both are guarded
+against repeats.
+
+```sh
+bh call apollo POST /organizations/bulk_enrich --segment <seg> --body '{"domains":["acme.com","globex.com"]}'
+# apollo 200 · $0.0129 · 2 credits · 2 results
+```
+
+Each organization carries what the company search rows do not: `short_description`,
+`estimated_num_employees`, `retail_location_count`, `num_suborganizations`, `keywords`,
+`industry` and `ultimate_parent_organization`. That is what tells a multi-site company from a
+single-site one, and catches a sponsor's portfolio company by its parent, before the company is
+judged. For 1,000 domains it costs about $6.50.
 
 ## Company search — one credit a page
 
