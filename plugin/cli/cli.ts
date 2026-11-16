@@ -659,7 +659,8 @@ hidden at a terminal, so it stays out of the shell's history.
                   [--feedback <client's words>] [--notes <t>] [--thread <id>] [--lead-timezone <iana>]   (a person only)
                                          --thread ties it to the thread it came from: it counts for that thread's
                                          plan, and takes its sender when it has none
-  mailboxes                              each mailbox, with its ladder day, placement and outreachHeldAt (and why),
+  mailboxes                              each mailbox, with its ladder day, placement, the receiving sides its outreach
+                                         is held on (outreachHeldSides: google, microsoft) since outreachHeldAt and why,
                                          disconnectedReason, and a warning the provider gave ahead of a disconnect
   mailbox connect --provider google|microsoft [--sender <id>] [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          prints the URL to open in a browser
@@ -807,8 +808,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          three days of warm-up alone, a trickle of 1–3 outreach a day to day 14,
                                          then 3 a day to 15 beside 15 notes (every other one the project's copy);
                                          warmed once its domain's notes are in the inbox, it keeps 8 notes a day
-                                         going. Notes in spam hold the ladder; below 70% in the inbox the engine
-                                         holds the domain's outreach. Per mailbox: today's rung, the warm-up due
+                                         going. Notes in spam hold the ladder; below 70% in the inbox at Google (60%
+                                         at Microsoft) the engine holds the domain's outreach to that side's leads.
+                                         Per mailbox: today's rung, the warm-up due
                                          by now, placement tests today (they count against the daily limit, not
                                          the rung), why it is behind (behind.why), and its domain's mail-health
                                          state and issues; pool: what the seed network carries today, and why
