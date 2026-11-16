@@ -1,0 +1,350 @@
+# Generect
+
+LinkedIn-sourced companies and people. Base `https://api.generect.com/api/v1` (auth added by the
+engine). Every answer is `{ "data": { … }, "meta": { "amount_charged": <usd> } }`; the engine
+prices the call from `meta.amount_charged` when present. Keep the trailing slash on every path.
+
+Two indexes:
+
+- **database** — the stored index. Counts are free, rows $0.0045. Use it for everything it can answer.
+- **realtime** — live LinkedIn. $0.007 a row, and **at least $0.007 a call**: an answer with no row
+  is charged too. Only for what database refuses (keywords, names, past employers) and the
+  fallback inside a company. Slow: a search inside one company can take minutes — the engine waits
+  up to four (two on the database index), so do not retry a realtime call that is still running.
+
+## Companies
+
+### Count (free)
+
+```sh
+bh call generect POST /search/database/companies/count/ --segment <seg> --source <src> --body '{
+  "industries": ["Retail", "Consumer Services"],
+  "locations": ["United States"],
+  "headcounts": ["51-200", "201-500"],
+  "company_types": ["Privately Held"]
+}'
+# → {"data":{"results_count":12345},"meta":{"amount_charged":0.0}}
+```
+
+### Page ($0.0045 per row)
+
+```sh
+bh call generect POST /search/database/companies/ --segment <seg> --source <src> --body '{
+  "industries": ["Retail"], "locations": ["United States"], "headcounts": ["51-200"],
+  "limit_by": 25, "offset_by": 0
+}'
+# rows at data.companies[]
+```
+
+Filters (database):
+
+| Field | Values / notes |
+| --- | --- |
+| `industries` | LinkedIn industry names. A parent **includes its sub-industries** by default |
+| `exclude_industries` | **Does not expand a parent**: it removes only companies labelled with the parent itself. Around one US city, `industries: ["Manufacturing"]` counted 888 and `exclude_industries: ["Manufacturing"]` removed 130 of 4,542 — 758 manufacturers stayed. To leave a branch out, list its children here, or take "everything else" as the total minus the count of the branch |
+| `sub_industries` | `true` = take the named industries exactly, **without** their children (narrows a branch: Financial Services UK 40,229 → 24,532) |
+| `locations`, `exclude_locations` | country names as LinkedIn writes them: `"United Kingdom"`, `"United States"` |
+| `headcounts` | exactly: `1-10`, `11-50`, `51-200`, `201-500`, `501-1000`, `1001-5000`, `5001-10000`, `10 000+` (note the space) |
+| `company_types` | case-sensitive, exactly: `Privately Held`, `Public Company`, `Partnership`, `Self Employed`, `Self Owned`, `Non Profit`, `Educational`, `Government Agency` |
+| `exclude_domains`, `exclude_names`, `exclude_ids` | applied whole (50,000 values accepted), case-folded; the count applies them too |
+| `limit_by` 1–10,000, `offset_by` 0–9,999 | the walk stops at 10,000 rows per filter |
+
+**Industry names** are LinkedIn's (its industry taxonomy V2), spelled exactly: a wrong one answers
+`400 "Object with name=<value> does not exist."` — free on the count endpoint, so try names there
+first. There is no "E-commerce" industry: e-commerce brands sit under `Retail` (with children such
+as `Retail Apparel and Fashion`, `Online and Mail Order Retail`) and under consumer manufacturing
+(`Manufacturing` children like `Personal Care Product Manufacturing`, `Food and Beverage
+Manufacturing`) depending on what they sell. The row's `industry` field on companies you already
+found shows the names in use. Keep the names that worked for a segment in its source's `query`,
+so the next session does not rediscover them.
+
+**Some markets have no industry.** LinkedIn's taxonomy has no data centre industry. The nearest
+branch, `Data Infrastructure and Analytics`, is analytics SaaS, crypto projects and consultancies:
+one page of 25 rows ($0.11) held no company that operates a facility. `Hosting and Cloud` is not an
+industry name (400). When the free count and one cheap page show the industry is not the market,
+stop paging: take the company list from a directory, an association or a conference
+(`segment-design`, `directory` sources), or reach the people through self-qualifying titles off the
+segment (`persona-design`).
+
+Gotchas:
+
+- **At least one real filter.** `{}` or only empty lists → `400 at least one search filter is
+  required`; `exclude_domains` alone is not a filter. On realtime the same body answers 0 and
+  **charges** $0.007.
+- `keywords` is refused on database (`Use realtime endpoint`). An unknown field is refused by name,
+  often with "Did you mean …" — read it.
+- Order is deterministic, pages do not overlap, a page past the end is empty and free: **an empty
+  page is the end of the selection.**
+- **Past 10,000 rows**, walk by exclusion: send the domains you already hold in `exclude_domains`
+  with `offset_by: 0` — it returns exactly the rows a plain offset would, and more.
+- Realtime exclusions are applied after the page is cut (an empty page that is not the end) — never
+  walk realtime by exclusion.
+- **`headcounts` narrows the count, not the rows.** `Data Infrastructure and Analytics`, United
+  States, 201 and up: the count fell from 5,053 to 99, and the rows that came back carried
+  `headcount_exact` from 1 to 6. The size on this index cannot be trusted either way: do not qualify
+  or reject a company on the band or on `headcount_exact` from these rows. Take the size from the
+  company's own LinkedIn page or site when a rule depends on it.
+
+Company row (34 fields). What to keep:
+
+| Row field | Where it goes |
+| --- | --- |
+| `domain` | `domain` (the key; drop rows without one) |
+| `name` | `name` |
+| `hq_country_code` | `country` (ISO alpha-2; `hq_country` is a name and is refused by `bh companies upsert`) |
+| `headcount_exact` (else `headcount_range`) | `employeeCount` (a number) — unreliable on this index (gotchas); never the only evidence for a size rule |
+| `industry` | `industry` |
+| `linkedin_urn` / `linkedin_link` | `linkedinUrl` = `https://www.linkedin.com/company/<linkedin_urn>` — needed for the lead search |
+| `hq_city`, `hq_state` | `timezone` (IANA, when the city makes it plain) |
+| `description`, `tagline`, `specialities`, `founded_year`, `company_type`, `location` | `facts` |
+
+Strip NUL characters (`\u0000`) from text before writing — Postgres refuses them.
+
+### A company's page from its domain or name — cheapest first
+
+A company imported by domain (a client list, Trustpilot, a directory) needs its LinkedIn page before
+anyone can be searched inside it. Three ways, in this order:
+
+1. **The cache, free**: `bh cache company --domain acme.com` — any project's earlier purchase.
+2. **The company's own site, $0.0009**: most sites link their LinkedIn page in the header or footer.
+   Ask Firecrawl for the links, not the text (`onlyMainContent: false`, or the footer is cut):
+
+   ```sh
+   bh call firecrawl POST /scrape --company <id> \
+     --body '{"url":"https://acme.com","formats":["links"],"onlyMainContent":false}' \
+     | jq -r '.data.links[] | select(test("linkedin.com/company/"))' | sort -u
+   ```
+
+   Two of three sites tried on 2026-11-02 gave the page (the third links none). One link is the
+   page; several (a parent, a region) — take the one whose name is the company's.
+3. **Realtime by name, $0.007 per row**:
+
+   ```sh
+   bh call generect POST /search/realtime/companies/ --company <id> --body '{
+     "keywords": ["Extra Space Storage"], "limit_by": 1, "offset_by": 0
+   }'
+   ```
+
+   `limit_by` 1, or 3 at most when the name is common and you need to choose among namesakes: every
+   row is billed. In the three weeks to 2026-11-02 one project asked 3.8 rows a lookup and another
+   6.6 — more than half of their $42 bought rows nobody used.
+
+Domains cannot be searched (`domains` is refused on both indexes). The answer approximates rather
+than misses: accept the row only if its `domain` equals the one you have, or the registrable label
+matches **and** the names are one firm (`tully.app` for `tully.co.uk` was another business). Measured
+on 20 Trustpilot firms: 7 exact, 2 of 3 label matches right, 3 wrong firms, 5 nothing (not billed).
+A company with no reliable page is recorded as such — do not look for people at a guessed firm.
+
+## People (leads)
+
+### Count (free)
+
+```sh
+bh call generect POST /search/database/leads/count/ --strategy <strategy> --body '{
+  "job_titles": ["Head of Customer Support", "VP Customer Experience", "Director of Support"],
+  "company_locations": ["United States"], "company_industries": ["Retail", "Retail Apparel and Fashion"]
+}'
+```
+
+A wide branch with a common title takes 20–50 s to count — wait for it.
+
+### Inside one company ($0.0045 per row)
+
+```sh
+bh call generect POST /search/database/leads/ --strategy <strategy> --company <company-id> --body '{
+  "company_link": "https://www.linkedin.com/company/acme-inc",
+  "job_titles": ["Head of Support", "Customer Support Manager", "VP Customer Experience"],
+  "limit_by": 10, "offset_by": 0
+}'
+# rows at data.leads[]
+```
+
+### Inside one company, live (realtime, $0.007 per row) — when the database has too few
+
+The database lead index does not hold everyone. Over the 30 days to 2026-11-02, 30–45% of the
+in-company searches of several projects answered no row for the persona ladder. On 25 such companies
+(30–800 people on LinkedIn) the same `company_link` and `job_titles` on realtime found someone in 11,
+and about 8 of those were the right person: CEOs and presidents in post since the 1990s, so not
+people the index was too old to know but people it never held. Generect adds the people a realtime
+search finds to its database (the database count rose right after), so the gap is widest at small
+companies nobody has searched live.
+
+Use it as the fallback, never first: after the database search of a company keeps fewer than
+`max_per_company` people, ask realtime with the same body. **An empty answer costs $0.007 like a
+row** (`meta.amount_charged: 0.007` on `data.leads: []`), so price the fallback per call, not per
+person found: in one run 11 of 85 calls answered anyone, 12 rows in all, and only 2 of them were new
+people kept — $0.60 for two contacts. Count the company on the database first (below) and skip the
+fallback where the index already holds many people and none fit.
+
+Realtime can answer `400 {"detail":"No such company","amount":0}` (free) for a `company_link` the
+database knows and counts people for. It is a "no result" for realtime, not a broken link: keep the
+database's answer, or reach the people by LinkedIn.
+
+```sh
+bh call generect POST /search/realtime/leads/ --strategy <strategy> --company <company-id> --body '{
+  "company_link": "https://www.linkedin.com/company/acme-inc",
+  "job_titles": ["CEO", "Chief Executive Officer", "Founder", "President"],
+  "limit_by": 10, "offset_by": 0
+}'
+# rows at data.leads[]
+```
+
+A realtime row is looser than a database row — check every one:
+
+- **The employer**: keep a row only when its `linkedin_company_id` is the company's LinkedIn id
+  (`linkedinId` from `bh cache company <url>`; not cached → the row's `company_name` must be the
+  company's). A page realtime cannot place answers with someone else's people: one link answered a
+  vice president of an unrelated firm in another country.
+- **One person, several profiles**: the same `full_name` at the same company three times (duplicate
+  profiles) — keep the one with the latest `job_started_on`, once.
+- `is_current` must be true; `job_started_on` / `started_at_company` say how long in the role.
+- The title still has to match the ladder (realtime matches words, as Sales Navigator does).
+- **No vanity URL**: `linkedin_url` is null; `lead_simple_sales_link` is
+  `https://www.linkedin.com/in/<sales_id>`. Store that as the contact's `linkedinUrl` — the engine
+  takes it (3,142 contacts carried one on 2026-11-02) and LinkedIn steps work from it. Apollo's
+  match wants it as `/sales/lead/<sales_id>` (apollo.md).
+
+**Counting on realtime.** `/search/realtime/leads/` counts with `limit_by: 1`: read
+`data.results_count`, $0.007 (and the one row). **`limit_by: 0` is not a count** — realtime returns
+and bills every row ($0.99 for 142 rows once); the engine refuses it (`400 body_refused`). A
+one-row page has the same body as its count, so asking for the first row after counting is refused
+as a repeat: the row is already in the count's answer (`bh call show <call-id>`).
+
+To see why a company gave nothing, count it free before paying: `{"company_link": …}` alone says how
+many of its people the index holds, the same body with the ladder how many of them fit. Few or none
+held → realtime; many held and none fit → the ladder, not the index, is the gap.
+
+### Off the segment, no company named (same price; the employer comes on the row)
+
+**One job title per call.** With no company named the index is searched whole, and the width of
+`job_titles` decides whether it answers: seven titles answered 502 `provider_unreachable`, four
+titles with `limit_by: 5` answered 502, one title with `limit_by: 25` answered 200 (measured
+2026-09-24). Page each title separately, merge the rows yourself by `linkedin_url`, and expect to
+pay for the people two titles share. The count endpoint takes the whole list; only the rows do not.
+
+```sh
+bh call generect POST /search/database/leads/ --strategy <strategy> --body '{
+  "job_titles": ["Head of Customer Support"], "company_locations": ["United Kingdom"],
+  "company_industries": ["Software Development", "IT Services and IT Consulting"],
+  "limit_by": 25, "offset_by": 0
+}'
+```
+
+Lead filters and traps:
+
+- **The company is named by its LinkedIn page only** — `company_link` or `company_id`.
+  `company_domain`, `company_website`, `domains` are refused. A company with no LinkedIn page
+  cannot be searched inside.
+- **Company filters carry a `company_` prefix**: `company_locations`, `company_industries`,
+  `exclude_company_industries`, `exclude_company_locations`. **`locations` / `exclude_locations`
+  are accepted and mean where the person lives** — a body copied from the company search silently
+  filters the wrong thing.
+- **Industries are not expanded on leads**: a parent and its children are disjoint sets. List the
+  children explicitly (Financial Services alone found half the CEOs the whole branch did).
+- `company_headcounts` and `company_types` are accepted but almost empty on the database lead index
+  (all eight bands together: 16 of 111,143). Do not filter people by size there — filter the
+  companies, then search inside them.
+- `job_titles`: for a count, and for rows inside a named company, send the whole persona ladder as
+  **one list in one call** (the answer is the de-duplicated union; summing per-title counts double
+  counts). 154 per-company searches with 39 titles each all answered: `company_link` narrows the
+  index first. Rows off the segment are the exception — one title per call (above). Small words
+  (`of`, `and`, `for`, `the`, `to`, `in`, `at`, `with`, `on`, `a`, `by`, `or`) and word order are
+  ignored. Abbreviations are inconsistent (`CFO` ⊃ `Chief Financial Officer`, `CRO` only overlaps
+  `Chief Risk Officer`) — list both forms.
+- `offset_by` < 2,400 and `limit_by` ≤ 2,400; no exclusion of any kind on leads, and name filters
+  are refused on database.
+- **`offset_by` only pages a search with no company named.** Inside one company (`company_link`)
+  any `offset_by` above 0 is refused: `400 "Offset by parameter only for without_company=true"`.
+  So inside a company take the free count first (`/search/database/leads/count/` with the same
+  body), then buy one page from offset 0 with `limit_by` up to that count. Raising a per-company cap
+  later means buying the first rows again.
+- `is_current` cannot be filtered; it comes **on the row**. Drop rows with `is_current: false` or
+  `company_still_working: false` — they are former employees (still charged).
+
+Lead row: `full_name`, `job_title` (`raw_job_title`), `linkedin_url` (vanity `/in/<slug>` — use
+this), `sales_id` (the URN), `linkedin_sales_link` (search context with commas — never store it),
+`company_url` (`https://www.linkedin.com/company/<slug>/`), `company_website`, `company_name`,
+`linkedin_company_id`, `company_industry`, `location`, `is_current`, `company_still_working`.
+**No email** (`email_candidates` is a count, `contact_info` is empty) and no seniority or department.
+The index's company data is loose (a garage labelled Software Development) — the employer still has
+to pass the segment.
+
+### People who used to work somewhere (realtime only, $0.007 per row)
+
+`past_company_names` (company **names**, not LinkedIn URLs) with `job_titles` and `locations` finds
+people by a former employer — a "familiar faces" segment of people who left a client's customers.
+
+```sh
+bh call generect POST /search/realtime/leads/ --strategy <strategy> --body '{
+  "past_company_names": ["Acme Retail"], "job_titles": ["Head of eCommerce", "Director of Digital"],
+  "locations": ["United States"], "limit_by": 1, "offset_by": 0
+}'
+```
+
+Count first with `limit_by: 1` (above), then buy the page you need. The rows carry
+`lead_company_id`, the numeric LinkedIn id of the **current** employer, and no domain:
+`bh cache company https://www.linkedin.com/company/<id>` resolves it for free when it is kept;
+otherwise the employer is a company to find (its page from its name, above). The employer still has
+to pass the segment.
+
+### A named person (realtime only, $0.007 per row)
+
+Use only when Apollo `people/match` found no profile (see apollo.md):
+
+```sh
+bh call generect POST /search/realtime/leads/ --contact <id> --body '{
+  "first_name": ["Anna"], "last_name": ["Berg"], "company_names": ["Acme"], "limit_by": 3, "offset_by": 0
+}'
+```
+
+Name fields are lists (a string is refused). `company_names` barely narrows: 5 of 40 answers were
+namesakes at other firms. Take the first row whose `lead_company_name` is the same firm, and its
+`sales_id`; the vanity URL is not on these rows.
+
+## A person by LinkedIn URL: lead by link ($0.0045)
+
+```sh
+bh call generect POST /leads/by_link/ --contact <id> --body '{"url":"https://www.linkedin.com/in/erikbern"}'
+```
+
+The one way to read a person by URL. Generect answers from its own copy when that is at most two
+weeks old and reads LinkedIn live otherwise (a few seconds more), $0.0045 either way — fresh enough
+to check a current title. It lives on Generect's older API (`/api/linkedin`, the engine knows), so
+the body is `url`, not `linkedin_url`, and the answer is `{ "amount": -1, "lead": { … } }` with no
+dollar figure (`amount` counts credits). The lead carries `full_name`, `job_title`, `company_name`,
+`company_website`, `linkedin_url`, `sales_id`, `headline`, `location` and `jobs`; a copy and a live
+read name a few other fields differently (`company_location_country` or `company_country`).
+
+`/enrich/database/lead/` and `/enrich/realtime/lead/` are refused: the stored index's profile can be
+any age, and live LinkedIn charged $0.03 a person.
+
+## A company by LinkedIn URL ($0.0045)
+
+```sh
+bh call generect POST /enrich/database/company/ --company <id> --body '{"linkedin_url":"https://www.linkedin.com/company/acme-inc"}'
+```
+
+A company enrich adds nothing a search row lacks — buy it only for a company no search found (e.g.
+one imported by domain). The database enrich can refuse a firm the search returned (`400 Company
+does not exist`).
+
+**Answered from the cache when it can.** Every person and company any Generect answer carried is
+kept across projects. A lead by link whose body is only `url` comes back from the cache when a whole
+profile of that person is kept that LinkedIn showed in the last 30 days — a lead by link bought
+before, or a row a database search bought (judged by the row's `updated_at`, when Generect's index
+last read it, not by when we paid). Such an answer is the `lead` of a by-link answer, a search row's
+fields as they came (`educations`, `skills`… beyond what by link names), `meta.cached.source`
+saying which endpoint bought it. Up to 30 days is older than Generect's own two weeks: when the
+title must be today's (a reply says they moved), `--again`. A company enrichment whose body is only `linkedin_url`
+when the company was kept in the last 365 days (a `realtime` one only from a live row of the last
+30). The answer carries `meta.cached` (`fetched_at`, `source`, `call_id`) and nothing is charged. Look first
+with `bh cache person <url>` / `bh cache company <url>`; `--again` buys anew.
+
+## Errors
+
+- `Bad url`, `Person does not exist`, `Company does not exist`, `No such company` — ordinary "no
+  result", not failures (free).
+- `502 provider_unreachable` after the engine's wait (two minutes, four on realtime) — nothing was
+  charged; try once more later, and on realtime narrow the body (fewer titles, one company).
+- `429` or a `detail` containing "Try again later" — wait a minute and retry (up to three times).
+- One over-long title in `job_titles` fails the whole request — keep titles short.

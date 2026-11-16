@@ -1,0 +1,11 @@
+{
+  "name": "belkins-home",
+  "owner": { "name": "Belkins" },
+  "plugins": [
+    {
+      "name": "belkins-home",
+      "source": "./plugin",
+      "description": "Skills for working a Belkins Home project through bh: orientation, research, sourcing, strategy, copy, triage, reports."
+    }
+  ]
+}

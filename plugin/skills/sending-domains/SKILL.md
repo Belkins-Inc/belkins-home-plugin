@@ -1,0 +1,220 @@
+---
+name: sending-domains
+description: Buy lookalike sending domains and order mailboxes on them through `bh` — pick the names, quote them, have a person approve the purchase, order the mailboxes, follow them to connected. Use when a project needs a domain or mailboxes to send from ("buy this domain", "we need more mailboxes", "set up sending for the client"), when a domain or mailbox order is stuck or failed, or when a domain should be let go.
+---
+
+# Sending domains and mailboxes
+
+We buy the domains ourselves and make the mailboxes on them in our own tenants: no registrar
+account, card or payment form is involved. The engine holds the registrar's keys (Porkbun) and pays
+from the prepaid credit there; `bh` asks for it. Never tell someone a domain cannot be bought from
+here — quote it.
+
+| Work | Who |
+| --- | --- |
+| The names, the TLD, the mailbox personas | you — it is judgement |
+| Approving the spend (`bh domain approve`, `bh mailbox order`) | a person — refused on a scheduled agent's token |
+| Buying, DNS, the redirect, the tenant, DKIM, connecting the mailboxes | the engine, every two minutes |
+| What the engine cannot fix (credit, a name gone, a tenant refusing) | a task for a person |
+
+In a person's session, a person asking for the purchase is the approval: run `bh domain approve`
+yourself once they have seen the names and the price. Elsewhere, open a task with the quote.
+
+## 1. Choose the names
+
+Cold mail never goes from the client's own domain — a bounce or a complaint would follow it for
+years. It goes from lookalikes that 301-redirect to the client's site:
+
+- The brand plus a short word: `getacme.com`, `tryacme.com`, `acmehq.com`, `meetacme.com`,
+  `acme-team.com`. Readable aloud, no digits, no misspellings of the brand.
+- `.com` by default; `.co`, `.io`, `.net` when the `.com` is gone. Never the cheap zones (`.xyz`,
+  `.top`, `.online` …): filters already distrust them.
+- How many: at most 5 mailboxes go on one domain (the engine refuses a sixth), and each mailbox
+  sends `dailyLimit` a day (40 by default; no outreach in its first three days, then 1 to 3 a day to the end of its second week, then climbing, and a domain
+  under 60 days old sends at most 40 outreach a day across its mailboxes — the `strategy-and-plans`
+  skill does the arithmetic). Buy about four weeks before the volume is needed. Fewer mailboxes per domain over more domains keeps one domain's reputation from
+  carrying everyone's.
+- A domain that resembles a client's brand needs the client's permission, which the contract
+  carries. If the brief says nothing about it, ask the person before approving.
+- Where the mailboxes live: `google` (our Workspace tenants, the default) or `microsoft` (our
+  Microsoft 365 tenants). Mix them only when the person asks — `bh tenants` shows what we hold.
+  To anyone but an admin it shows each client tenant's room: `domains` against `maxDomains`, and for
+  Google `users`, `ordered` and `free` seats against `maxUsers`, and `fullAt` when Google refused a
+  user. Before a large order, check that the `free` seats carry it; when they do not, ask a
+  platform admin for another tenant before approving.
+
+## 2. Quote
+
+```sh
+bh domain quote getacme.com tryacme.com acmehq.com     # free; up to 10 names
+```
+
+It answers each name's availability and price, and the registrar's credit (`balanceCents`; when
+the registrar does not give it, `null` with `balanceError` saying why — quote again). Drop
+the names that are taken or `premium`, and quote replacements. Show the person the list,
+the total, and the credit.
+
+## 3. Approve the purchase (a person)
+
+```sh
+bh domain approve getacme.com tryacme.com --max-cents 1500 --redirect https://acme.com [--platform microsoft]
+```
+
+- `--max-cents` is the most one domain may cost — the quoted price plus a little, never a blank
+  cheque.
+- `--redirect` is the client's real site; set it now (or later with `bh domain redirect`): a domain
+  that opens nothing reads as abandoned.
+- A short credit is topped up from the saved card by the approval itself. `insufficient_credit`
+  means that top-up failed too (its reason is in the message): a person fixes the card or adds
+  credit at porkbun.com/account/credit and the same command is run again — nothing was half-done.
+  Do not retry it in a loop: it will not pass by itself.
+- `<name> is already …` means it is ours or in flight: `bh domains`.
+
+Nothing is bought by the command itself: the row is the approval, and the engine buys on its next
+pass.
+
+### Aged domains (closeouts) — Day-1 gateway & Microsoft inbox pair
+
+> **Paused since 2026-11-15.** Buying closeouts is switched off while their benefit is measured:
+> a third of the seed organisations made on them had their mail filed as spam by Gmail from the
+> first day, and age was never shown to help a sending domain. `bh domain approve … --closeout`
+> and `bh agency approve … --closeout` are refused (409); quote new registrations only and do not
+> offer the closeout track below until the pause is lifted (docs/decisions/google-orgs.md,
+> "Aged domains paused"). Aged domains we already hold may still be used.
+
+An expired domain several years old, sold at a fixed price, starts with a much better domain
+reputation than a new one. Spamhaus scores a new domain about −1.9 on age alone, and a 10–20 year
+old one +5 to +12; security gateways (Proofpoint, Mimecast, Barracuda) and Microsoft Defender
+heavily filter cold mail from domains under 90 days old. Enrollment and `bh strategy
+repick-mailboxes` automatically route gateway and Microsoft leads to domains at least 90 days old
+(`firstRegisteredAt`) first, and flag gateway leads placed on younger domains as `youngDomain`.
+
+**House standard for fast Day-1 delivery:** when setting up a new project (or unblocking one whose
+audience includes Microsoft 365 or security gateways) that has no ≥90-day sending domain yet, pair
+both tracks upfront in your quote to the person:
+1. **Immediate Day-1 inbox track:** quote 1–2 clean ≥5-year company-named `.com` closeout domains
+   (paired across `google` and `microsoft` when the ICP uses Outlook/M365) — or attach an aged
+   agency sending-network sender when appropriate — so gateway and Microsoft leads land in the
+   inbox as soon as mailboxes finish their 3-day warm-up, without waiting 60–90 days for domain age.
+2. **Brand lookalike track:** quote 2–3 brand lookalikes (`getacme.com`, `tryacme.com`) that warm in
+   parallel for Month 2+ branded capacity while carrying Google-hosted leads right away.
+A closeout does not carry the client's brand, so show the person both tracks and let them approve
+the names they want.
+
+```sh
+bh domain closeouts --age-min 10 --price-max-cents 500 [--query <word>] [--limit 20]
+bh domain approve <name> --closeout --max-cents <total> --redirect <url>
+```
+
+- For the agency's own companies (`bh agency closeouts <org>`), recommend names that read as a
+  company's. `companyName: true` marks a name ending in a company word (…group, …consulting,
+  …inc); `--names company` finds those across the whole pool (it is answered fifty at a time
+  otherwise). Prefer them, then plain English names a company could carry (`landpricing.com`);
+  put a person's name, a word in another language or a hobby site last, saying why. The person
+  decides; nothing is refused for its name.
+- `closeouts` lists the oldest first and leaves out names on a domain blocklist, with a Spamhaus
+  abuse history, or that read as a typo of another site (`refused` says why). Read what is left
+  yourself: drop adult, gambling, pharma and other brands' names, then show the person the list.
+- `priceCents` is the closeout alone; the first year comes on top (about $11 for `.com`), so the
+  total is $16 for a $5 closeout. The approval refuses a `--max-cents` below the total and says
+  what it should be.
+- The engine claims it on its next pass (`buying`). It reaches our account days later; then the
+  engine points it at our name servers, removes the last owner's mail records and sets it up like
+  a new domain. Ten days without it arriving shows as its `failure` in `bh domains`. Ask the
+  person to raise it with Porkbun.
+- Its age is the registry's: `bh domains` shows `firstRegisteredAt` (the first registration,
+  years back) beside `registeredAt` (the day it reached us), and the young-domain caps count from
+  `firstRegisteredAt`, so a closeout is not paced as a new domain.
+
+## 4. Order the mailboxes (a person)
+
+Mailboxes can be ordered right after the approval; each order waits until its domain is ready.
+Every mailbox is a monthly seat, so order what the plan needs, not a stock.
+
+```sh
+bh senders                                    # who they write as
+bh mailbox order getacme.com --sender <id> --first-name Jane --last-name Doe --username jane
+bh mailbox order getacme.com --sender <id> --file mailboxes.jsonl   # [{"firstName","lastName","username"}]
+```
+
+- The persona is the sender's: the real person (or the name the client agreed) the copy signs as.
+  Pass `--sender` — without it the engine guesses a sender by the mailbox's name.
+- `username` is the local part: lowercase letters and digits, a single `.`, `_` or `-` between
+  (`jane`, `jane.doe`). One sender may have mailboxes on several domains; at most 5 per domain.
+
+## 5. Follow it to connected
+
+```sh
+bh domains           # each domain: state, tenant, DNS, cost, expiry
+bh mailbox orders    # each mailbox order and where it has got to
+```
+
+```
+domain:  approved → buying → registered → attaching → ready
+mailbox: ordered → creating → created → connecting → connected   (a `bh mailboxes` row)
+```
+
+DKIM is minted in the tenant's console by our console service, and a task asks a person only when
+it cannot. A domain never sends before `ready`.
+Once mailboxes are connected, warm-up starts by itself — it is always on (`bh warmup status` shows
+the ladder, why a mailbox is behind its rung, and each domain's `mailHealth`: read that, not only
+`placementState`, which sees our Google seeds alone) — and the strategy can use them. A new mailbox sends warm-up alone on its first three
+sending days and outreach from its fourth (`bh behaviour limits-and-pacing`). Enrollment, referrals
+and `bh strategy repick-mailboxes` give a lead its sender's least-loaded mailbox that sends outreach
+on the lead's first day, so a mailbox still warming alone, or one whose outreach is held, takes new
+leads only when none of the sender's mailboxes would send sooner; nothing needs closing by hand.
+Leads enrolled before a hold move with `bh strategy repick-mailboxes <id>` (dry run first); new
+mailboxes take a share of leads that have sent nothing with `--even`, and `--to-provider`,
+`--only` or `--skip` aim the move (`bh --help`). To keep a mailbox from new leads, pause it
+(`bh mailbox update <id> --status paused`); `--recipients none` is refused, as `none` is the
+provider of a domain with no mail server.
+
+When something stops:
+
+- **`failed`, with a task naming the cause.** A tenant refusing a domain another Google account
+  still holds, a name taken between quote and purchase, a refusal by the registrar. Fix the cause
+  (the task says how; for a domain another Google account holds, Google's recovery tool gives a
+  TXT record, added with `bh domain dns <name> add --type TXT --host @ --content "<value>"`), then
+  `bh domain retry <name>` — nothing is bought again. A failed purchase is
+  approved again with `bh domain approve`, which places a new order.
+- **Google mailboxes waiting for a licence.** Google refused the tenant a new user ("Domain user
+  limit reached", "Insufficient licenses"): `bh tenants` shows `fullAt` (an admin sees Google's
+  user count beside the engine's). A person frees seats in the Admin console or routes new domains to another
+  tenant; the orders go ahead by themselves once Google takes a user again.
+- **A failed mailbox order** whose cause is fixed goes back in the queue with `bh mailbox retry
+  <order-id>` (the id is in `bh mailbox orders`); a user already made is not made again.
+- **An order nobody wants any more** (wrong sender or persona, ordered by mistake): a person calls it
+  off with `bh mailbox cancel <order-id>` while it is still `ordered` or `held`: no seat, no licence,
+  and its sender can then be removed. A mailbox already made is archived instead.
+- **Microsoft mailboxes waiting.** The tenant is out of licences: `bh tenant seats <id> --provider
+microsoft` shows it. The engine buys them itself on the tenant's bill; it asks a person only when
+it may not (the app lacks the billing role) or Microsoft refuses — the task says which.
+- **A DKIM task.** Publish what the person minted: `bh domain dkim <name> --record "<TXT value>"`.
+
+## Other DNS, and letting a domain go
+
+- `bh domain dns <name>` lists its records; `bh domain dns <name> add --type TXT --host @ --content
+"<value>"` adds a verification or a subdomain record (a person only). MX, SPF, DMARC and DKIM are
+  the engine's and refused.
+- DMARC: a bought domain starts at `p=none`. A person raises it with `bh domain dmarc <name> --policy
+quarantine` (or `reject`) once it sends only through our mailboxes — for example when the client
+  sells security or IT and its sending domains must not look weaker than what it pitches. The
+  engine keeps the chosen policy; `bh domains` shows it as `dmarcPolicy`.
+- `bh domain release <name>` lets a domain lapse at expiry (a person only; refused while a mailbox
+  sends from it). Domains renew by themselves otherwise — a lapsed domain can be registered by
+  anyone, who then receives the replies our leads send to it, so releasing is always a person's
+  explicit decision, never inferred from disuse.
+
+The agency's own domains, for senders who write for many clients, have the same commands under
+`bh agency` (`agency quote`, `agency approve`, `agency order`, `agency orders`, `agency retry`),
+and are an organisation admin's to buy.
+
+A domain of one of the agency's own companies (the sending network) is approved with `--company
+<name>`: it goes to that company's pod tenant and a sending one redirects to the company's site. A
+person is added to a company in one step with `bh company add-person <org> <company> --name "<full
+name>" [--title <t>] [--sending no]`: the engine makes them a sender there, orders their workplace
+mailbox and their sending ones on their pair's half of the company's domains, warms them as every
+mailbox is warmed and makes their LinkedIn account once the workplace mailbox is connected (`bh behaviour
+sending-network`). `bh company order` stays for mailboxes beyond that. Its egress is the company's
+(`bh egress assign <host> --company <name>`); `bh company show` (each person's onboarding) and `bh
+network` show where it all stands.

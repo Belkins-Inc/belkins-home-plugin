@@ -1,0 +1,169 @@
+---
+name: providers
+description: How to call the paid data providers (Apollo, Generect, BetterContact, FullEnrich, Bouncer, Scrubby, Firecrawl, Bright Data, TheirStack, Twilio Lookup) through `bh call`, what each costs and which one answers which question. Use before any provider call, when choosing a provider, or when reading what a call cost.
+---
+
+# Providers through `bh call`
+
+Every paid provider is reached through the engine: `bh call <provider> <METHOD> <path?query>`.
+The keys live on the server only — never curl a provider, never ask for a key. The engine adds the
+key, forwards the request as written, records the call in `provider_calls` and its cost in `spend`.
+The examples below work as written in Git Bash on Windows too: `bh` undoes the rewrite Git Bash
+makes of a leading `/`, and a path may also be written without it.
+
+## Before the first call of a session
+
+1. `bh use <project>` (once per session; a subagent passes `--project <project>` instead) —
+   `bh call` refuses a call with no project, so spend always lands on one.
+2. `bh providers` — which providers this engine has a key for (`configured`), the priced endpoints,
+   `perCallUsd` / `perResultUsd`, which ones guard repeats, and for a provider priced by credits
+   (BetterContact) `usdPerCredit` and the `creditsLeft` its latest answer reported.
+3. Look for earlier work before paying for it again:
+
+   ```sh
+   bh sql "select c.at, c.provider, c.endpoint, c.params->'body' as body, c.results, c.cost_usd
+           from provider_calls c
+           where c.project_id = @project and c.provider = 'generect' and c.at > now() - interval '30 days'
+           order by c.at desc" --limit 50
+   bh sql "select ran_at, provider, query, cursor, results, new_records, cost_usd
+           from searches where source_id = '<source-id>' order by ran_at desc"
+   ```
+
+   `bh sql` is not scoped to a project: filter by `@project` (replaced with the current project's id)
+   or by an id.
+
+   LinkedIn people and companies bought by **any** project are kept and free to read:
+   `bh cache person <linkedin-url>`, `bh cache company <linkedin-url>` (or `--domain <d>`),
+   `bh cache people <company-url>` (the people bought so far who work there — not all of them).
+   A Generect enrichment by URL of a page already kept is answered from the cache by itself
+   (`# from the cache` on stderr, `meta.cached` in the answer, nothing charged); `--again` buys it
+   anew when the data itself must be fresh.
+
+## The call
+
+```sh
+bh call generect POST /search/database/companies/count/ --body '{"locations":["United Kingdom"]}'
+bh call bouncer GET "/email/verify?email=anna%40acme.com&timeout=20" --contact <contact-id>
+bh call bettercontact POST / --body-file batch.json
+```
+
+- **Path** is relative to the provider's base URL (see `bh providers` or the reference file); the
+  query goes in the path. URL-encode values (`%20`, `%40`): a path with a space is refused.
+- **Body**: `--body '<json>'` or `--body-file <path|->`. JSON only — multipart uploads are not
+  possible through `bh call`.
+- **stdout** is the provider's answer, untouched. Pipe it to a scratch file and read it with `jq`.
+- **stderr** is one line: `# <provider> <status> · $<cost> · <n> results · call <call-id>`. Keep the
+  call id — `bh search record` needs it. Capture both:
+  `bh call … > /tmp/p/page1.json 2> /tmp/p/page1.meta`.
+- A provider answer ≥ 400 still prints the body and exits 1. A 4xx/5xx is recorded at $0 (these
+  providers do not charge refusals). `provider_unreachable` means nothing was charged; try again.
+
+### Tie the call to what it was for
+
+Pass the refs you know, so spend lands on the right segment, company or contact:
+`--strategy <id> --segment <id> --source <id> --search <id> --company <id> --contact <id>`.
+
+- A company search: `--segment` and `--source`; then `bh search record` with the call ids (it sets
+  `search_id` on the calls and their spend afterwards, so `--search` is rarely needed).
+- A contact search: `--strategy` (and `--company` when searching inside one company).
+- Enrichment, email finding, verification of one record: `--company` or `--contact`.
+
+Before enriching or finding anyone, `bh dnc check <domain|address>…` (or `--file <csv>`): nobody
+pays a provider for a company or a person the do-not-contact list already blocks.
+
+### The repeat guard
+
+Paid endpoints marked `guardRepeats` refuse the **same request** (method, path, query, body) that
+already succeeded in the last 30 days, in any project of the organisation: `409 repeated_request`.
+Like every refusal it is printed on **stderr** (stdout stays empty, a non-zero exit code), as JSON whose
+`error.details.callId` names the earlier call — a script that reads only stdout sees an empty
+answer, so read stderr too. Use what the earlier call produced — it should already be in
+`companies` / `contacts` / `searches`, and `bh call show <callId>` prints the provider's answer
+again for free. Add `--again` (and pay again) only when the data itself must be fresh.
+`bh address check` needs none of this: a repeated check takes the earlier verdict as this
+contact's by itself (`reusedCall` in its answer).
+
+The ledger keeps answers up to 1 MB (`provider_calls.response`); a larger answer is not kept. A
+Firecrawl page or map keeps only its first 16 KB. After 30 days every answer is cleared
+(`{"cleared": "kept for 30 days"}`) and only the call's row stays. Upsert what you need from an
+answer in the same session anyway — a lost large answer costs a second call.
+
+### Unknown prices
+
+A few endpoints have no known rate (Scrubby submission). Their calls print `cost unknown` and write no `spend` row; the `results` count is still
+kept. Never invent a cost. If an invoice for such a provider arrives, a person records it with
+`bh spend add --provider <p> --operation data_purchase --usd <n> --note <what>`.
+
+BetterContact, FullEnrich and Apollo state the credits a call used, and the engine books those at
+the plan's price per credit (BetterContact $0.05, FullEnrich $0.055, Apollo $0.006473; `usdPerCredit`
+in `bh providers`). When a plan changes, an admin sets the new price with
+`bh providers price <provider> --usd <n>`; it applies from then on.
+
+### Spend
+
+`bh spend` (this month by provider and operation) or `bh spend --from 2026-09-01 --to 2026-10-01`.
+Its `balances` are the credits left on each provider account that reports them — the account's, not
+the project's.
+Check it before a large order and mention it in `bh session end`.
+
+## Which provider for which question
+
+| Question | Provider | Reference |
+| --- | --- | --- |
+| How many companies / people match (free) | Generect database `…/count/` | [generect](references/generect.md) |
+| Companies in a market (LinkedIn data) | Generect database companies, $0.0045/row | [generect](references/generect.md) |
+| People inside a company, or off a segment | Generect database leads, $0.0045/row | [generect](references/generect.md) |
+| People inside a company the database has too few of (fewer than `max_per_company` who fit) | Generect realtime leads with the same `company_link` and titles, $0.007/row and at least $0.007 a call (an empty answer is charged); can take minutes | [generect](references/generect.md) |
+| People who used to work at a given company | Generect realtime leads with `past_company_names`, $0.007/row; count with `limit_by: 1` | [generect](references/generect.md) |
+| A person's current title and employer from their LinkedIn URL | Generect lead by link (`/leads/by_link/`), $0.0045, at most two weeks old; free from the cache when a profile read in the last 30 days is kept | [generect](references/generect.md) |
+| Which LinkedIn profile is this named person | Apollo `people/match` first, Generect realtime leads only when Apollo is silent | [apollo](references/apollo.md) |
+| A person's email address — first try | Apollo `people/bulk_match` (10 a call), $0.0065 per person matched; Bouncer decides | [apollo](references/apollo.md) |
+| A company's LinkedIn page from its domain or name | `bh cache company --domain` (free), then the company's own site (Firecrawl, $0.0009), then Generect realtime companies with `keywords` and `limit_by` 1–3, $0.007/row | [generect](references/generect.md) |
+| A person's email address — second try, for whom Apollo gave nothing Bouncer calls deliverable | BetterContact (async, up to 100 per batch), $0.05 per address found | [bettercontact](references/bettercontact.md) |
+| A phone number (when phones are wanted) | Apollo `bulk_match` with `reveal_phone_number`, $0.032 per number found; BetterContact for whom Apollo has none, ~$0.50 per number | [apollo](references/apollo.md) |
+| A third try for an address or a number | **off** — Apollo and BetterContact only; what they miss goes by LinkedIn | [fullenrich](references/fullenrich.md) |
+| Is this address deliverable, is the domain catch-all | Bouncer, $0.0056/address | [bouncer](references/bouncer.md) |
+| Does this phone number exist, is it a mobile, whose name is it registered to | `bh phones check <phone-id>` (Twilio Lookup), $0.018 | [twilio](references/twilio.md) |
+| Settle a catch-all / unknown address, confirm a guess | **off for now** — such an address goes by LinkedIn | [scrubby](references/scrubby.md) |
+| A web page as text, a site's page list | Firecrawl scrape / map, $0.0009 each | [firecrawl](references/firecrawl.md) |
+| Companies with bad (or good) Trustpilot reviews | Bright Data Trustpilot dataset, $2.50 / 1,000 rows | [brightdata](references/brightdata.md) |
+| Companies hiring for given roles now (a hiring signal), with the job posts | `bh hiring companies` first (free, our copy of Greenhouse, Lever, Ashby and Workable boards); then TheirStack company search with `job_filters`, $0.06/company, for Workday and job-site postings; or Apollo company search with job titles, one credit ($0.0065) a page | [segment-design hiring](../segment-design/references/hiring.md), [theirstack](references/theirstack.md), [apollo](references/apollo.md) |
+| People with given titles in a segment defined by industry, country and size | Apollo people search (free), then `bulk_match` by id, $0.0065 a match | [apollo](references/apollo.md) |
+
+Rules that cut across providers:
+
+- **Count before you page.** Generect counts are free; a count tells you whether the filter means
+  what you think before a single row is bought.
+- **Page small first.** Ask for 10–25 rows, read them, check they are the market you meant, then
+  go wider.
+- **An address is a candidate until Bouncer calls it deliverable.** Apollo's `bulk_match` and
+  BetterContact/FullEnrich give candidates; Generect's addresses and Apollo's search placeholders are
+  ignored.
+- **Nothing sends to an unverified address.** See the `email-finding` skill.
+- **A scheduled agent may call only Bouncer and Scrubby** (Scrubby is off for now: its paid calls are
+  refused with `provider_off`, collecting old checks still works) for address checks after a bounce; every
+  other provider refuses its token with 403. Sourcing is a person's session.
+- A 402 / 429 / 5xx is the provider saying "not now" (balance, rate, outage) — wait and retry; it
+  is not a verdict on the data. A 401/403 from the provider is the engine's key — tell a person.
+
+## What to record
+
+- Every company or contact search: `bh search record` with `callIds` (see `sourcing-linkedin`).
+- Anything learned about a provider that the next session needs (a filter that did not narrow, a
+  price seen in `meta.amount_charged`): `bh note add --kind insight --title "<provider>: …"`.
+- In `bh session end --summary`, say what was spent and on what.
+
+## Common mistakes
+
+- Paying again with `--again` for an answer `bh call show <call-id>` still has.
+- Re-running page 1 of a query in a new session instead of reading `searches.cursor`.
+- Sending Apollo search filters as a JSON body — it has been ignored before (the search became
+  "everybody"); send them in the query string (apollo.md).
+- Ordering a Bright Data snapshot without `records_limit`.
+- Taking `email_not_unlocked@…`, a Generect address, or an Apollo address Bouncer has not called
+  deliverable as a contact's address.
+- Passing a `webhook_url` to Apollo — the engine adds its own and puts the phones on the contacts
+  (`bh phones <contact-id>`).
+- Writing a phone number into `facts` — it is refused; numbers go in with `bh phones add`.
+- Using `--again` to "retry" a call that failed: a failed call is not guarded, so `--again` is only
+  needed to repeat a call that succeeded.

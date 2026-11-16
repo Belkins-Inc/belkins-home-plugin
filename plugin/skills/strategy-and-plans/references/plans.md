@@ -1,0 +1,141 @@
+# Plan templates (`bh plan set <strategy-id> --file plans.json`)
+
+Replaces every template of the strategy; refused once any lead's plan was copied from them.
+Positions follow array order; step 1's `delayDays` is always 0.
+
+## The ask ladder (write it into `guidance`)
+
+| Place | Asks | Guidance pattern |
+| --- | --- | --- |
+| first | interest, low friction | open on the signal, one line of relevance, ask whether it is worth a word |
+| middle | a reason or a proof, soft ask | a different side of the offer: proof, a number, a consequence; ask softly |
+| last | the goal directly, or a polite close | name the goal (a call), or close and leave the door open |
+| only step | the goal directly | no polite close; it is a first approach |
+
+`guidance` is an instruction to the writer, not copy: what the step is for, what to open on, what
+argument to make, what to ask. It never names a person and never says who signs. It may reference
+only steps sure to have gone out. It carries no em or en dash (`bh plan set` refuses one): the writer
+lifts its wording, and copy with a dash is refused. Quoted lines the writer uses word for word are
+written as they should be sent.
+
+## email_only (default shape)
+
+```json
+{
+  "plans": [
+    {
+      "appliesWhen": "email_only",
+      "steps": [
+        { "channel": "email", "guidance": "Open on the company's signal (e.g. their review rating or complaint theme). One sentence on why it matters to this role. Ask at low friction whether faster replies are a priority.", "hypothesis": "The signal alone earns a reply from a third of the interested." },
+        { "channel": "email", "delayDays": 3, "guidance": "In the same thread. Do not repeat the opening. Give the approved proof in one or two sentences and ask softly if a similar result would matter.", "hypothesis": "Proof converts the curious." },
+        { "channel": "email", "delayDays": 4, "guidance": "In the same thread. A different angle: the cost of slow replies at their volume. One question." },
+        { "channel": "email", "delayDays": 5, "guidance": "Last touch, in the same thread. Ask directly for a 20-minute call, or close politely and leave the door open.", "hypothesis": "A direct ask recovers the undecided." }
+      ]
+    }
+  ]
+}
+```
+
+## email_and_linkedin
+
+```json
+{
+  "appliesWhen": "email_and_linkedin",
+  "steps": [
+    { "channel": "email", "guidance": "As step 1 of email_only." },
+    { "channel": "linkedin_invite", "delayDays": 1, "track": "linkedin" },
+    { "channel": "email", "delayDays": 3, "guidance": "Proof step in the email thread. Must not mention LinkedIn." },
+    { "channel": "linkedin_message", "anchor": "invite_accepted", "condition": "invite_accepted", "delayDays": 1, "maxWaitDays": 45, "track": "linkedin", "guidance": "Thanks for connecting. One sentence of value, one soft question. Stands on its own; does not rely on the emails having arrived." },
+    { "channel": "email", "delayDays": 4, "guidance": "Last touch. Direct ask for a call or a polite close. References only the earlier emails." }
+  ]
+}
+```
+
+The LinkedIn steps run on their own track: the invite goes a send day after the lead's start, the
+emails go on their own delays (step 3 three send days after step 1, step 5 four after step 3)
+whether or not the invite is accepted, and the message goes a send day after the acceptance, even
+one that comes after the last email. A lead whose invite is never accepted skips the message
+`maxWaitDays` after the invite went. Without `"track": "linkedin"` the steps run in one line: the
+message holds email 5 until the acceptance or its `maxWaitDays`, so keep that wait at 7–10 there. A fallback step for that case carries `"condition": "invite_not_accepted"`.
+A lead already connected to the sending account gets no invite: the step is skipped as
+`already_connected` and counts as accepted that moment, so `invite_accepted` messages go on their
+delays from then and an `invite_not_accepted` fallback is skipped (`bh behaviour linkedin`).
+
+Invitations go without a note by default. Only when the person asks for notes does the invite
+step carry `"withoutNote": false` and a guidance such as "Connection note, under 200 characters.
+Asks for nothing but the connection; does not pitch; does not mention the email."
+
+## email_and_linkedin with calling
+
+Calling starts in the first week: a lead goes to the callers once it has had two emails and the
+LinkedIn invite. The call step comes right after them; with the invite on the LinkedIn track, the
+call step is timed from the second email.
+
+```json
+{
+  "appliesWhen": "email_and_linkedin",
+  "steps": [
+    { "channel": "email", "guidance": "As step 1 of email_only." },
+    { "channel": "linkedin_invite", "delayDays": 1, "track": "linkedin" },
+    { "channel": "email", "delayDays": 2, "guidance": "Proof step in the email thread. Must not mention LinkedIn." },
+    { "channel": "call", "delayDays": 1, "guidance": "Had two emails on <the signal>; ask whether it is worth 20 minutes this week." },
+    { "channel": "linkedin_message", "anchor": "invite_accepted", "condition": "invite_accepted", "delayDays": 1, "maxWaitDays": 45, "track": "linkedin", "guidance": "Thanks for connecting. One sentence of value, one soft question." },
+    { "channel": "email", "delayDays": 3, "guidance": "Last touch. Direct ask for a call or a polite close." }
+  ]
+}
+```
+
+With email and calling only, the call step follows the second email the same way. A lead with no
+number to dial skips the call step and goes on with the emails.
+
+## A Telegram step
+
+A sender whose Telegram knows the lead writes there once the emails have opened the conversation;
+for a lead it does not know, the step is skipped and the plan goes on. Its leads' peers are matched
+before they reach it (telegram-peers skill).
+
+```json
+{
+  "appliesWhen": "email_only",
+  "steps": [
+    { "channel": "email", "guidance": "As step 1 of email_only." },
+    { "channel": "email", "delayDays": 3, "guidance": "Proof step in the email thread." },
+    { "channel": "telegram_message", "delayDays": 2, "guidance": "A short personal note: they know the sender. Points to the email in a few words, asks one easy question." },
+    { "channel": "email", "delayDays": 4, "guidance": "Last touch. Direct ask for a call or a polite close." }
+  ]
+}
+```
+
+## linkedin_only
+
+```json
+{
+  "appliesWhen": "linkedin_only",
+  "steps": [
+    { "channel": "linkedin_invite" },
+    { "channel": "linkedin_message", "anchor": "invite_accepted", "condition": "invite_accepted", "delayDays": 1, "maxWaitDays": 10, "guidance": "Opens on the signal, then an interest question; two or three sentences." },
+    { "channel": "linkedin_message", "delayDays": 4, "condition": "invite_accepted", "guidance": "Proof and a direct, polite ask for a call." }
+  ]
+}
+```
+
+## Changing plans later
+
+- One step's `guidance` or `hypothesis`, frozen templates too: `bh plan step <strategy-id> <step-id>
+  --file step.json` with `{"guidance": "…"}`. Messages not yet written follow it; written ones keep
+  their copy (rewrite them through `bh copy`). Step ids are in `bh strategy show`.
+- One step's delay, frozen templates too: `{"delayDays": 2}` in the same command (a person only).
+  Leads enrolled later get it; every lead's message of that step not yet sent is timed again from
+  the step before it. Sent messages stay as they went.
+- One follow-up's thread: `{"threadOf": 3}` (continue email 3's thread), `{"threadOf": null}` (the
+  first email's) or `{"newThread": true}` (its own), a person only. Every email of it not yet sent
+  follows.
+
+- A draft with leads enrolled and nothing sent: `bh plan set` again with the whole new file (a
+  person only). Every lead's plan is copied again; written copy stays where a step keeps its
+  channel, and `bh copy queue` lists what the new or changed steps need.
+- A step added to a running plan: `bh plan add-step <strategy-id> --after <position> --file step.json`
+  (a person only; `--dry-run` first). Each live lead that has sent nothing past that point gets it.
+- Templates frozen, a lead's plan wrong: there is no `bh` command to edit one lead's messages;
+  open a task for a person (`bh task open`) naming the enrollment and the change.
+- A new shape of plan: create a new strategy and enroll into it (one contact, one live strategy).

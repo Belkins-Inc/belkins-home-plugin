@@ -1,0 +1,48 @@
+#!/bin/sh
+# bh — the team's CLI, reachable from wherever this plugin is installed.
+#
+# The CLI itself is packages/bh: TypeScript run as it is by Node 24, with no dependencies and nothing
+# to build. Teammates install the plugin from Belkins-Inc/belkins-home-plugin, where the publish
+# puts the CLI in plugin/cli/ (.github/scripts/build-plugin-repo.sh); installed from the platform
+# repository, the clone carries packages/ beside plugin/ instead. This shim finds either and is what
+# a teammate links onto their PATH (docs/onboarding.md). BH_CLI overrides the path.
+set -e
+
+script=$0
+while [ -L "$script" ]; do
+  link=$(readlink "$script")
+  case $link in
+  /*) script=$link ;;
+  *) script=$(dirname "$script")/$link ;;
+  esac
+done
+plugin=$(cd "$(dirname "$script")/.." && pwd)
+
+if [ -n "${BH_CLI:-}" ]; then
+  cli=$BH_CLI
+elif [ -f "$plugin/cli/cli.ts" ]; then
+  cli=$plugin/cli/cli.ts
+else
+  cli=$plugin/../packages/bh/src/cli.ts
+fi
+if [ ! -f "$cli" ]; then
+  echo "bh: no CLI at $cli" >&2
+  echo "hint: install the plugin from Belkins-Inc/belkins-home-plugin (docs/onboarding.md), or set BH_CLI to a CLI" >&2
+  exit 2
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "bh: node is not installed" >&2
+  echo "hint: bh runs on Node 24 or newer — https://nodejs.org" >&2
+  exit 2
+fi
+case $(node -v) in
+v2[4-9].* | v[3-9][0-9].*) ;;
+*)
+  echo "bh: Node $(node -v) is too old" >&2
+  echo "hint: the CLI is TypeScript run as it is; Node 24 or newer strips the types" >&2
+  exit 2
+  ;;
+esac
+
+exec node "$cli" "$@"
