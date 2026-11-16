@@ -256,6 +256,7 @@ hidden at a terminal, so it stays out of the shell's history.
   issue reopen <number> [--note <t>]     (platform admin)
   task open --title <t> --assignee <email> [--priority urgent] [--due <iso>] [--done-when <text>] [--body <b> | --body-file <path|->]
   task list [--status open|done|cancelled]
+  task show <id>                        one task whole: every item a task the engine keeps per project lists
   task close <id> [--status done|cancelled] [--note <text>] | task reopen <id>
   task assign <id> --assignee <email> [--note <text>]   hand an open task to someone else; Slack tells them afresh
   session end --summary <text>           the hand-over: done, left, to watch
@@ -2228,6 +2229,7 @@ async function main(argv: string[]): Promise<void> {
       break
     }
     case 'task':
+      if (sub === 'show') return out(await call(config, 'GET', `/tasks/${seg(arg)}`))
       if (sub === 'reopen') return out(await call(config, 'POST', `/tasks/${seg(arg)}/reopen`, {}))
       if (sub === 'assign')
         return out(

@@ -797,6 +797,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     list: ['status'],
     open: ['assignee', 'body', 'body-file', 'done-when', 'due', 'priority', 'title'],
     reopen: [],
+    show: [],
   },
   telegram: {
     '': [],
