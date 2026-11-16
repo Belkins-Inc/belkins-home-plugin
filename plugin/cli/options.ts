@@ -552,6 +552,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   plan: {
     '*': [],
     'add-step': ['after', 'dry-run', 'file', 'plan'],
+    'add-template': ['file'],
     remove: [],
     set: ['file'],
     step: ['file'],

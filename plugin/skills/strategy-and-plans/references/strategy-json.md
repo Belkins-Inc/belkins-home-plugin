@@ -20,6 +20,11 @@
 
 Ids must belong to the current project (`bh use <slug>` in this session), or the call is refused.
 
+Every field sits at the top level. `bh strategy show` prints the sending settings under `sending`;
+a file that nests them there, or names any field not in this table, is refused with the unknown
+fields named. `strategy update` answers with `changed`: each field that moved, from and to (empty
+when nothing did).
+
 ## Choosing the numbers
 
 - `sendDays`: weekdays unless the client's market works weekends.

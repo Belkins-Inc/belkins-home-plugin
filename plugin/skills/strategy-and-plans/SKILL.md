@@ -120,8 +120,13 @@ market, the buyer or the offer is a project hypothesis, `bh hypothesis add`.)
 `bh plan set <strategy-id> --file plans.json` replaces all templates. With leads enrolled it works
 only while the strategy is a **draft that has sent nothing**, and only for a person: the leads' own
 plans are copied again from the new templates, copy already written is kept for every step that
-keeps its channel, and the file must keep every template kind leads are on. Once launched, or once
-anything was sent, it is refused, so settle the steps before launch. Accepted values:
+keeps its channel and the lead's variant (a lead keeps its variant where the step still has one of
+that name; copy whose variant changed needs copy again), and the file must keep every template kind
+leads are on. Once launched, or once anything was sent, it is refused, so settle the steps before
+launch; after that `bh plan step` edits a step's guidance without touching variants, and `bh plan
+add-template <strategy-id> --file template.json` adds a template kind the strategy lacks (an
+`email_only` beside an `email_and_linkedin`), leaving the others and every lead's plan as they are.
+Accepted values:
 
 - `appliesWhen`: `email_and_linkedin`, `email_only`, `linkedin_only` (one template each at most).
 - step `channel`: `email`, `linkedin_invite`, `linkedin_message`, `call`, `telegram_message`. A
@@ -333,7 +338,9 @@ provider (or left the strategy) to another sender, and its copy then has to be w
 to that one (add them to the strategy's senders first) while it evens their mailboxes' load,
 stuck-on-room leads first (`--limit <n>`, `--stuck`, `--only <their mailbox ids>`); a sender with
 no LinkedIn account takes a lead onto the email-only template, or with its LinkedIn steps skipped
-when its emails do not wait on them, otherwise the lead stays (`refused`). Copy is written again
+when its emails do not wait on them, otherwise the lead stays (`refused`). It moves LinkedIn-only
+leads too, onto the sender's least-loaded LinkedIn account while that evens the accounts' load: to
+spread a LinkedIn strategy run it once per idle sender (`--dry-run` first). Copy is written again
 as the new sender. No need to stop and re-enroll leads to rebalance them.
 
 Catch-all addresses follow `catchAllPolicy`: `hold` (default) holds the lead (`strategy_contacts =
@@ -403,7 +410,9 @@ and pausing and resuming it changes nothing.
 
 A person pauses with `bh strategy pause <id> --reason "<the figures>"` (only a running strategy) and
 resumes with `bh strategy launch <id>`. A strategy that is finished or replaced:
-`bh strategy archive <id>` — refused while it runs (pause first); its leads and history stay.
+`bh strategy archive <id>` — refused while it runs (pause first); for good: its live leads are
+stopped (`strategy_archived`) and their unsent messages cancelled, so they leave the pipeline and
+their contacts are free for another strategy; the history stays.
 
 ## Record
 

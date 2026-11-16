@@ -272,7 +272,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          puts a lead on the call list; scripts for one person are written from it
                                          (call-scripts skill); null takes it off
   strategy launch <id> | strategy pause <id> [--reason <t>] | strategy archive <id>   (a person only); launch
-                                         answers firstTouches: leads starting on each day, beside the daily limit
+                                         answers firstTouches: leads starting on each day, beside the daily limit;
+                                         archive is for good: its live leads stop (strategy_archived), unsent messages cancelled
   strategy exclude <id> --company <id|domain> --reason <t>   keep a company out of this strategy only (a person only)
   strategy exclude <id> --file <json|jsonl|->          [{"domain"|"companyId","reason","excluded":false to let back in}]
   strategy include <id> --company <id|domain> [--reason <t>]   let it back in
@@ -315,7 +316,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          than the lead's; stuck-on-room leads first. Copy is cleared (needsCopy).
                                          Their LinkedIn account, or with none the email_only template, or with
                                          none their LinkedIn steps skipped when emails do not wait on them;
-                                         otherwise the lead stays (refused)
+                                         otherwise the lead stays (refused). A LinkedIn-only lead (no mailbox)
+                                         moves onto their least-loaded LinkedIn account while it carries 2 fewer
                  [--limit <n>] [--stuck]    with --to-sender: at most n leads; only leads stuck on mailbox_room
   reply unapprove <id>                   take an approval back before the reply goes (a person only)
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
@@ -329,7 +331,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          hours to "delayDays"; "variants": [{"name","withoutNote","guidance"},…] (2-4)
                                          split the step's leads in turn, an A/B test read in strategy show;
                                          on a draft that has sent nothing, its enrolled leads' plans are copied again,
-                                         written copy kept where a step keeps its channel (a person only)
+                                         written copy kept where a step keeps its channel and the lead its variant; a lead keeps its
+                                         variant where the step still has one of that name, else that copy is written again (a person only)
   plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread","threadOf","delayDays","track"}: one step's,
                                          frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
@@ -343,6 +346,10 @@ hidden at a terminal, so it stays out of the shell's history.
                                          put a step after <position>, running leads too: later steps move one place on,
                                          each live lead that sent nothing past that point gets it (needing copy, bh copy
                                          queue); leads past it or ended do not; --plan when the strategy has several (a person only)
+  plan add-template <strategy-id> --file <template.json>   {"appliesWhen","name","steps"}: one template of a kind
+                                         the strategy lacks, launched too (an email_only beside email_and_linkedin);
+                                         its other templates and enrolled leads' plans stay; leads enrolled later
+                                         whose data picks that kind get it (a person only)
   plan remove <strategy-id> <step-id>   take the plan's last step out, frozen templates too: its unsent messages are
                                          cancelled, a lead whose next step it was ends there (a person only)
   companies upsert --file <json|jsonl|->               [{"domain","name","employeeCount","country","facts"}]
@@ -2346,6 +2353,15 @@ async function main(argv: string[]): Promise<void> {
           ),
         )
       }
+      if (sub === 'add-template')
+        return out(
+          await call(
+            config,
+            'POST',
+            `/strategies/${seg(arg)}/plans`,
+            await readInput(need(o.file)),
+          ),
+        )
       if (sub === 'add-step')
         return out(
           await call(config, 'POST', `/strategies/${seg(arg)}/steps`, {

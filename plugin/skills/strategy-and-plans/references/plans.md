@@ -1,6 +1,11 @@
 # Plan templates (`bh plan set <strategy-id> --file plans.json`)
 
-Replaces every template of the strategy; refused once any lead's plan was copied from them.
+Replaces every template of the strategy. With leads enrolled it runs only on a draft that has sent
+nothing, by a person, and copies the new templates into every lead's plan: written copy stays where
+a step keeps its channel, note and variant; a lead keeps its variant where the step still has one of
+that name, and copy whose variant changed goes back to needing copy. Once launched, or once anything
+was sent, it is refused: `bh plan step` changes a step's guidance (variants untouched), `bh plan
+add-step` adds one, `bh plan add-template` adds a template kind the strategy lacks.
 Positions follow array order; step 1's `delayDays` is always 0.
 
 ## The ask ladder (write it into `guidance`)
@@ -134,6 +139,10 @@ before they reach it (telegram-peers skill).
 - A draft with leads enrolled and nothing sent: `bh plan set` again with the whole new file (a
   person only). Every lead's plan is copied again; written copy stays where a step keeps its
   channel, and `bh copy queue` lists what the new or changed steps need.
+- A launched strategy lacks a template kind (contacts with an address and no LinkedIn profile, and
+  only an `email_and_linkedin` template): `bh plan add-template <strategy-id> --file template.json`
+  with one template (`{"appliesWhen":"email_only","steps":[…]}`; a person only). The other templates
+  and enrolled leads stay as they are; enroll gives the new kind to leads it fits. No twin strategy.
 - A step added to a running plan: `bh plan add-step <strategy-id> --after <position> --file step.json`
   (a person only; `--dry-run` first). Each live lead that has sent nothing past that point gets it.
 - Templates frozen, a lead's plan wrong: there is no `bh` command to edit one lead's messages;
