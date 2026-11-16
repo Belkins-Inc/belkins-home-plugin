@@ -47,6 +47,7 @@ Being added to the platform, getting a token, which environment to point at and 
 | `sender-signatures` | a sender's text and HTML signature, with links and a photo |
 | `inbox-triage` | classes, drafts, approvals, re-engagement and referrals from replies |
 | `writing-answers` | your own Claude's scheduled pass that writes every answer and follow-up copy waiting for you (`bh answers`) |
+| `linkedin-comments` | your own Claude's scheduled pass that comments on posts in the feeds of the managed LinkedIn accounts set to comment (`bh linkedin feed`, `bh linkedin comment`) |
 | `client-report` | the periodic report for the client |
 
 `meeting-outcomes` comes with calendars and meetings (phase 8).

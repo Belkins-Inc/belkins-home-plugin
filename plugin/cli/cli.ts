@@ -963,6 +963,15 @@ hidden at a terminal, so it stays out of the shell's history.
   linkedin created|verified <id> [--owner <user id|none>] [--undo]   marks it made on LinkedIn, or through its checks
   linkedin profile-posts <id> on|off     (a person) posts on its owner's own profile allowed, or not: off, it posts
                                          only as the pages they manage
+  linkedin warmup <id> [--likes-a-day <0-10|default>] [--comments-a-day <0-3>] [--topics "<a, b>"]
+                                         (an organisation admin) what a managed account does by itself each day: likes
+                                         (connections' posts first, else its feed; default: 2 or 3), comments your own
+                                         Claude writes, the topics its feed is searched for; no flag: as it is set
+  linkedin feed <id>                     the posts a comment may go under now, with their text, and the comments left
+                                         today (two LinkedIn requests)
+  linkedin comment <id> --post <post-id> --text <t> [--url <post url>] [--author <name>]
+                                         comments under a post bh linkedin feed showed: in its working hours, within
+                                         its comments a day, 15-300 characters, no link, hashtag or mention
   linkedin owner <id> <user id|none>     who works in its browser
   linkedin open <id> [--chrome <path>]   its browser on this computer: your own Google Chrome through its IP, with
                                          its cookies (an organisation admin); close the window when done and the
@@ -1755,6 +1764,12 @@ const FLAGS = {
   'daily-limit': { type: 'string' },
   'invite-limit': { type: 'string' },
   'message-limit': { type: 'string' },
+  'likes-a-day': { type: 'string' },
+  'comments-a-day': { type: 'string' },
+  topics: { type: 'string' },
+  post: { type: 'string' },
+  text: { type: 'string' },
+  author: { type: 'string' },
   'domain-cap': { type: 'string' },
   'reply-bcc': { type: 'string' },
   'reply-cc': { type: 'string' },
@@ -5342,6 +5357,43 @@ async function main(argv: string[]): Promise<void> {
         if (o.undo) return out(await call(config, 'DELETE', path))
         return out(
           await call(config, 'PUT', path, o.owner ? { ownerId: orNone(String(o.owner)) } : {}),
+        )
+      }
+      if (sub === 'warmup') {
+        const likes = o['likes-a-day']
+        const comments = o['comments-a-day']
+        const topics = o.topics
+        if (likes === undefined && comments === undefined && topics === undefined)
+          return out(((await call(config, 'GET', account())) as { warmup: unknown }).warmup)
+        return out(
+          await call(config, 'PUT', `${account()}/warmup`, {
+            ...(likes !== undefined
+              ? { likesADay: String(likes) === 'default' ? null : Number(likes) }
+              : {}),
+            ...(comments !== undefined ? { commentsADay: Number(comments) } : {}),
+            ...(topics !== undefined
+              ? {
+                  topics: String(topics)
+                    .split(',')
+                    .map((t) => t.trim())
+                    .filter(Boolean),
+                }
+              : {}),
+          }),
+        )
+      }
+      if (sub === 'feed') return out(await call(config, 'GET', `${account()}/feed`))
+      if (sub === 'comment') {
+        if (!o.post)
+          throw new BhError('Under which post?', { hint: `bh linkedin feed ${arg} lists them` }, 2)
+        if (!o.text) throw new BhError('What does it say?', { hint: '--text "<comment>"' }, 2)
+        return out(
+          await call(config, 'POST', `${account()}/comments`, {
+            postId: String(o.post),
+            text: String(o.text),
+            ...(o.url ? { url: String(o.url) } : {}),
+            ...(o.author ? { author: String(o.author) } : {}),
+          }),
         )
       }
       if (sub === 'profile-posts') {
