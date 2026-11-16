@@ -131,6 +131,11 @@ listed after, and `bh calls briefs` changes the others.
    the first live one should be dialled.
 3. A new list: `bh calls create --name <n> --file rows.json [--note <t>]` (a person only). In a
    project linked to a dialer workspace the list goes to the dialer with the scripts and briefs.
+   Several callers on one project share every list and its retries on the project's queue; to keep
+   a list's people to one caller, add `--caller <their email>` (their own queue, made the first
+   time; `bh behaviour dialer`, "A call list given to one caller"). `bh calls push <list-id>
+   --caller <email|none>` moves a list, and `--attempts/--spacing/--open-days` change its tries in
+   the dialer (a call-step list's are the strategy's `callPolicy`).
    A list that exists (a call-step list, one made earlier, scripts to fix):
    `bh calls briefs <list-id> --file rows.json`; `null` clears a field, a field left out stays.
 4. Read the answer's `dialer`: `scripts` and `briefs` sent, `skipped` (people the dialer left out

@@ -122,8 +122,10 @@ or another employer's domain passes a check of the company's own domain.
    contact's company does not move them either: the row is warned. Add `"moveCompany": true` only
    when you know they changed companies; the answer then says `companyChanged`. Someone who left
    for another employer: `bh contacts depart <id> --reason "<what shows it>"`, and they are never
-   enrolled again. One person held by two contacts: `bh contacts duplicates`, then a person
-   decides and runs `bh contacts merge <keep-id> <drop-id>`.
+   enrolled again. One person held by two contacts (one profile, or the same name at the
+   company under two profiles): `bh contacts duplicates`, then a person decides and runs `bh
+   contacts merge <keep-id> <drop-id>`; when both are live, `--stop <lead-id>` names the lead the
+   merge stops (the answer without it suggests one).
    A row whose address already belongs to a contact who is someone else — another name, another
    profile — is `refused` in the answer and nothing of it is saved: a provider gave two people one
    address, and saving it would turn the contact (and the copy written to greet them) into the

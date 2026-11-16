@@ -230,6 +230,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          lead's reply-all ("" for nobody); steps of a plan copy nobody
        [--lead-cost-alert <usd>|off]     a task opens while the last 30 days cost more than this per verified
                                          enrolled lead (new projects: 0.05)
+       [--max-live-per-company <n>|off]  people of one company live at once across all its strategies (default 3);
+                                         enroll skips the next one; a strategy whose own cap at the company is
+                                         larger fills its own; off: each strategy's own caps alone
   brief [--project <slug>]              read this first, every session
   behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
                                          the topics, one topic's entries, or the entries with every word;
@@ -274,6 +277,10 @@ hidden at a terminal, so it stays out of the shell's history.
                                          {last}, {full}, {company}, {title} are filled per person when a call step
                                          puts a lead on the call list; scripts for one person are written from it
                                          (call-scripts skill); null takes it off
+                                         "callPolicy": {"attempts":5,"spacingMinutes":1440,"openForDays":14}, the tries of
+                                         its call-step list in the dialer (1-10, 15-10080 minutes apart, open 1-90 days; 3 a
+                                         day apart for 14 days for what is left out), set before any lead reaches a call
+                                         step; changed later, the dialer's list gets it within five minutes; null takes it off
   strategy launch <id> | strategy pause <id> [--reason <t>] | strategy archive <id>   (a person only); launch
                                          answers firstTouches: leads starting on each day, beside the daily limit;
                                          archive is for good: its live leads stop (strategy_archived), unsent messages cancelled
@@ -402,16 +409,23 @@ hidden at a terminal, so it stays out of the shell's history.
                                          confirmed and rejected carry --verdict
   calls                                 the project's call lists: who was handed to callers, and how far they got
   calls create --name <n> --file <json|jsonl|-> [--note <t>] [--allow-repeat]   (a person only)
-       [--attempts <1-10>] [--spacing <minutes>] [--open-days <n>]   in a project linked to a dialer workspace the list
-                                         goes to the dialer too: tries per person (3), minutes between them (1440),
-                                         days it stays open (14); its "dialer" says what went and who was left out
+       [--attempts <1-10>] [--spacing <15-10080 minutes>] [--open-days <1-90>] [--caller <email>]   in a project linked to
+                                         a dialer workspace the list goes to the dialer too: tries per person (3), minutes
+                                         between them (1440), days it stays open (14); --caller gives it to that caller
+                                         alone: it goes on their own queue (made the first time, them its only agent), not
+                                         the project's queue every caller works and shares retries on (bh dialer people
+                                         shows each one's ownQueueId); its "dialer" says what went and who was left out
                                          [{"contactId","phone","reason","script"}] in call order; phone is optional: without it
                                          the contact's first live number not on do-not-call, with it one of theirs (bh phones);
                                          reason: why this person, now (≤2,000 characters; the dialer's brief for this list);
                                          script: what to say to them (≤10,000, line breaks kept; the dialer's calling script,
                                          shown first on the call); all or nothing: a contact on dnc, outside the project,
                                          with no such number or already on a list is refused (--allow-repeat lets the last through)
-  calls push <list-id> [--attempts …]   hand the list to the dialer again after a push that failed (a person only)
+  calls push <list-id> [--attempts …] [--caller <email|none>]   hand the list to the dialer again after a push that
+                                         failed (a person only); --attempts, --spacing, --open-days change the tries of a
+                                         list the dialer already has (what is left out stays as it has it; a strategy's
+                                         call-step list takes them from the strategy's "callPolicy"); --caller moves the
+                                         list to that caller's own queue, none back to the project's
   calls remove <list-id>                take back a list nobody called from: off the dialer's queue and archived there,
                                          its people's leads on no other live list archived too (leadsArchived),
                                          then gone from Home with its people (a person only)
@@ -431,10 +445,14 @@ hidden at a terminal, so it stays out of the shell's history.
                                          person's is refused, the contact kept; "samePerson": true if it is them
                                          a phone number is not a fact: facts.phone is refused, numbers go in with bh phones add
   contacts [--q <text>] [--label <name>]   --q: every word in the name, the address or the company's domain
-  contacts duplicates                    contacts that hold one LinkedIn profile, the same person saved twice, with live leads
-  contacts merge <keep-id> <drop-id> [--dry-run]   one person: leads, conversations, meetings, calls, numbers, labels,
-                                         standings and history move to the kept contact, which fills what it lacks;
-                                         the other is deleted; refused when both have a live lead (a person only)
+  contacts duplicates                    contacts likely one person, with their live leads: one LinkedIn profile
+                                         (match linkedin), or the same full name at one company (match name);
+                                         bothLive: each has a live lead, so the merge stops one
+  contacts merge <keep-id> <drop-id> [--dry-run] [--stop <lead-id>]   one person: leads, conversations, meetings,
+                                         calls, numbers, labels, standings and history move to the kept contact,
+                                         which fills what it lacks; the other is deleted (a person only). When both
+                                         have a live lead, --stop names the one to stop with the merge; without it
+                                         the merge is refused, suggesting the one to stop (fewer sent, later start)
   contacts depart <id> --reason <how you know> [--undo]   they left the company: never enrolled again; a live
                                          lead is named, not stopped
   contacts employer <id> [--confirm --note <how you know>]   whether they work at their company, read now
@@ -497,10 +515,15 @@ hidden at a terminal, so it stays out of the shell's history.
                                          found by address or added, each thing written once, a meeting or email
                                          whose state changed updated; runs pass after pass until done
   crm sync <crm> --auto on|off           the same every hour by itself, until switched off (a person)
-  enroll <strategy-id> --file <json|jsonl|-> [--dry-run]    [{"contactId","segmentId","personaId"}]
+  enroll <strategy-id> --file <json|jsonl|-> [--dry-run] [--allow-namesakes]    [{"contactId","segmentId","personaId"}]
                                          a lead goes first to a sender with a mailbox for its mail provider,
                                          and on an aged domain (>=90d) for gateway and Microsoft leads when one sends;
-                                         unserved counts leads no sender's mailboxes serve (put on any);
+                                         unserved counts leads no sender's mailboxes serve (put on any; with the
+                                         strategy's holdUnserved they wait, stuck unserved_provider, for one that does);
+                                         skips a company at the project's cap of people live across strategies
+                                         (bh project update --max-live-per-company), and a contact whose namesake at
+                                         the company is live (likely one person: bh contacts merge; --allow-namesakes
+                                         if they are two people)
                                          youngDomain counts gateway leads placed on a domain under 90 days old;
                                          zoneWarning on a lead timed by the project's zone or a guess at its
                                          country's (US, CA, AU…): set its timezone or the company's hq_state
@@ -1788,6 +1811,9 @@ const FLAGS = {
   'reply-cc': { type: 'string' },
   reviewer: { type: 'string' },
   'lead-cost-alert': { type: 'string' },
+  'max-live-per-company': { type: 'string' },
+  'allow-namesakes': { type: 'boolean' },
+  stop: { type: 'string' },
   class: { type: 'string' },
   cc: { type: 'string' },
   bcc: { type: 'string' },
@@ -1838,6 +1864,7 @@ const FLAGS = {
   attempts: { type: 'string' },
   spacing: { type: 'string' },
   'open-days': { type: 'string' },
+  caller: { type: 'string' },
   queue: { type: 'string' },
   feedback: { type: 'string' },
   notes: { type: 'string' },
@@ -2060,6 +2087,12 @@ async function main(argv: string[]): Promise<void> {
               ? {
                   leadCostAlertUsd:
                     o['lead-cost-alert'] === 'off' ? null : Number(o['lead-cost-alert']),
+                }
+              : {}),
+            ...(o['max-live-per-company'] !== undefined
+              ? {
+                  maxLivePerCompany:
+                    o['max-live-per-company'] === 'off' ? null : Number(o['max-live-per-company']),
                 }
               : {}),
             ...(o['brief-file']
@@ -2590,12 +2623,18 @@ async function main(argv: string[]): Promise<void> {
             ...(o.note ? { note: o.note } : {}),
             allowRepeat: o['allow-repeat'] ?? false,
             ...attemptsOf(o),
+            ...(o.caller ? { caller: o.caller } : {}),
             contacts: await readRows(need(o.file)),
           }),
         )
       if (!arg) throw new BhError('Which call list?', { hint: 'bh calls' }, 2)
       if (sub === 'push')
-        return out(await call(config, 'POST', `/call-lists/${seg(arg)}/dialer`, attemptsOf(o)))
+        return out(
+          await call(config, 'POST', `/call-lists/${seg(arg)}/dialer`, {
+            ...attemptsOf(o),
+            ...(o.caller ? { caller: o.caller === 'none' ? null : o.caller } : {}),
+          }),
+        )
       if (sub === 'remove') return out(await call(config, 'DELETE', `/call-lists/${seg(arg)}`))
       if (sub === 'briefs')
         return out(
@@ -3233,7 +3272,7 @@ async function main(argv: string[]): Promise<void> {
           throw new BhError(
             'Which contact stays, and which goes?',
             {
-              hint: 'bh contacts merge <keep-id> <drop-id> [--dry-run]; bh contacts duplicates lists pairs',
+              hint: 'bh contacts merge <keep-id> <drop-id> [--dry-run] [--stop <lead-id>]; bh contacts duplicates lists pairs',
             },
             2,
           )
@@ -3241,6 +3280,7 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'POST', `/contacts/${seg(arg)}/merge`, {
             drop: pos[3],
             dryRun: Boolean(o['dry-run']),
+            ...(o.stop ? { stopLead: o.stop } : {}),
           }),
         )
       }
@@ -3446,6 +3486,7 @@ async function main(argv: string[]): Promise<void> {
         await call(config, 'POST', `/strategies/${seg(sub)}/enroll`, {
           leads: await readRows(need(o.file)),
           dryRun: Boolean(o['dry-run']),
+          ...(o['allow-namesakes'] ? { allowNamesakes: true } : {}),
         }),
       )
     case 'stand':

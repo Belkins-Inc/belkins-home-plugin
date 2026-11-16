@@ -116,9 +116,9 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     '': [],
     '*': [],
     briefs: ['file'],
-    create: ['allow-repeat', 'attempts', 'file', 'name', 'note', 'open-days', 'spacing'],
+    create: ['allow-repeat', 'attempts', 'caller', 'file', 'name', 'note', 'open-days', 'spacing'],
     outcome: ['contact', 'note', 'outcome'],
-    push: ['attempts', 'open-days', 'spacing'],
+    push: ['attempts', 'caller', 'open-days', 'spacing'],
     remove: [],
     rename: ['name'],
     show: ['out'],
@@ -188,7 +188,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     depart: ['reason', 'undo'],
     duplicates: [],
     employer: ['confirm', 'note'],
-    merge: ['dry-run'],
+    merge: ['dry-run', 'stop'],
     upsert: ['file'],
   },
   contacts: {
@@ -196,7 +196,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     depart: ['reason', 'undo'],
     duplicates: [],
     employer: ['confirm', 'note'],
-    merge: ['dry-run'],
+    merge: ['dry-run', 'stop'],
     upsert: ['file'],
   },
   copy: {
@@ -276,7 +276,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     seeds: [],
   },
   enroll: {
-    '*': ['dry-run', 'file'],
+    '*': ['allow-namesakes', 'dry-run', 'file'],
   },
   esp: {
     '*': [],
@@ -577,6 +577,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'brief-file',
       'domain-cap',
       'lead-cost-alert',
+      'max-live-per-company',
       'name',
       'reply-bcc',
       'reply-cc',

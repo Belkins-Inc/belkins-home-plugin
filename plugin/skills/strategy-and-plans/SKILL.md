@@ -93,7 +93,11 @@ when it gets there, and the dialer's callers see it. A strategy that calls keeps
 calling script** beside its emails and LinkedIn: `bh strategy update <id> --file` with
 `{"callScript": "..."}`, written with the call-scripts skill before the first lead reaches the step.
 The engine sends it to the dialer for each lead its call step lists, with `{first}`, `{full}`,
-`{company}` and `{title}` filled in; scripts written for one person replace it. Find the numbers before that point
+`{company}` and `{title}` filled in; scripts written for one person replace it. How often the
+dialer calls each lead is the strategy's too, set before launch: `{"callPolicy": {"attempts": 5,
+"spacingMinutes": 1440, "openForDays": 14}}` in the same file (3 tries a day apart for 14 days for
+what is left out; `bh behaviour calls-and-phones`, "A call step in a plan"); a second call step in the
+plan adds no tries. Find the numbers before that point
 (`bh phones`; a paid phone lookup is quoted to a person before it runs). For leads enrolled before
 the plan had a call step, build the list by hand from "Leads with their first steps sent" in
 [references/queries.md](references/queries.md) with `bh calls create` (a person only).
@@ -134,7 +138,7 @@ Accepted values:
   else skipped (`no_telegram_peer`); it takes no `anchor`, `condition` or `track`. A `call` step puts the
   lead on the strategy's call list when the lead reaches it (one list a strategy, handed to the
   dialer when the project is linked); its `guidance` is the caller's brief (why we call now), the
-  strategy's `callScript` what they say, and it has no copy. A lead with no live number off do-not-call has it skipped (`no_phone`). Numbers come before
+  strategy's `callScript` what they say, its `callPolicy` how many tries the dialer gives them, and it has no copy. A lead with no live number off do-not-call has it skipped (`no_phone`). Numbers come before
   the step falls due: `bh phones` (a paid lookup is quoted to a person first).
 - `delayDays` (default 3): send days after the anchor; forced to 0 on step 1.
 - `delayHours` (0 to 23, default 0): hours on top of `delayDays`, then the next moment the send
@@ -323,10 +327,23 @@ persona not in the strategy; on the do-not-contact list; the company is excluded
 strategy; `rejected` for this strategy; catch-all
 held back; no usable email and no LinkedIn; no template fits; the company cap
 (`maxPerCompany`, counted over every enrollment in this strategy); the persona cap at the company;
-no active mailbox among the senders; **already in a live strategy** (one contact, one live
-strategy). Senders and mailboxes are assigned by load, a lead first going to a sender with a
-mailbox for its mail provider (`bh mailbox update <id> --recipients`); `unserved` in the enroll
-answer counts leads no sender's mailboxes serve. Starts are spread over `startSpreadDays`; a second
+**the project's cap on people live at one company across all its strategies** (`the company
+already has N people live across the project's strategies`: 3 by default, `bh project update
+--max-live-per-company <n>|off`; a strategy whose own cap at the company is larger still fills its
+own) — so several strategies on one segment no longer need `bh strategy exclude` per company to
+hold a company to a few people; **likely the same person as contact X, live already** (the same
+first and last name at the company under another profile: look, then `bh contacts merge`, or
+`--allow-namesakes` when they are two people); no active mailbox among the senders; **already in a
+live strategy** (one contact, one live strategy). Senders and mailboxes are assigned by load, a
+lead first going to a sender with a mailbox for its mail provider (`bh mailbox update <id>
+--recipients`); `unserved` in the enroll answer counts leads no sender's mailboxes serve.
+**`--recipients` alone never holds a lead back**: a lead whose provider no mailbox serves goes from
+any of its sender's mailboxes (Google mailboxes listing every provider but Microsoft still email
+M365 leads). To keep such leads until a mailbox for their provider ramps, set `"holdUnserved":
+true` on the strategy (`bh strategy update <id> --file`, a person): their emails wait, stuck
+`unserved_provider` in `bh leads --state stuck`; a Microsoft mailbox pointed at them then `bh
+strategy repick-mailboxes <id>` starts them, or `holdUnserved: false` sends them from what they
+have. No need to pause them one by one. Starts are spread over `startSpreadDays`; a second
 person at a company starts `companyStaggerDays` after the first.
 
 Moving leads that have sent nothing (a person runs it; `--dry-run` first): `bh strategy

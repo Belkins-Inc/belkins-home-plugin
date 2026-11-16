@@ -8,12 +8,13 @@
 | `blackoutDates` | `"YYYY-MM-DD"` list | `[]` | dates nothing goes, in the lead's time zone (a client's holidays); days off like a weekend, so delays skip them. The list given replaces the one there |
 | `windowStart` / `windowEnd` | `"HH:MM"` | `09:00` / `17:00` | the lead's local sending window |
 | `dailyLimit` | int or null | null | first touches per day across the strategy; null = mailbox limits only |
-| `maxPerCompany` | int ≥ 1 | 2 | enrolled contacts per company, counted over every enrollment in the strategy |
+| `maxPerCompany` | int ≥ 1 | 2 | enrolled contacts per company, counted over every enrollment in the strategy; across all the project's strategies the project's cap on people live at once also holds (`bh project update --max-live-per-company`, default 3) |
 | `companySizeCaps` | `[{minEmployees, maxPerCompany}]` | `[]` | more people at bigger companies: a company takes the band with the largest `minEmployees` at or under its employee count; under every band, or of unknown size, `maxPerCompany`. The list given replaces the one there |
 | `targetActive` | int or null | null | leads to keep in flight; below it the engine opens a task |
 | `startSpreadDays` | int ≥ 1 | 3 | a batch's first touches spread over this many days |
 | `companyStaggerDays` | int ≥ 0 | 2 | the next person at a company starts this many send days after the previous; on a launched strategy a change moves colleagues not yet started, earlier or later |
 | `catchAllPolicy` | `hold` / `linkedin_only` / `send` | `hold` | what to do with catch-all addresses |
+| `holdUnserved` | bool | false | a lead whose mail provider its mailbox does not write to (`--recipients` names others) waits, stuck `unserved_provider`, for a mailbox that does, instead of going from any; a person's to change once launched |
 | `segments` | segment ids | | replaces the list |
 | `personas` | `[{personaId, maxPerCompany?, angle?}]` in priority order | | replaces the list; position = array order |
 | `senders` | sender ids | | replaces the list; each brings its mailboxes and LinkedIn account |
