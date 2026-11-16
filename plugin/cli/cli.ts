@@ -458,7 +458,12 @@ hidden at a terminal, so it stays out of the shell's history.
   contacts employer <id> [--confirm --note <how you know>]   whether they work at their company, read now
                                          from their LinkedIn profile ($0.0045, free when read lately), as the
                                          engine does before a first step; --confirm records that you know they
-                                         do, which lets their held leads go for 90 days (a person only)
+                                         do, which lets their held leads go for 90 days (a person only); a read
+                                         or --confirm that finds them there takes back a departure a check set
+  contacts employer <id> --unconfirm [--clear-linkedin] --note <why>   take back a confirmation or a check
+                                         you no longer stand by: their leads are held again, not re-read by the
+                                         engine for 90 days; --clear-linkedin also takes the profile off (a
+                                         namesake's), held until one is given (a person only)
   labels                                 the project's own labels, with how many companies and contacts carry each
   label add <name> [--company <id|domain>,…] [--contact <id|email|linkedin-url>,…] [--file <json|jsonl|->]
                                          put it on (made if the project has none of that name, in any case);
@@ -1644,6 +1649,8 @@ const FLAGS = {
   phone: { type: 'string' },
   country: { type: 'string' },
   confirm: { type: 'boolean' },
+  unconfirm: { type: 'boolean' },
+  'clear-linkedin': { type: 'boolean' },
   undo: { type: 'boolean' },
   refresh: { type: 'boolean' },
   unmatched: { type: 'boolean' },
@@ -3294,6 +3301,8 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'POST', `/contacts/${seg(arg)}/employer`, {
             ...(o.confirm ? { confirm: true } : {}),
+            ...(o.unconfirm ? { unconfirm: true } : {}),
+            ...(o['clear-linkedin'] ? { clearLinkedin: true } : {}),
             ...(o.note ? { note: o.note } : {}),
           }),
         )
