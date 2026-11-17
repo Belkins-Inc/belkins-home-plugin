@@ -1265,11 +1265,15 @@ const list = (v: string) =>
     .filter(Boolean)
 
 const out = (value: unknown): void => {
-  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
   // Where the object is worked on in the web app (the engine adds it when WEB_URL is set); on
-  // stderr, so the JSON on stdout stays what a script reads.
+  // stderr, so the JSON on stdout stays what a script reads. Written once stdout has taken the
+  // whole answer: a pipe's writes are asynchronous on macOS, and with both streams on one pipe
+  // (2>&1) a line written meanwhile can land inside a string of the JSON, its line break a raw
+  // control character a parser refuses (#1011).
   const link = linkOf(value)
-  if (link) process.stderr.write(`open: ${link}\n`)
+  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`, () => {
+    if (link) process.stderr.write(`open: ${link}\n`)
+  })
 }
 
 /** The web link an answer carries: its own, or the one its rows share. */

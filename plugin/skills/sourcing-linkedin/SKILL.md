@@ -60,6 +60,10 @@ Decide before spending, and write the reason in one sentence (a note or the sess
      investment managers and VC, government and non-profits, games studios, staffing, resellers;
    - check the employee floor on `headcount_exact` as well as the band: a company in the 11–50 band
      that lists 1–10 people is under it, and is dropped before it is judged or paid for further;
+   - a band that straddles the segment's floor (51–200 against 70) is not refused when the stored
+     `employeeCount` is the band's lower bound and the band is in `facts` (`linkedin_size`,
+     `headcount_range`…); a headcount you checked (LinkedIn members, Apollo's estimate) goes on the
+     verdict as `"signal": {"headcount": 88}`, and the engine judges the size on it;
    - two people a company (`max_per_company`, 2 by default), at different personas.
 2. **Count (free)** with the same body. Adjust until the number is the market you meant (a count of
    2 million is a missing filter; 0 is a misspelled value). `bh source update <id> --estimate <n>`.
@@ -202,7 +206,8 @@ Say which of these it was; a missing title is a persona change for a person to a
 - Never invent a company, a person, a domain or a title. A row without a domain is dropped.
 - Company `country` is ISO-2 and drives send windows (the engine skips no holidays); a US or Canadian company's
   timezone comes from its state or city, not from the project's: write the state as
-  `facts.hq_state` (code or name) and the engine sets the timezone for the US, Canada and Australia.
+  `facts.hq_state` (code or name, plain or `{value, source}`) and the engine sets the timezone for
+  the US, Canada and Australia.
 
 ## Before you stop
 

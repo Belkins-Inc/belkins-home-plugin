@@ -187,6 +187,10 @@ Details and examples in [references/judging.md](references/judging.md). The core
   the project's owner; the engine keeps its count current and closes it when none waits. Held
   companies are not counted.
 - `other` exclusions are never checked by the tool; check them yourself on every verdict.
+- **Size**: a segment's employee band and the client's size rules read a headcount the verdict
+  checked (`"signal": {"headcount": 88}`) before the company's `employeeCount`; a count that is only
+  the lower bound of a size band in its facts (51 for 51–200) passes when the band reaches the floor.
+  Give the headcount when the stored count understates the company, and when the band straddles.
 - `reason` is short and reusable ("too small: 12 employees", "competitor", "already a client",
   "B2B only — segment is consumer brands").
 - **Signal is the material copy is written from**: the concrete, sourced fact that put the company in
