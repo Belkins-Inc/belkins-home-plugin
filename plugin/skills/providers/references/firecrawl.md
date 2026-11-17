@@ -4,8 +4,10 @@ Reads web pages through a real browser and returns markdown; lists a site's page
 `https://api.firecrawl.dev/v2`; key as `Authorization: Bearer …`.
 
 Price: one credit per call, $0.0009 ($90 for 100,000 credits) — for both scrape and map, whatever
-the map's `limit`. Cheap per call, but **neither endpoint guards repeats**: the
-same page fetched twice is paid twice. Check `provider_calls` before re-reading a page.
+the map's `limit`. Cheap per call, and **neither endpoint guards repeats**. A scrape with exactly the
+body below (`url`, `formats: ["markdown"]`, `onlyMainContent: true`) of a page anyone read in the last
+14 days is answered free from the data cache (`# from the cache`); `--again` reads it anew. Any other
+scrape, and every map, is paid each time: check `provider_calls` before re-reading.
 
 Why a vendor and not a plain fetch: a modern page's HTML is not its content — a speakers page was
 302 KB of markup and 2,413 characters of navigation text; Firecrawl returned 7,882 characters with

@@ -129,7 +129,10 @@ bh call apollo POST /people/match --contact <contact-id> --body '{
 - You can also match by `linkedin_url`. Vanity `/in/<slug>` and Sales Navigator `/sales/lead/<URN>`
   match; a URN in the `/in/` form (`/in/ACwAAA…`, starts with `AC` and 25+ more characters)
   answers empty — rewrite it to `/sales/lead/<URN>` first.
-- Both match calls are guarded against repeats (same body within 30 days → 409).
+- Both match calls are guarded against repeats (same body within 30 days → 409). A `people/match`
+  by `linkedin_url` or `id` that asks for no personal email or phone is answered free from the data
+  cache when anyone matched that person in the last 30 days (`# from the cache`); the person is
+  kept without personal emails or phones.
 
 ## People search — free
 
@@ -193,7 +196,9 @@ Its traps, from that run:
 domain, `null` for a domain Apollo does not know. `GET /organizations/enrich?domain=<domain>`
 answers one as `organization`. **One credit ($0.0065) per company enriched**, nothing for a miss;
 the engine books it by `unique_enriched_records` (the companies that came back). Both are guarded
-against repeats.
+against repeats, and every company either brings back is kept: `GET /organizations/enrich?domain=`
+of a company anyone enriched in the last 180 days is answered free from the data cache
+(`# from the cache`; `--again` buys it anew).
 
 ```sh
 bh call apollo POST /organizations/bulk_enrich --segment <seg> --body '{"domains":["acme.com","globex.com"]}'

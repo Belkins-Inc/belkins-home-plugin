@@ -37,7 +37,11 @@ makes of a leading `/`, and a path may also be written without it.
    `bh cache people <company-url>` (the people bought so far who work there — not all of them).
    A Generect enrichment by URL of a page already kept is answered from the cache by itself
    (`# from the cache` on stderr, `meta.cached` in the answer, nothing charged); `--again` buys it
-   anew when the data itself must be fresh.
+   anew when the data itself must be fresh. So are, from the data cache (any project's purchase):
+   an Apollo `POST /people/match` by `linkedin_url` or `id` that asks for no personal email or phone
+   (a person matched in the last 30 days), an Apollo `GET /organizations/enrich?domain=…` (a company
+   enriched in the last 180 days, by `bulk_enrich` too), and a Firecrawl `POST /scrape` with exactly
+   `{"url", "formats": ["markdown"], "onlyMainContent": true}` (a page read in the last 14 days).
 
 ## The call
 
