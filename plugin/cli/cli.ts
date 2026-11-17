@@ -6,7 +6,7 @@ import { basename } from 'node:path'
 import { parseArgs } from 'node:util'
 
 import { attachmentPath, saveNew } from './attachment.ts'
-import { chunk, merge, refusedIn, sendRows, warnedIn } from './batch.ts'
+import { copyCheckParts, merge, refusedIn, sendRows, warnedIn } from './batch.ts'
 import { consoleLogin, meetbotLogin } from './console-login.ts'
 import { linkedinOpen } from './linkedin-chrome.ts'
 import { BhError, call, callFile, callText } from './client.ts'
@@ -1212,8 +1212,44 @@ hidden at a terminal, so it stays out of the shell's history.
                                          notification text; only one of the two files may be -
 `
 
-/** A value put into a request's path or query: `?`, `#` or `/` in it must not reach another route. */
-const seg = (value: unknown) => encodeURIComponent(String(value))
+/**
+ * An id or name a command takes and was not given (`bh copy queue` with no strategy id): refused
+ * before a request names "undefined" (belkins-home-plugin#217), with the command's usage line.
+ */
+class MissingArgument extends Error {}
+
+/**
+ * A value put into a request's path or query: `?`, `#` or `/` in it must not reach another route,
+ * and a value left out is refused (MissingArgument) rather than sent as "undefined".
+ */
+const seg = (value: unknown) => {
+  if (value === undefined || value === null || String(value).trim() === '')
+    throw new MissingArgument()
+  return encodeURIComponent(String(value))
+}
+
+/** The usage lines (USAGE) of `bh <cmd> <sub>`, or of `bh <cmd>` when it has no such sub-command. */
+function usageOf(cmd: string | undefined, sub: string | undefined): string[] {
+  if (!cmd) return []
+  const shapes = USAGE.split('\n')
+    .flatMap((line) => line.trim().split(/\s{3,}|\s\|\s/))
+    .map((x) => x.trim())
+  const of = (name: string) =>
+    shapes.filter((x) => x === name || x.startsWith(`${name} `)).map((x) => `bh ${x}`)
+  return (sub ? of(`${cmd} ${sub}`) : []).concat(sub && of(`${cmd} ${sub}`).length ? [] : of(cmd))
+}
+
+/** A missing id or name, said as bh says any usage error: what is missing, and the command's usage. */
+function missingArgument(argv: readonly string[]): BhError {
+  const { positionals: pos } = parsed([...argv])
+  const [cmd, sub] = pos
+  const usage = usageOf(cmd, sub)
+  return new BhError(
+    `bh ${pos.join(' ')}: an id or name it needs is missing`,
+    { hint: usage.length ? usage.join(' | ') : 'bh --help' },
+    2,
+  )
+}
 
 /** A list flag: items split on "|" (titles can hold commas), or on "," when there is no "|". */
 const list = (v: string) =>
@@ -3622,11 +3658,12 @@ async function main(argv: string[]): Promise<void> {
       }
       if (sub === 'check') {
         // A file over what the engine checks at once goes in parts, answered as one; colleagues
-        // are then compared within each part and with copy already written.
+        // are then compared within each part and with copy already written, and each part carries
+        // the rest of the file's subjects, so a thread's subject is the file's in every part.
         const messages = await readRows(need(o.file))
         const answers = []
-        for (const part of chunk(messages, COPY_CHECK_MAX, COPY_CHECK_BYTES))
-          answers.push(await call(config, 'POST', '/copy/check', { messages: part }))
+        for (const body of copyCheckParts(messages, COPY_CHECK_MAX, COPY_CHECK_BYTES))
+          answers.push(await call(config, 'POST', '/copy/check', body))
         const checked = merge(answers) as { withProblems: number }
         out(checked)
         if (messages.length > COPY_WRITE_MAX)
@@ -5845,7 +5882,9 @@ async function main(argv: string[]): Promise<void> {
 }
 
 try {
-  await main(process.argv.slice(2))
+  await main(process.argv.slice(2)).catch((error: unknown) => {
+    throw error instanceof MissingArgument ? missingArgument(process.argv.slice(2)) : error
+  })
 } catch (error) {
   if (error instanceof BhError) {
     process.stderr.write(

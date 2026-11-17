@@ -25,6 +25,40 @@ export function chunk(rows: unknown[], maxRows = CHUNK_ROWS, maxBytes = CHUNK_BY
   return chunks
 }
 
+/**
+ * A copy check over more messages than the engine checks at once, as request bodies: each part,
+ * with the subjects the rest of the file gives, so a follow-up is compared with its thread's first
+ * email as the file writes it though that email went in another part (belkins-home-plugin#1004).
+ * The subjects' bytes come off what a part may carry, so a body stays within the engine's limit.
+ */
+export function copyCheckParts(
+  messages: unknown[],
+  maxRows: number,
+  maxBytes: number,
+): { messages: unknown[]; subjects?: { messageId: string; subject: string | null }[] }[] {
+  const once = chunk(messages, maxRows, maxBytes)
+  if (once.length <= 1) return once.map((part) => ({ messages: part }))
+  const subjects = messages.flatMap((m) => {
+    const { messageId, subject } = (m ?? {}) as { messageId?: unknown; subject?: unknown }
+    return typeof messageId === 'string' && typeof subject === 'string'
+      ? [{ messageId, subject }]
+      : []
+  })
+  const room = maxBytes - Buffer.byteLength(JSON.stringify(subjects))
+  if (room < maxBytes / 4)
+    throw new BhError(
+      `${messages.length} messages carry more subjects than one check can compare across parts`,
+      {
+        hint: "Split the file into parts of 2000 messages or fewer, keeping each lead's messages together, and check each",
+      },
+      2,
+    )
+  return chunk(messages, maxRows, room).map((part) => {
+    const inPart = new Set(part.map((m) => (m as { messageId?: unknown })?.messageId))
+    return { messages: part, subjects: subjects.filter((x) => !inPart.has(x.messageId)) }
+  })
+}
+
 /** The chunks' answers as one: lists join; in objects, counts add up and lists join. */
 export function merge(answers: unknown[]): unknown {
   if (answers.length === 1) return answers[0]

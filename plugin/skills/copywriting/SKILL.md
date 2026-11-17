@@ -219,7 +219,7 @@ project has taken carries none.
   characters including spaces and line breaks; two short sentences; asks for nothing beyond
   connecting; no pitch; no greeting needed.
 - `linkedin_message`: two to four sentences (well under the 1 900 limit); no subject, no greeting
-  line, no signature; one ask.
+  line unless the strategy's guidance asks for one (`bh copy check` warns on it), no signature; one ask.
 
 ## Telegram
 

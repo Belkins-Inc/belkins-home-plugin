@@ -40,7 +40,8 @@ message; the rest is the writer's to hold. Read your copy against every line, th
    opener or a question that worked for one client is not a template for the next: write from this
    client's brief, offer and free deliverable, and the lead's footprint. `bh copy check` flags copy
    that names another client of the organisation (a problem) and step guidance that does (a
-   warning).
+   warning); the lead's own name and their company's never count, so "Hi Larry," greets the lead
+   though another client is called Larry.
 
 ## The first email: two archetypes (test them with Step-1 `variants`), then the offer as a question
 
@@ -166,11 +167,13 @@ Valedictions: "Best regards", "Kind regards", "Warm regards", "Warmest regards",
 ## LinkedIn
 
 - `linkedin_invite`: ≤ 200 characters, ≤ 300 when the account has Premium (LinkedIn refuses more; the engine refuses too). Two short
-  sentences. No subject, no greeting line, no signature, no pitch, no ask beyond connecting.
+  sentences. No subject, no greeting line (checked), no signature, no pitch, no ask beyond connecting.
   Invitations go without a note unless their step is set `"withoutNote": false`; a bare one has
   nothing to write.
 - `linkedin_message`: ≤ 1 900 characters by the engine; write two to four sentences. No subject,
-  no greeting line (the thread is headed by their name), no signature. One ask.
+  no greeting line (the thread is headed by their name), no signature. One ask. A greeting line is
+  a warning in `bh copy check`, not a problem: keep one only where the strategy's guidance asks for
+  it (some teams lay LinkedIn messages out like an email).
 - Never assumes the emails arrived; never mentions them.
 
 ## Telegram
