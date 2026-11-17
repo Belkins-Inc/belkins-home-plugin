@@ -442,6 +442,7 @@ hidden at a terminal, so it stays out of the shell's history.
   calls rename <list-id> --name <n>     the list's name only; one already with the dialer keeps its name there
   calls outcome <list-id> --contact <contact-id> --outcome no_answer|voicemail|wrong_number|not_interested|call_back|meeting|other|none [--note <t>]
   goals | goal set <YYYY-MM> --target <meetings> [--counts qualified|held] | goal done <YYYY-MM> --done <n>   (a person only)
+  goal remove <YYYY-MM>                  the month has no goal, as though none were set (a person only)
   contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts",
                                           "country","timezone"}]   country: ISO 3166 two letters (PL); timezone: IANA
                                          (Europe/Warsaw) — the lead's send window and meeting times go by them
@@ -3321,6 +3322,8 @@ async function main(argv: string[]): Promise<void> {
     case 'company':
       return company(config, sub, pos.slice(2), o)
     case 'goal':
+      if (sub === 'remove')
+        return out(await call(config, 'DELETE', `/projects/${p()}/goals/${seg(arg)}`))
       if (sub === 'done')
         return out(
           await call(config, 'PUT', `/projects/${p()}/goals/${seg(arg)}/done`, {

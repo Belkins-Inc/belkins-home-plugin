@@ -110,7 +110,8 @@ The brief is the first thing a person approves before any money is spent (`segme
    - What the client said about our work → `bh note add --kind client_feedback`, verbatim, with date.
 11. **Goal.** The monthly meeting target and what counts (qualified or held) comes from the agreement
    or the client. Setting it is a person's action (`bh goal set <YYYY-MM> --target <n> [--counts
-   qualified|held]`); if you are not a person or it is not agreed, open a task or a question.
+   qualified|held]`); if you are not a person or it is not agreed, open a task or a question. A
+   month that should have no goal (past the contract's end, say) is `bh goal remove <YYYY-MM>`.
 12. **Questions.** Every gap and conflict: `bh question add --body "<one question the client can
    answer>" --note "<what depends on it>"`. One question per row; group them in the task that asks
    a person to send them.

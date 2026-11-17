@@ -292,6 +292,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   goal: {
     '*': [],
     done: ['done'],
+    remove: [],
     set: ['counts', 'target'],
   },
   goals: {
