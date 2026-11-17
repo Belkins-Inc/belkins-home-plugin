@@ -52,7 +52,11 @@ below). Paid enrichment stays a person's.
 
    `segment create` upserts by name; re-running it keeps the fields left out. Later changes:
    `bh segment update <id> [--name] [--body] [--criteria <json>] [--estimate <n>] [--status
-   active|paused|exhausted|archived]` — pause or archive a segment you stop working.
+   active|paused|exhausted|archived]` — pause or archive a segment you stop working. New criteria
+   answer `qualifiedThatBreakThem`: qualified companies that break them now, with why and their live
+   leads. Nothing is taken out; they go in the project's one "criteria breaks" task, and a person
+   decides — `bh companies breaks <segment-id>` lists them with their leads' ids, a disqualification
+   takes one out (`bh lead stop` for a lead to end), closing the task keeps the rest.
 3. **Choose the kind of source by where these companies are listed** — details and query shapes in
    [references/sources.md](references/sources.md):
    - `linkedin` — companies described by industry, location, size, type (the default);

@@ -136,6 +136,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   },
   companies: {
     '*': [],
+    breaks: [],
     domain: [],
     in: ['limit', 'offset', 'q', 'status', 'waiting'],
     judge: ['file'],

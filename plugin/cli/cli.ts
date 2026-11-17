@@ -379,6 +379,8 @@ hidden at a terminal, so it stays out of the shell's history.
   companies in <segment-id> [--status new|qualified|disqualified] [--waiting fact|client] [--q <text>] [--limit <n>] [--offset <n>]
                                          answers {companies, total, counts, limit, offset}
   companies verdicts <segment-id> --company <id>       every verdict ever passed on that company
+  companies breaks <segment-id>          qualified companies that break the segment's criteria or the client's rules
+                                         now, each with why and its live leads (ids for bh lead stop); none is taken out
   companies domain <company-id|wrong-domain> <right-domain>   correct a company's domain, keeping the company with its
                                          contacts, verdicts and leads; refused when another company has it; its mail
                                          provider is read again from the new domain
@@ -2505,6 +2507,8 @@ async function main(argv: string[]): Promise<void> {
             })}`,
           ),
         )
+      if (sub === 'breaks')
+        return out(await call(config, 'GET', `/segments/${seg(arg)}/criteria-breaks`))
       if (sub === 'verdicts') {
         if (!o.company)
           throw new BhError(
