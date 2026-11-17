@@ -688,10 +688,11 @@ hidden at a terminal, so it stays out of the shell's history.
                                          that contact, the meeting counted for the thread's plan; a scheduled agent
                                          books only a slot offered in the thread (or to this lead)
   meeting record --thread <id> | --contact <id> --at <iso> --calendar <external id> | --through <where>
-                 [--minutes <n>] [--sender <id>] [--notes <t>]
+                 [--minutes <n>] [--sender <id>] [--notes <t>] [--pending]
                                          a meeting booked outside Home (an external calendar, the client's own
                                          link): counted, written to no calendar; the sender defaults to the
-                                         calendar's, then the thread's (a person only)
+                                         calendar's, then the thread's (a person only); --pending: agreed, but the
+                                         client counts it only once the prospect confirms it
   meeting move <id> --at <iso>           on the calendar too (an agent: only to an offered slot); one booked
                                          outside Home moves in our books only, after it was moved there
   meeting cancel <id> [--reason <t>]     after 60 s, on the calendar too; the lead is told (a person only)
@@ -703,10 +704,12 @@ hidden at a terminal, so it stays out of the shell's history.
                                          the lead's details: {first} {last} {full} {company} {title} filled per
                                          lead (one lacking a value it names gets the standard text); the Meet
                                          and recording line follows it; --text "" takes it off (a person only)
-  meeting update <id> [--status held|no_show] [--outcome qualified|not_qualified|opportunity|won|lost]
+  meeting update <id> [--status held|no_show|pending|scheduled] [--outcome qualified|not_qualified|opportunity|won|lost]
                   [--feedback <client's words>] [--notes <t>] [--thread <id>] [--lead-timezone <iana>]   (a person only)
                                          --thread ties it to the thread it came from: it counts for that thread's
-                                         plan, and takes its sender when it has none
+                                         plan, and takes its sender when it has none; --status pending: not counted
+                                         until the prospect confirms it (one no calendar event of ours holds; the lead
+                                         is told nothing), --status scheduled confirms a pending one
   mailboxes                              each mailbox, with its ladder day, placement, the receiving sides its outreach
                                          is held on (outreachHeldSides: google, microsoft) since outreachHeldAt and why,
                                          disconnectedReason, and a warning the provider gave ahead of a disconnect
@@ -1694,6 +1697,7 @@ const FLAGS = {
   image: { type: 'string' },
   none: { type: 'boolean' },
   workplace: { type: 'boolean' },
+  pending: { type: 'boolean' },
   rent: { type: 'boolean' },
   'sign-up': { type: 'boolean' },
   browser: { type: 'boolean' },
@@ -4631,6 +4635,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.through ? { bookedThrough: o.through } : {}),
             ...(o.minutes ? { minutes: Number(o.minutes) } : {}),
             ...(o.notes ? { notes: o.notes } : {}),
+            ...(o.pending ? { pending: true } : {}),
             at: o.at,
           }),
         )
