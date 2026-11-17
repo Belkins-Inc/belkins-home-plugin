@@ -28,7 +28,8 @@ the scheduled-tasks tool (`create_scheduled_task`), or in the app's Scheduled ta
 
 1. `bh linkedin accounts <org>` (`belkins` for the agency's network): the accounts whose `warmup`
    has `commentsADay` above 0 and whose `status` is `active`. None → end with "Nothing to comment".
-2. For each, `bh linkedin feed <id>`. `commentsLeft` 0 or `open` false → next account. It spends two
+2. For each, `bh linkedin feed <id>`. `commentsLeft` 0 or `open` false → next account (`quietUntil` set: a
+   profile in its first two weeks, which comments on nothing until then). It spends two
    of the account's LinkedIn requests, so look once a pass, not again to compare.
 3. Pick one post from `posts`, the one this person could answer best — something in their line of
    work (`bh linkedin show <id>` names them; their title is on `bh agency senders <org>`) that you
