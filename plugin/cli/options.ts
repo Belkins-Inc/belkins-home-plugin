@@ -464,6 +464,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     move: ['at'],
     record: ['at', 'calendar', 'contact', 'minutes', 'notes', 'sender', 'thread', 'through'],
     retry: [],
+    text: ['file', 'text'],
     transcript: [],
     uncancel: [],
     update: ['feedback', 'lead-timezone', 'notes', 'outcome', 'status', 'thread'],

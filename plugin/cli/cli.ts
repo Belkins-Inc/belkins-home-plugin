@@ -699,6 +699,10 @@ hidden at a terminal, so it stays out of the shell's history.
   meeting retry <id>                     write the event again after a calendar error (found, not doubled)
   meeting transcript <id>                what a meeting through the organizer left: who came and how long, the
                                          host bot's comings and goings, the transcript, Meet's Docs
+  meeting text [--text <t> | --file <path>]   the project's own text on its meetings' invitations, in place of
+                                         the lead's details: {first} {last} {full} {company} {title} filled per
+                                         lead (one lacking a value it names gets the standard text); the Meet
+                                         and recording line follows it; --text "" takes it off (a person only)
   meeting update <id> [--status held|no_show] [--outcome qualified|not_qualified|opportunity|won|lost]
                   [--feedback <client's words>] [--notes <t>] [--thread <id>] [--lead-timezone <iana>]   (a person only)
                                          --thread ties it to the thread it came from: it counts for that thread's
@@ -4638,6 +4642,14 @@ async function main(argv: string[]): Promise<void> {
           ),
         )
       if (sub === 'retry') return out(await call(config, 'POST', `/meetings/${seg(arg)}/retry`, {}))
+      if (sub === 'text')
+        return out(
+          o.text === undefined && !o.file
+            ? await call(config, 'GET', `/projects/${p()}/meeting-text`)
+            : await call(config, 'PUT', `/projects/${p()}/meeting-text`, {
+                text: o.file ? await readFile(o.file, 'utf8') : o.text || null,
+              }),
+        )
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/meetings/${seg(arg)}`, {
