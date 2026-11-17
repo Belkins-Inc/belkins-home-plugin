@@ -206,7 +206,7 @@ hidden at a terminal, so it stays out of the shell's history.
   dialer role <email> operator|manager|admin --project <p>   the role of someone already in the project's dialer
                                          organization; an admin sees every workspace there (platform admin, a person)
   dialer people --project <p>           who is in the project's dialer workspace, and who works its queue (its organisation's admin)
-  dialer numbers buy <1-10> [--country US|CA] [--region NY] [--area-code 212] [--city <c>] --project <p>   caller numbers for the project's workspace, a month of rent each from the dialer budget (platform admin, a person)
+  dialer numbers buy <1-10> [--country US|CA|DE|…] [--type local|mobile] [--region NY] [--area-code 212] [--city <c>] --project <p>   caller numbers for the project's workspace, a month of rent each from the dialer budget; outside the US and Canada only under a bundle the dialer's operator mapped (platform admin, a person)
   dialer agents <email,…> --project <p>  who works the project's queue; replaces the set (its organisation's admin)
   dialer orgs                           the dialer organizations our key can see, and the organisation linked to each (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
@@ -2835,14 +2835,15 @@ async function main(argv: string[]): Promise<void> {
           throw new BhError(
             'How many numbers to buy?',
             {
-              hint: 'bh dialer numbers buy <1-10> [--country US|CA] [--region NY] [--area-code 212] [--city Austin] --project <project>',
+              hint: 'bh dialer numbers buy <1-10> [--country US|CA|DE] [--type local|mobile] [--region NY] [--area-code 212] [--city Austin] --project <project>',
             },
             2,
           )
         return out(
           await call(config, 'POST', `/projects/${p()}/dialer/numbers`, {
             count,
-            ...(o.country ? { country: o.country } : {}),
+            ...(o.country ? { country: o.country.toUpperCase() } : {}),
+            ...(o.type ? { type: o.type.toUpperCase() } : {}),
             ...(o.region ? { region: o.region } : {}),
             ...(o['area-code'] ? { areaCode: o['area-code'] } : {}),
             ...(o.city ? { locality: o.city } : {}),
