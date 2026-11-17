@@ -422,6 +422,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     post: ['dry-run', 'file'],
     posts: ['status'],
     'profile-posts': [],
+    requests: ['day'],
     show: [],
     'sign-in': ['browser'],
     update: ['delay-max', 'delay-min', 'ramp', 'status'],

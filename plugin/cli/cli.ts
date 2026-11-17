@@ -1001,6 +1001,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          password the engine makes and, for a company's person, their workplace mailbox
   linkedin show|history <id>             one account; what was done to it (the id bh linkedin or bh linkedin
                                          accounts prints, for a project's sender's account too)
+  linkedin requests <id> [--day <YYYY-MM-DD>]   what it asked LinkedIn: 14 UTC days' totals with each
+                                         operation's count, and the day's requests one by one (today by default)
   telegram                               this project's Telegram accounts: a sender's own Telegram, written to
                                          only for people it already knows (docs/decisions/telegram.md)
   telegram connect --sender <id> [--org <slug>]   a link for the sender's owner to link their Telegram (a QR code
@@ -1912,6 +1914,7 @@ const FLAGS = {
   'event-type': { type: 'string' },
   owner: { type: 'string' },
   url: { type: 'string' },
+  day: { type: 'string' },
   days: { type: 'string' },
   calendar: { type: 'string' },
   slots: { type: 'string' },
@@ -5525,6 +5528,13 @@ async function main(argv: string[]): Promise<void> {
       }
       if (sub === 'show') return out(await call(config, 'GET', account()))
       if (sub === 'history') return out(await call(config, 'GET', `${account()}/events`))
+      if (sub === 'requests') {
+        if (o.day && !/^\d{4}-\d{2}-\d{2}$/.test(o.day))
+          throw new BhError('--day is a UTC date', { hint: '--day 2026-11-17' }, 2)
+        return out(
+          await call(config, 'GET', `${account()}/requests${o.day ? `?day=${o.day}` : ''}`),
+        )
+      }
       if (sub === 'login') {
         const path = account()
         const [password, totpSecret] = await readSecrets([
