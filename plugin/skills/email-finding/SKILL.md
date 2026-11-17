@@ -184,7 +184,8 @@ Before the first step of any lead, and before an email to such an address, the e
 the contact's LinkedIn profile and checks they still work at the company: one shown elsewhere is
 marked departed and their leads stop; one it cannot confirm (no profile) is held, stuck as "Not
 confirmed to work at the company" (`bh behaviour enrollment-and-plans`). So a contact without a
-LinkedIn profile needs one, or a person's `bh contacts employer <id> --confirm --note <how>`. The
+LinkedIn profile needs one (given one, it is checked again at the engine's next pass, or at once
+with `bh contacts employer <id>`), or a person's `bh contacts employer <id> --confirm --note <how>`. The
 company's `related_domains` count there too: a parent group's or a new name's site recorded on the
 company reads a profile at it as current, and a check that reads a departed contact as current
 takes back the departure an earlier check set. A profile that turns out to be a namesake's comes
