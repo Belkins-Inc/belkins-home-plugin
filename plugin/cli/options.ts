@@ -227,7 +227,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     invite: ['role'],
     key: [],
     link: ['queue'],
-    numbers: ['area-code', 'city', 'country', 'region'],
+    numbers: ['area-code', 'city', 'country', 'region', 'type'],
     orgs: [],
     people: [],
     queue: ['hours'],
