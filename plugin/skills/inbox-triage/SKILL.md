@@ -189,6 +189,9 @@ there are many:
   the mailbox (a person runs `bh mailbox reconnect <id>`: a sign-in link, or for a seat in one of
   our Google tenants an immediate retry), then `bh reply retry <id>` sends it again as it was (a
   person only; no new draft). Once a newer answer went in the thread, discard the old failure.
+- A LinkedIn answer whose `lastError` says "it may have gone" (a timeout): `bh reply check <id>`
+  reads its chat and sends nothing; found, it is recorded as sent. `bh reply retry <id>` looks in
+  the chat first too, so it never goes twice; nobody needs to open LinkedIn.
 
 ## The server agent
 

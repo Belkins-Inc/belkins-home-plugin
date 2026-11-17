@@ -649,6 +649,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     approve: ['allow-dnc', 'approve-by', 'bcc', 'body', 'cc', 'reason', 'send-at', 'subject'],
     ask: ['ask'],
     assign: ['reviewer', 'to'],
+    check: [],
     discard: [],
     draft: [
       'approve-by',

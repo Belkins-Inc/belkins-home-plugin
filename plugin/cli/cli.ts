@@ -1127,7 +1127,10 @@ hidden at a terminal, so it stays out of the shell's history.
        [--allow-dnc --reason <why>]       it goes even to an address on do-not-contact: a compliance answer (a data-
                                          subject request) on the lead's own thread; recorded, the entry stays
   reply discard <id>                     withdraws a draft, an approved reply not gone yet, or a failed one
-  reply retry <id>                       sends a failed reply again as it was, after the undo minute (a person only)
+  reply retry <id>                       sends a failed reply again as it was, after the undo minute (a person only);
+                                         a LinkedIn answer that may have gone is looked for in its chat first
+  reply check <id>                       a failed LinkedIn answer looked for in its chat, sending nothing: found,
+                                         it is recorded as sent; not found, it stays failed
   reply resend <id> --mailbox <address> --reason <why> [--subject <s>] [--send-at …] [--approve-by …] [--reviewer …]
                                          a sent answer the lead never received, again from another of the
                                          project's mailboxes: a new thread there, the same text and copies as its
@@ -4328,6 +4331,7 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       if (sub === 'retry') return out(await call(config, 'POST', `/replies/${seg(arg)}/retry`, {}))
+      if (sub === 'check') return out(await call(config, 'POST', `/replies/${seg(arg)}/check`, {}))
       if (sub === 'resend') {
         if (!o.mailbox)
           throw new BhError(
