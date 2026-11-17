@@ -338,8 +338,8 @@ live strategy** (one contact, one live strategy). Senders and mailboxes are assi
 lead first going to a sender with a mailbox for its mail provider (`bh mailbox update <id>
 --recipients`); `unserved` in the enroll answer counts leads no sender's mailboxes serve.
 **`--recipients` alone never holds a lead back**: a lead whose provider no mailbox serves goes from
-any of its sender's mailboxes (Google mailboxes listing every provider but Microsoft still email
-M365 leads). To keep such leads until a mailbox for their provider ramps, set `"holdUnserved":
+any of its sender's mailboxes (Google mailboxes set to `--recipients '!microsoft'`, every provider
+but Microsoft, still email M365 leads when the sender has no Microsoft mailbox). To keep such leads until a mailbox for their provider ramps, set `"holdUnserved":
 true` on the strategy (`bh strategy update <id> --file`, a person): their emails wait, stuck
 `unserved_provider` in `bh leads --state stuck`; a Microsoft mailbox pointed at them then `bh
 strategy repick-mailboxes <id>` starts them, or `holdUnserved: false` sends them from what they

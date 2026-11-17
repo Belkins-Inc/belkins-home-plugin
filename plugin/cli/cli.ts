@@ -727,8 +727,10 @@ hidden at a terminal, so it stays out of the shell's history.
                                          — adding it again reconnects it, also one added with mailbox smtp
   mailbox update <id> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed|--not-warmed] [--status active|paused|archived]
                  [--sender <id>]            another sender of the project writes from it
-                 [--recipients google,microsoft,…|any]   write only to leads whose mail that provider takes
-                                         (none is refused: it is a domain with no MX; to write to nobody, --status paused)
+                 [--recipients google,microsoft,…|'!microsoft,…'|any]   write only to leads whose mail that
+                                         provider takes, or ('!…') to everyone's but those, providers not known yet
+                                         included (none is refused: it is a domain with no MX; to write to
+                                         nobody, --status paused)
                  [--intake on|off]          off: it takes no new lead (enroll, repick, a referral, the engine's own
                                          move) while its started leads finish and its warm-up goes on
                  --not-warmed on a warmed one: the ladder again from its first day; --warmed needs a
