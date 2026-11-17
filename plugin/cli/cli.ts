@@ -721,6 +721,10 @@ hidden at a terminal, so it stays out of the shell's history.
   mailbox reconnect <id>                 a disconnected mailbox connected again: one a person signs in to prints the URL
                                          to open; a seat in one of our Google tenants is tried at once and made
                                          active when Google gives its token (a person only)
+  mailbox delete-user <id|address> [<id|address>…] [--confirm]   an archived mailbox's user deleted from the
+                                         Google or Microsoft tenant we made it in, its mail with it, so its seat is
+                                         no longer paid for; it cannot be brought back. Without --confirm it only says
+                                         what it would delete (a platform admin; bh tenants cleanup names them)
   mailbox import --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed] [--paused]
                                          from another platform, by the refresh token it holds (same OAuth app):
                                          [{"provider":"google|microsoft","refreshToken","sender":"<name>"|"senderId"}];
@@ -839,7 +843,8 @@ hidden at a terminal, so it stays out of the shell's history.
   tenants cleanup                        the users our Google tenants pay for that may be let go: a mailbox archived,
                                          paused a month or more, or two weeks old with no lead's email sent, and users
                                          the engine does not know nobody signed in to for a month; nobody on a company's main
-                                         domain (its workplace mailboxes) or on the tenant's own domain is named. The engine deletes none: do it in the Google Admin
+                                         domain (its workplace mailboxes) or on the tenant's own domain is named. The engine deletes none by itself:
+                                         an archived mailbox's with bh mailbox delete-user, any other in the Google Admin
                                          console (an admin; #home-alerts counts them on the 1st of each month)
   tenant users <id>                      every user Google holds in a Google tenant, last sign-in, and the mailbox
                                          or order the engine holds of it; ones it holds nothing of come first,
@@ -4906,6 +4911,39 @@ async function main(argv: string[]): Promise<void> {
         if (!arg)
           throw new BhError('Which mailbox?', { hint: 'bh mailboxes lists them, with ids' }, 2)
         return out(await call(config, 'POST', `/mailboxes/${seg(arg)}/reconnect`, {}))
+      }
+      if (sub === 'delete-user') {
+        const refs = pos.slice(2)
+        if (!refs.length)
+          throw new BhError(
+            'Which mailbox?',
+            { hint: 'its id or address; bh tenants cleanup names the archived ones' },
+            2,
+          )
+        // One at a time: a mailbox refused must not stop the rest.
+        const users: unknown[] = []
+        const refused: unknown[] = []
+        for (const ref of refs) {
+          try {
+            users.push(
+              await call(
+                config,
+                'POST',
+                `/mailboxes/${seg(ref)}/tenant-user/delete`,
+                o.confirm ? { confirm: true } : {},
+              ),
+            )
+          } catch (error) {
+            if (!(error instanceof BhError)) throw error
+            refused.push({ mailbox: ref, error: error.message, detail: error.payload })
+          }
+        }
+        out({ ...(o.confirm ? {} : { dryRun: true }), users, refused })
+        if (refused.length) {
+          process.stderr.write(`refused: ${refused.length} of ${refs.length}, see "refused"\n`)
+          process.exitCode = 1
+        }
+        return
       }
       if (sub === 'import') {
         // One at a time: each token is tried against the provider, and one refused must not stop the rest.

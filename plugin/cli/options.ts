@@ -440,6 +440,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     '*': ['daily-limit', 'delay-max', 'delay-min', 'not-warmed', 'warmed'],
     cancel: [],
     connect: ['provider', 'sender'],
+    'delete-user': ['confirm'],
     hold: [],
     import: ['file', 'paused'],
     jmap: ['file'],
