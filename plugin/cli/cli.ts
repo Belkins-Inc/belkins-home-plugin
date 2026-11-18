@@ -147,7 +147,7 @@ hidden at a terminal, so it stays out of the shell's history.
   company-details set --legal-name <n> --website <acme.com> --phone <p> --address <street[; line 2]> --city <c>
        [--region <r>] --postal-code <p> --country <US> --first <n> --last <n> --email <e> [--contact-phone <p>] [--org <slug>]
                                          given once for both providers, until a provider's tenant is made with them; the
-                                         contact receives Google's first admin login: not on a domain being bought (its admin)
+                                         contact receives the providers' notices: not on a domain being bought (its admin)
   google-org [--org <slug>]             its own Google Workspace organisation, where bought Google mailboxes live:
                                          made on the first Google domain bought; state, what it waits for, the terms link
   google-org details --company <legal name> --address <street[; line 2]> --city <c> [--region <r>]
