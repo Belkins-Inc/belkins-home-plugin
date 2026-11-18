@@ -169,6 +169,14 @@ Accepted values:
   <step-id> --file` with `{"withoutNote": true}` switches a frozen template's invite step (a person
   only): its unsent invitations drop their notes at once; `false` puts the ones left bare back in
   the copy queue.
+- `withdrawAfterDays` (`linkedin_invite` only, 1 to 30, default none): an invitation still
+  unaccepted this many days after it went is withdrawn on LinkedIn, so the account stays under
+  LinkedIn's cap on pending invitations (an account at it sends no more). The steps waiting on
+  that invitation then move on as for one never accepted: a message after it is skipped and a
+  fallback goes, even inside their `maxWaitDays`. LinkedIn lets the account invite that person
+  again only some weeks later. `bh plan step <strategy-id> <step-id> --file` with
+  `{"withdrawAfterDays": 21}` (or `null` to stop) changes a frozen template's invite step (a person
+  only), and reaches the invitations already out.
 - `guidance`: what this step says and how directly it asks — the copywriter's instruction. It may
   fix the exact question per persona ("Question, word for word: Want the no-show review for three clinics?"; the first email offers
   something free for a yes and the question asks for it); the writer then uses it word for word. Edits the person makes to the

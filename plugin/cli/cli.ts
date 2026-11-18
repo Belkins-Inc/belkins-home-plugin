@@ -342,6 +342,7 @@ hidden at a terminal, so it stays out of the shell's history.
                                          a "telegram_message" step goes from the sender's own Telegram to a lead it
                                          knows (a peer matched to the contact: bh telegram match), else it is skipped;
                                          a linkedin_invite step goes without a note unless it says "withoutNote": false;
+                                         "withdrawAfterDays" (1-30) on it withdraws an invitation still unaccepted that long;
                                          "track": "linkedin" (an invite or LinkedIn message) runs it beside the emails:
                                          timed on its own track, it never holds an email; "delayHours" (0-23) adds
                                          hours to "delayDays"; "variants": [{"name","withoutNote","guidance"},…] (2-4)
@@ -349,9 +350,11 @@ hidden at a terminal, so it stays out of the shell's history.
                                          on a draft that has sent nothing, its enrolled leads' plans are copied again,
                                          written copy kept where a step keeps its channel and the lead its variant; a lead keeps its
                                          variant where the step still has one of that name, else that copy is written again (a person only)
-  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","newThread","threadOf","delayDays","track"}: one step's,
+  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","withdrawAfterDays","newThread","threadOf","delayDays","track"}: one step's,
                                          frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
+                                         withdrawAfterDays (a LinkedIn invite, 1-30 or null; a person only): withdraw its invitations
+                                         still unaccepted after that many days, those already out included
                                          newThread (a follow-up email; a person only): true starts its own thread; false answers
                                          in the thread of threadOf, the position of an earlier email step (null: the first email's),
                                          as "Re: <that thread's first subject>"; every email not yet sent follows
