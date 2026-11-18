@@ -864,7 +864,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     unrevoke: [],
   },
   triage: {
-    '*': ['class', 'follow-up', 'note', 'return'],
+    '*': ['class', 'follow-up', 'keep', 'note', 'return'],
     undo: [],
   },
   use: {

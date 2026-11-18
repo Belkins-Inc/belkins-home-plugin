@@ -85,6 +85,11 @@ there are many:
      `bh triage <id> --note "<why>"` marks it handled. On a reply that has a class, leaving out
      `--class` marks it handled with its class and dates as they are.
      The note is one sentence for the salesperson: a time, a name, a condition. No advice.
+   - kept for a person: when a project rule (`bh brief`, rules) keeps a class in To review for
+     someone to read ("not_interested stays for me"), add `--keep` to the confirm or correct:
+     `bh triage <id> --class <c> --note "<one line>" --keep` records the class and note, runs its
+     rules, and leaves the reply in To review; no server run is given it again. Never triage it
+     and `bh triage undo` it instead: that leaves it to come back on every run.
 4. **Answer if it needs one** (references/answers.md says which classes get none):
    `bh reply draft <threadId> --body-file <path> --note "<for the approver>" [--send-at <iso>]
    [--approve-by <iso>] [--sender <id>] [--cc <a,b>] [--bcc <c>] [--subject <s>]`. The answer

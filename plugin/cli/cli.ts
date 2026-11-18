@@ -1097,9 +1097,11 @@ hidden at a terminal, so it stays out of the shell's history.
   thread attachment <message-id> <n> [--out <file>]   saves file n (from the list) as bh-attachments/<message-id>/<n>-<its name>,
                                          or --out; never over a file already there
   thread stage <id> opportunity|proposal|won|lost|none   where the deal with its lead stands after they answered
-  triage <message-id> [--class <c>] [--note <t>] [--follow-up <yyyy-mm-dd>] [--return <yyyy-mm-dd>]
+  triage <message-id> [--class <c>] [--note <t>] [--follow-up <yyyy-mm-dd>] [--return <yyyy-mm-dd>] [--keep]
   triage undo <message-id>              take it back: an unsubscribe within 60 s, or back into the queue
-                                         confirm or change what a reply means; no --class marks it handled
+                                         confirm or change what a reply means; no --class marks it handled;
+                                         --keep leaves it in To review for a person (a project rule) and no
+                                         server run is given it again
   reply draft <thread-id> --body <text> | --body-file <path> [--note <for the approver>] [--send-at <iso>]
        [--approve-by <iso>] [--sender <id>] [--cc a@x.com,b@y.com] [--bcc c@z.com] [--subject <s>]
        [--reviewer <email>]              who approves it; its Slack notice goes to them (left out: you, when you
@@ -1900,6 +1902,7 @@ const FLAGS = {
   'allow-namesakes': { type: 'boolean' },
   stop: { type: 'string' },
   class: { type: 'string' },
+  keep: { type: 'boolean' },
   cc: { type: 'string' },
   bcc: { type: 'string' },
   attach: { type: 'string', multiple: true },
@@ -4207,6 +4210,7 @@ async function main(argv: string[]): Promise<void> {
           ...(o.note ? { note: o.note } : {}),
           ...(o['follow-up'] ? { followUpOn: o['follow-up'] } : {}),
           ...(o.return ? { returnDate: o.return } : {}),
+          ...(o.keep ? { keep: true } : {}),
         }),
       )
     case 'reply-templates':
