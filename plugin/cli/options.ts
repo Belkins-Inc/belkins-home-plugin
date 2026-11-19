@@ -616,6 +616,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'name',
       'reply-bcc',
       'reply-cc',
+      'seed-hold',
       'timezone',
     ],
   },
