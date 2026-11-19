@@ -8,7 +8,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     check: ['address', 'again', 'provider', 'reason'],
     checks: [],
     collect: [],
-    replace: ['address'],
+    replace: ['address', 'reason'],
   },
   admin: {
     '*': [],
@@ -564,7 +564,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   phones: {
     '': [],
     '*': [],
-    add: ['confidence', 'dnc', 'file', 'kind', 'number', 'source'],
+    add: ['confidence', 'dnc', 'dnc-note', 'dnc-reason', 'file', 'kind', 'number', 'source'],
     check: ['again'],
     set: ['kind', 'rank', 'reason', 'state'],
   },
@@ -605,6 +605,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     members: [],
     move: ['org'],
     remove: ['dry-run'],
+    setup: ['undo'],
     update: [
       'brief',
       'brief-file',
@@ -760,6 +761,8 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   },
   setup: {
     '*': ['dir'],
+    skip: ['undo'],
+    status: ['undo'],
   },
   slack: {
     '*': ['client'],

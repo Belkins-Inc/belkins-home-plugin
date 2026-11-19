@@ -119,6 +119,10 @@ hidden at a terminal, so it stays out of the shell's history.
   projects [--org <slug>] [--all] | project create <slug> --name <name> [--timezone <tz>] [--org <slug>] [--owner <user-id>]
   project members | project member <user-id> [--role owner|member] | project member remove <user-id>
   project move <slug> --org <org>        move a project and all it owns to another organisation (platform admin)
+  project setup [--project <slug>]       the set-up checklist the web app's Setup shows: each step, done or not,
+                                         and what is left before the first launch (also: bh setup status)
+  project setup skip <step> [--undo]     go without an optional step (rules, linkedin, agent), or take it back up
+                                         and answers the checklist (also: bh setup skip <step>; a person only)
   project archive [<slug>] [--undo]     off every list: its agent off, its open tasks cancelled; refused while a
                                          strategy is live; --undo makes it active again (its owner or an org admin)
   project remove <slug> [--dry-run]      delete a project that never worked for anyone, with its senders, mailboxes,
@@ -508,11 +512,12 @@ hidden at a terminal, so it stays out of the shell's history.
   label remove <name> [--company …] [--contact …] [--file …]   take it off; the label stays
   label rename <name> --name <new> | label delete <name>        delete takes it off everything that carries it
   phones <contact-id>                    a contact's numbers in dial order: kind, source, confidence, state, on do-not-call
-  phones add --file <json|jsonl|->       [{"contactId","number","kind":"mobile|direct|company|other","source","confidence":"high|medium|low","dnc"}]
-  phones add <contact-id> --number <n> --source <s> [--kind <k>] [--confidence <c>] [--dnc]
+  phones add --file <json|jsonl|->       [{"contactId","number","kind":"mobile|direct|company|other","source","confidence":"high|medium|low","dnc","dncReason","dncNote"}]
+  phones add <contact-id> --number <n> --source <s> [--kind <k>] [--confidence <c>] [--dnc] [--dnc-reason <r>] [--dnc-note <t>]
                                          each after the contact's last number, read as E.164 (+ country code; a national
-                                         number reads with the contact's country); --dnc: on a do-not-call registry, so
-                                         it also goes on dnc. Apollo's delivered numbers go in by themselves
+                                         number reads with the contact's country); --dnc: it also goes on dnc, for the
+                                         reason given (registry for a do-not-call registry; other when none is given).
+                                         Apollo's delivered numbers go in by themselves
   phones set <phone-id> [--state active|invalid --reason <why>] [--rank <n>] [--kind <k>]
                                          a dead number (a caller's wrong number marks it by itself), the dial order
   phones check <phone-id> [--again]      line type and registered name from Twilio Lookup (a person; $0.018): an invalid
@@ -525,7 +530,8 @@ hidden at a terminal, so it stays out of the shell's history.
   dnc add --kind email|domain|phone|linkedin --value <v> --reason <r> [--note <t>] [--every-project] | dnc remove <id>
                                          --every-project blocks it for every project of every organisation (the
                                          platform admin's alone); linkedin: a profile URL (kept as its key: the /in/
-                                         name), for someone reached there alone
+                                         name), for someone reached there alone. A value already there keeps its entry;
+                                         another reason or note corrects it (updated: from, to)
   dnc import <file.csv|-> [--reason <r>] [--note <t>] [--every-project]
                                          a column email, domain, phone and/or linkedin, or value (kind from "@", a
                                          linkedin.com/in/ URL, digits, or a kind column); reason and note columns win
@@ -1225,7 +1231,9 @@ hidden at a terminal, so it stays out of the shell's history.
   address check <contact-id> --address <a> [--provider bouncer|scrubby] [--reason bounce_replacement|catch_all|new_contact] [--again]
                                          up to three guesses per bounced contact; Scrubby answers later
   address checks <contact-id> | address collect      collect: Scrubby's answers for the project
-  address replace <contact-id> --address <a>          a confirmed address: the bounced step goes again to it
+  address replace <contact-id> --address <a> [--reason <why>]   a confirmed address: the bounced step goes again to it;
+                                         without a bounce (a lead who named another address), the plan and the
+                                         answers in their thread go to it from now on; --reason is kept with the change
   reengage <message-id> [--on <yyyy-mm-dd>]           write again from that day; the id is the reply's, from bh inbox (a person only)
   refer <message-id> --email <e> [--first-name <n>] [--last-name <n>] [--title <t>]   the colleague they named (a person; the server agent only from a lead's referral, to a checked valid address);
                                          names given set theirs on a contact already held; the lead's whole plan is
@@ -2027,6 +2035,8 @@ const FLAGS = {
   number: { type: 'string' },
   rank: { type: 'string' },
   dnc: { type: 'boolean' },
+  'dnc-reason': { type: 'string' },
+  'dnc-note': { type: 'string' },
   label: { type: 'string' },
   'token-stdin': { type: 'boolean' },
   'no-emails': { type: 'boolean' },
@@ -2111,9 +2121,31 @@ async function main(argv: string[]): Promise<void> {
     return found.id
   }
 
+  /**
+   * The project's set-up checklist, as the web app's Setup shows it (#1036); given a step, that
+   * optional step skipped (or, with --undo, taken back up) first.
+   */
+  const checklist = async (skip: string | undefined) => {
+    const asked = sub === 'setup' ? arg : sub
+    if (asked === 'skip') {
+      if (!skip)
+        throw new BhError(
+          'Which step?',
+          { hint: 'bh project setup skip <step> [--undo]; bh project setup lists the steps' },
+          2,
+        )
+      await call(config, 'PUT', `/projects/${p()}/setup/skip`, { step: skip, skipped: !o.undo })
+    }
+    return call(config, 'GET', `/projects/${p()}/setup`)
+  }
+
   if (!cmd || o.help) return void process.stdout.write(USAGE)
   switch (cmd) {
     case 'setup':
+      // `bh setup status` and `bh setup skip` are the project's checklist, as the issue that asked
+      // for it named them; a bare `bh setup` is still the plugin's install.
+      if (sub === 'status' || sub === 'skip')
+        return out(await checklist(sub === 'skip' ? arg : undefined))
       return out(await setup(o.dir))
     case 'login': {
       const saved = await loadSavedConfig()
@@ -2198,6 +2230,7 @@ async function main(argv: string[]): Promise<void> {
           ),
         )
       if (sub === 'members') return out(await call(config, 'GET', `/projects/${p()}/members`))
+      if (sub === 'setup') return out(await checklist(arg === 'skip' ? pos[3] : undefined))
       if (sub === 'member' && arg === 'remove')
         return out(await call(config, 'DELETE', `/projects/${p()}/members/${seg(pos[3])}`))
       if (sub === 'member')
@@ -3583,6 +3616,8 @@ async function main(argv: string[]): Promise<void> {
             ...(o.kind ? { kind: o.kind } : {}),
             ...(o.confidence ? { confidence: o.confidence } : {}),
             ...(o.dnc ? { dnc: true } : {}),
+            ...(o['dnc-reason'] ? { dncReason: o['dnc-reason'] } : {}),
+            ...(o['dnc-note'] ? { dncNote: o['dnc-note'] } : {}),
           },
         ])
       }
@@ -4180,6 +4215,7 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'POST', `/contacts/${seg(arg)}/replace-address`, {
             address: o.address,
+            ...(o.reason ? { reason: o.reason } : {}),
           }),
         )
       break
