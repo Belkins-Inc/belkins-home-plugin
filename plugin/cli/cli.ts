@@ -747,7 +747,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          table (Gmail leads from Microsoft first; Outlook, gateway and other leads from
                                          Google first, gateways on domains >=90d): leads by side, waiting and never
                                          enrolled; need and have a day per host once warmed; how many Google, aged Google
-                                         and Microsoft mailboxes to buy, how many sit beyond the need; --per-day the first
+                                         and Microsoft mailboxes to buy, which sit beyond the need (held first, then
+                                         the fewest leads the table puts there); --per-day the first
                                          emails a day to plan for (default: what the mailboxes send); --strategy its
                                          waiting leads and its senders' mailboxes only
   mailbox connect --provider google|microsoft [--sender <id>] [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
@@ -787,7 +788,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          Leads already enrolled keep theirs until strategy repick-mailboxes
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
   domain quote <name> [<name>…]          availability and price at the registrar (free), and its credit
-                                         (balanceCents; null with balanceError when the registrar does not say)
+                                         (balanceCents; null with balanceError when the registrar does not say),
+                                         and the mailboxes the project's leads need (mailboxPlan, as mailboxes plan)
   domain closeouts [--query <word>] [--age-min <years, 5>] [--price-max-cents <n>] [--tld <com>] [--limit <n, 20>]
        [--names any|company]
                                          aged expired domains at a fixed price, oldest first, without the ones on a

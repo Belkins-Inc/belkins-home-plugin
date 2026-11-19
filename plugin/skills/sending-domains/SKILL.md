@@ -43,7 +43,10 @@ years. It goes from lookalikes that 301-redirect to the client's site:
   and every other lead (Microsoft 365, Proofpoint, Mimecast and the other gateways, other hosts)
   from Google first, so Microsoft mailboxes are worth buying only in proportion to the project's
   Gmail leads; gateway leads never go to Microsoft, and want Google on domains of 90 days or more
-  (`agedGoogle`). Mailboxes the plan shows `beyondNeed` are a reason not to buy more of that host.
+  (`agedGoogle`). Mailboxes the plan shows `beyondNeed` are a reason not to buy more of that host;
+  `beyondNeedMailboxes` names them, the ones to let go first. `bh domain quote` answers the same
+  plan (`mailboxPlan`) beside the prices. Once new mailboxes send, the engine moves waiting leads
+  onto them by the table each morning by itself; `bh strategy repick-mailboxes` does it at once.
   To anyone but an admin it shows each client tenant's room: `domains` against `maxDomains`, and for
   Google `users`, `ordered` and `free` seats against `maxUsers`, and `fullAt` when Google refused a
   user. Before a large order, check that the `free` seats carry it; when they do not, ask a
