@@ -138,7 +138,10 @@ before they reach it (telegram-peers skill).
 
 - A draft with leads enrolled and nothing sent: `bh plan set` again with the whole new file (a
   person only). Every lead's plan is copied again; written copy stays where a step keeps its
-  channel, and `bh copy queue` lists what the new or changed steps need.
+  channel, and `bh copy queue` lists what the new or changed steps need. A template kind left out
+  of the file is refused while live leads are on it; once they are all stopped (`bh lead stop`) it
+  goes, and those leads keep their history with no plan (launching email-only without the
+  `linkedin_only` template, for one).
 - A launched strategy lacks a template kind (contacts with an address and no LinkedIn profile, and
   only an `email_and_linkedin` template): `bh plan add-template <strategy-id> --file template.json`
   with one template (`{"appliesWhen":"email_only","steps":[…]}`; a person only). The other templates

@@ -126,7 +126,9 @@ only while the strategy is a **draft that has sent nothing**, and only for a per
 plans are copied again from the new templates, copy already written is kept for every step that
 keeps its channel and the lead's variant (a lead keeps its variant where the step still has one of
 that name; copy whose variant changed needs copy again), and the file must keep every template kind
-leads are on. Once launched, or once anything was sent, it is refused, so settle the steps before
+live leads are on. A template whose leads have all ended (stopped or completed) may be left out:
+those leads keep their history and no plan, which is how a draft drops its `linkedin_only` template
+to launch email-only once that template's leads are stopped (`bh lead stop`). Once launched, or once anything was sent, it is refused, so settle the steps before
 launch; after that `bh plan step` edits a step's guidance without touching variants, and `bh plan
 add-template <strategy-id> --file template.json` adds a template kind the strategy lacks (an
 `email_only` beside an `email_and_linkedin`), leaving the others and every lead's plan as they are.
