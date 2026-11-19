@@ -535,8 +535,20 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   },
   partner: {
     '*': ['email'],
+    agreement: ['email', 'first-name', 'last-name', 'note'],
     key: ['email', 'name'],
-    set: ['google-key', 'google-scopes', 'max-licences', 'max-orgs', 'max-orgs-day'],
+    set: [
+      'google-key',
+      'google-scopes',
+      'max-licences',
+      'max-orgs',
+      'max-orgs-day',
+      'max-seats',
+      'max-tenants',
+      'max-tenants-day',
+      'microsoft-app',
+      'microsoft-permissions',
+    ],
   },
   persona: {
     '*': ['body', 'departments', 'excluded-titles', 'hints', 'seniorities', 'titles'],

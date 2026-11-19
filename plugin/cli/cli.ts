@@ -178,12 +178,22 @@ hidden at a terminal, so it stays out of the shell's history.
   google-org record <org> --customer-id <C0…>   Google's customer, made in Partner Sales Console: the engine gives
                                          the customer the terms link and carries on (platform admin)
   partner <org>                         a partner (Folderly): its Google service account, scopes, ceiling and the
-                                         organisations it ordered through the partner API (platform admin)
+                                         organisations it ordered; its Microsoft app, permissions, ceiling, Customer
+                                         Agreement and tenants — through the partner API (platform admin)
   partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none]
        [--max-licences <n>]              makes the organisation a partner, or changes it: --google-key - reads its
                                          service account's JSON key from stdin; --max-orgs is how many organisations
                                          it may order in 30 days, --max-orgs-day in any 24 hours (none: no daily
                                          ceiling) (platform admin; docs/decisions/partner-tenants.md)
+  partner set <org> [--microsoft-app <id>] [--microsoft-permissions <a,b>] [--max-tenants <n>]
+       [--max-tenants-day <n>|none] [--max-seats <n>]   its Microsoft side: the multi-tenant app granted
+                                         admin consent in each tenant, the Graph application permissions granted
+                                         (Folderly Network's six unless said), how many tenants it may order in 30
+                                         days and in any 24 hours, the seats one may hold (platform admin)
+  partner agreement <org> --first-name <f> --last-name <l> --email <e> --note "<how it was given>"
+                                         records, once, who of the partner accepted the Microsoft Customer
+                                         Agreement, on their word: every Microsoft tenant it orders names them
+                                         as the signatory (never a Belkins person) (platform admin)
   partner key <org> --email <e> [--name <n>]   a partner API key for one of its people (bh org add first),
                                          shown once (platform admin)
   google-orgs                           Google organisations of ours the engine makes as reseller, and how far each is
@@ -1978,6 +1988,11 @@ const FLAGS = {
   'max-orgs-day': { type: 'string' },
   'google-key': { type: 'string' },
   'google-scopes': { type: 'string' },
+  'microsoft-app': { type: 'string' },
+  'microsoft-permissions': { type: 'string' },
+  'max-tenants': { type: 'string' },
+  'max-tenants-day': { type: 'string' },
+  'max-seats': { type: 'string' },
   'per-day': { type: 'string' },
   'max-microsoft': { type: 'string' },
   'for-seeds': { type: 'boolean' },
@@ -2975,8 +2990,43 @@ async function main(argv: string[]): Promise<void> {
     }
     case 'partner': {
       const usage =
-        'bh partner <org> | partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none] [--max-licences <n>] | partner key <org> --email <e> [--name <n>]'
-      if (sub === 'set' && arg)
+        'bh partner <org> | partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none] [--max-licences <n>] [--microsoft-app <id>] [--microsoft-permissions <a,b>] [--max-tenants <n>] [--max-tenants-day <n>|none] [--max-seats <n>] | partner agreement <org> --first-name <f> --last-name <l> --email <e> --note <n> | partner key <org> --email <e> [--name <n>]'
+      if (sub === 'set' && arg) {
+        // Microsoft's flags set the organisation's Microsoft side; any other, or none, its Google's.
+        const microsoftGiven =
+          o['microsoft-app'] !== undefined ||
+          o['microsoft-permissions'] !== undefined ||
+          o['max-tenants'] !== undefined ||
+          o['max-tenants-day'] !== undefined ||
+          o['max-seats'] !== undefined
+        const googleGiven =
+          o['google-key'] !== undefined ||
+          o['google-scopes'] !== undefined ||
+          o['max-orgs'] !== undefined ||
+          o['max-orgs-day'] !== undefined ||
+          o['max-licences'] !== undefined
+        const microsoft = microsoftGiven
+          ? await call(config, 'PUT', `/partners/${seg(arg)}/microsoft`, {
+              ...(o['microsoft-app'] ? { appId: o['microsoft-app'] } : {}),
+              ...(o['microsoft-permissions']
+                ? {
+                    permissions: o['microsoft-permissions']
+                      .split(',')
+                      .map((p) => p.trim())
+                      .filter(Boolean),
+                  }
+                : {}),
+              ...(o['max-tenants'] !== undefined ? { maxTenants: Number(o['max-tenants']) } : {}),
+              ...(o['max-tenants-day'] !== undefined
+                ? {
+                    maxTenantsDay:
+                      o['max-tenants-day'] === 'none' ? null : Number(o['max-tenants-day']),
+                  }
+                : {}),
+              ...(o['max-seats'] !== undefined ? { maxSeats: Number(o['max-seats']) } : {}),
+            })
+          : null
+        if (microsoft && !googleGiven) return out(microsoft)
         return out(
           await call(config, 'PUT', `/partners/${seg(arg)}/google`, {
             // The JSON key Google Cloud made, whole: it spans lines, so stdin is read to its end.
@@ -3000,6 +3050,16 @@ async function main(argv: string[]): Promise<void> {
             ...(o['max-licences'] !== undefined ? { maxLicences: Number(o['max-licences']) } : {}),
           }),
         )
+      }
+      if (sub === 'agreement' && arg)
+        return out(
+          await call(config, 'PUT', `/partners/${seg(arg)}/microsoft/agreement`, {
+            firstName: o['first-name'],
+            lastName: o['last-name'],
+            email: o.email,
+            note: o.note,
+          }),
+        )
       if (sub === 'key' && arg && o.email)
         return out(
           await call(config, 'POST', `/partners/${seg(arg)}/keys`, {
@@ -3007,7 +3067,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o.name ? { name: o.name } : {}),
           }),
         )
-      if (sub && !arg && sub !== 'set' && sub !== 'key')
+      if (sub && !arg && sub !== 'set' && sub !== 'key' && sub !== 'agreement')
         return out(await call(config, 'GET', `/partners/${seg(sub)}`))
       throw new BhError(usage, { hint: 'bh partner <org> shows one' }, 2)
     }
