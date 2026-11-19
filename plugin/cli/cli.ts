@@ -179,10 +179,11 @@ hidden at a terminal, so it stays out of the shell's history.
                                          the customer the terms link and carries on (platform admin)
   partner <org>                         a partner (Folderly): its Google service account, scopes, ceiling and the
                                          organisations it ordered through the partner API (platform admin)
-  partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-licences <n>]
-                                         makes the organisation a partner, or changes it: --google-key - reads its
+  partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none]
+       [--max-licences <n>]              makes the organisation a partner, or changes it: --google-key - reads its
                                          service account's JSON key from stdin; --max-orgs is how many organisations
-                                         it may order in 30 days (platform admin; docs/decisions/partner-tenants.md)
+                                         it may order in 30 days, --max-orgs-day in any 24 hours (none: no daily
+                                         ceiling) (platform admin; docs/decisions/partner-tenants.md)
   partner key <org> --email <e> [--name <n>]   a partner API key for one of its people (bh org add first),
                                          shown once (platform admin)
   google-orgs                           Google organisations of ours the engine makes as reseller, and how far each is
@@ -1974,6 +1975,7 @@ const FLAGS = {
   count: { type: 'string' },
   'max-orgs': { type: 'string' },
   'max-licences': { type: 'string' },
+  'max-orgs-day': { type: 'string' },
   'google-key': { type: 'string' },
   'google-scopes': { type: 'string' },
   'per-day': { type: 'string' },
@@ -2973,7 +2975,7 @@ async function main(argv: string[]): Promise<void> {
     }
     case 'partner': {
       const usage =
-        'bh partner <org> | partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-licences <n>] | partner key <org> --email <e> [--name <n>]'
+        'bh partner <org> | partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none] [--max-licences <n>] | partner key <org> --email <e> [--name <n>]'
       if (sub === 'set' && arg)
         return out(
           await call(config, 'PUT', `/partners/${seg(arg)}/google`, {
@@ -2992,6 +2994,9 @@ async function main(argv: string[]): Promise<void> {
                 }
               : {}),
             ...(o['max-orgs'] !== undefined ? { maxOrgs: Number(o['max-orgs']) } : {}),
+            ...(o['max-orgs-day'] !== undefined
+              ? { maxOrgsDay: o['max-orgs-day'] === 'none' ? null : Number(o['max-orgs-day']) }
+              : {}),
             ...(o['max-licences'] !== undefined ? { maxLicences: Number(o['max-licences']) } : {}),
           }),
         )
