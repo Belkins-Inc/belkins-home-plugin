@@ -177,6 +177,14 @@ hidden at a terminal, so it stays out of the shell's history.
                                          <ref> is the number, the name (belkinsmailNN), the domain or the id (platform admin)
   google-org record <org> --customer-id <C0…>   Google's customer, made in Partner Sales Console: the engine gives
                                          the customer the terms link and carries on (platform admin)
+  partner <org>                         a partner (Folderly): its Google service account, scopes, ceiling and the
+                                         organisations it ordered through the partner API (platform admin)
+  partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-licences <n>]
+                                         makes the organisation a partner, or changes it: --google-key - reads its
+                                         service account's JSON key from stdin; --max-orgs is how many organisations
+                                         it may order in 30 days (platform admin; docs/decisions/partner-tenants.md)
+  partner key <org> --email <e> [--name <n>]   a partner API key for one of its people (bh org add first),
+                                         shown once (platform admin)
   google-orgs                           Google organisations of ours the engine makes as reseller, and how far each is
   google-orgs make --for seeds|sending|network [<domain>] [--company <name>] [--seeds <n>] [--licences <n>]
        [--key-from <tenant>] [--ip <address>]   buys the domain (none given: a picked new name; aged
@@ -1965,6 +1973,9 @@ const FLAGS = {
   upcoming: { type: 'boolean' },
   count: { type: 'string' },
   'max-orgs': { type: 'string' },
+  'max-licences': { type: 'string' },
+  'google-key': { type: 'string' },
+  'google-scopes': { type: 'string' },
   'per-day': { type: 'string' },
   'max-microsoft': { type: 'string' },
   'for-seeds': { type: 'boolean' },
@@ -2959,6 +2970,41 @@ async function main(argv: string[]): Promise<void> {
         { hint: 'bh google-orgs lists them' },
         2,
       )
+    }
+    case 'partner': {
+      const usage =
+        'bh partner <org> | partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-licences <n>] | partner key <org> --email <e> [--name <n>]'
+      if (sub === 'set' && arg)
+        return out(
+          await call(config, 'PUT', `/partners/${seg(arg)}/google`, {
+            // The JSON key Google Cloud made, whole: it spans lines, so stdin is read to its end.
+            ...(o['google-key'] === '-'
+              ? { key: (await readText('-')).trim() }
+              : o['google-key']
+                ? { key: o['google-key'] }
+                : {}),
+            ...(o['google-scopes']
+              ? {
+                  scopes: o['google-scopes']
+                    .split(',')
+                    .map((scope) => scope.trim())
+                    .filter(Boolean),
+                }
+              : {}),
+            ...(o['max-orgs'] !== undefined ? { maxOrgs: Number(o['max-orgs']) } : {}),
+            ...(o['max-licences'] !== undefined ? { maxLicences: Number(o['max-licences']) } : {}),
+          }),
+        )
+      if (sub === 'key' && arg && o.email)
+        return out(
+          await call(config, 'POST', `/partners/${seg(arg)}/keys`, {
+            email: o.email,
+            ...(o.name ? { name: o.name } : {}),
+          }),
+        )
+      if (sub && !arg && sub !== 'set' && sub !== 'key')
+        return out(await call(config, 'GET', `/partners/${seg(sub)}`))
+      throw new BhError(usage, { hint: 'bh partner <org> shows one' }, 2)
     }
     case 'microsoft-seeds': {
       if (!sub) return out(await call(config, 'GET', '/microsoft-seeds'))

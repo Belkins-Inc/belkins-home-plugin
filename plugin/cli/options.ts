@@ -533,6 +533,11 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   orgs: {
     '*': [],
   },
+  partner: {
+    '*': ['email'],
+    key: ['email', 'name'],
+    set: ['google-key', 'google-scopes', 'max-licences', 'max-orgs'],
+  },
   persona: {
     '*': ['body', 'departments', 'excluded-titles', 'hints', 'seniorities', 'titles'],
     activate: ['name'],
