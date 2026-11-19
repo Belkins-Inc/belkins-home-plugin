@@ -309,9 +309,10 @@ hidden at a terminal, so it stays out of the shell's history.
                                          that serves its provider (mailbox update --recipients), sends outreach
                                          on its first day, sits on an aged domain (>=90d) for gateway and
                                          Microsoft leads when one does, and is meant for its provider when one
-                                         is (hosted there, Gmail on Google, or pointed there: --recipients google
-                                         on a Microsoft mailbox): off held, badly placed, warming-alone and
-                                         young-domain mailboxes when the sender has another; a person only
+                                         is (hosted there, Gmail on Google, a gateway's lead on Google too, or
+                                         pointed there: --recipients google on a Microsoft mailbox): off held,
+                                         badly placed, warming-alone and young-domain mailboxes when the
+                                         sender has another; a person only
                  [--even]                   also spread leads on mailboxes that send, by room: a lead moves to the
                                          sender's mailbox that would send its first email soonest (leads that
                                          sent nothing over outreach a day), while it starts there no later than
