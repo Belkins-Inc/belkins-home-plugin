@@ -917,8 +917,6 @@ hidden at a terminal, so it stays out of the shell's history.
                                          looks harmed beside the control (platform admin)
   warmup cap-trial end [--provider google|microsoft] [--reason <text>]
                                          ends the running trial: its organisations go back to 15 at once
-  warmup on|off <mailbox id>             a metered organisation's mailbox: warm-up on ($9 a month, by the day,
-                                         from the wallet; after approval) or off (a person only)
   warmup seeds <admin email> --provider microsoft --name <n> --tenant-id <directory id> --client-id <app id>
       --key <private key PEM> --cert <certificate PEM> [--count <n>] [--egress <host name|none>]
       [--pax8-subscription <id|none>]
@@ -5427,15 +5425,13 @@ async function main(argv: string[]): Promise<void> {
           2,
         )
       }
-      // A metered organisation's mailbox: warm-up is a paid add-on a person switches per mailbox.
-      if ((sub === 'on' || sub === 'off') && arg)
-        return out(
-          await call(config, 'POST', `/mailboxes/${seg(arg)}/warmup`, { on: sub === 'on' }),
-        )
+      // Warm-up is always on for every active mailbox, a metered organisation's too (2026-11-19).
       if (sub === 'on' || sub === 'off')
         throw new BhError(
-          'Warm-up is always on for every project; only a metered organisation switches it, per mailbox',
-          { hint: 'bh warmup on <mailbox id>; bh warmup status shows each mailbox on the ladder' },
+          'Warm-up is always on for every active mailbox; it cannot be switched',
+          {
+            hint: 'bh warmup status shows each mailbox on the ladder; pause a mailbox with bh mailbox update <id> --status paused',
+          },
           2,
         )
       break
