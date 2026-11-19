@@ -453,6 +453,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   },
   mailboxes: {
     '*': [],
+    plan: ['per-day', 'strategy'],
   },
   meetbot: {
     '': [],

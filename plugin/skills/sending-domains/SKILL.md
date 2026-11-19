@@ -37,7 +37,13 @@ years. It goes from lookalikes that 301-redirect to the client's site:
 - A domain that resembles a client's brand needs the client's permission, which the contract
   carries. If the brief says nothing about it, ask the person before approving.
 - Where the mailboxes live: `google` (our Workspace tenants, the default) or `microsoft` (our
-  Microsoft 365 tenants). Mix them only when the person asks — `bh tenants` shows what we hold.
+  Microsoft 365 tenants) — `bh tenants` shows what we hold. The mix follows the leads, not habit:
+  run `bh mailboxes plan` (`--strategy <id>` for one strategy, `--per-day <n>` for the volume to
+  reach) and quote what it says to buy. The engine sends Gmail leads from Microsoft mailboxes first
+  and every other lead (Microsoft 365, Proofpoint, Mimecast and the other gateways, other hosts)
+  from Google first, so Microsoft mailboxes are worth buying only in proportion to the project's
+  Gmail leads; gateway leads never go to Microsoft, and want Google on domains of 90 days or more
+  (`agedGoogle`). Mailboxes the plan shows `beyondNeed` are a reason not to buy more of that host.
   To anyone but an admin it shows each client tenant's room: `domains` against `maxDomains`, and for
   Google `users`, `ordered` and `free` seats against `maxUsers`, and `fullAt` when Google refused a
   user. Before a large order, check that the `free` seats carry it; when they do not, ask a

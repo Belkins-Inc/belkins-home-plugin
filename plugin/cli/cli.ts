@@ -327,11 +327,11 @@ hidden at a terminal, so it stays out of the shell's history.
   strategy repick-mailboxes <id> [--dry-run]   give each lead that has sent nothing yet a mailbox of its sender
                                          that serves its provider (mailbox update --recipients), sends outreach
                                          on its first day, sits on an aged domain (>=90d) for gateway and
-                                         Microsoft leads when one does, and is meant for its provider when one
-                                         is (hosted there, Gmail on Google, a gateway's lead on Google too, or
-                                         pointed there: --recipients google on a Microsoft mailbox): off held,
-                                         badly placed, warming-alone and young-domain mailboxes when the
-                                         sender has another; a person only
+                                         Microsoft leads when one does, and sits as high in the pairing table
+                                         as one would (Gmail leads on Microsoft, every other lead on Google, a
+                                         gateway's never on Microsoft; bh mailboxes plan): off held, badly
+                                         placed, warming-alone and young-domain mailboxes when the sender has
+                                         another; a person only
                  [--even]                   also spread leads on mailboxes that send, by room: a lead moves to the
                                          sender's mailbox that would send its first email soonest (leads that
                                          sent nothing over outreach a day), while it starts there no later than
@@ -741,6 +741,13 @@ hidden at a terminal, so it stays out of the shell's history.
   mailboxes                              each mailbox, with its ladder day, placement, the receiving sides its outreach
                                          is held on (outreachHeldSides: google, microsoft) since outreachHeldAt and why,
                                          disconnectedReason, and a warning the provider gave ahead of a disconnect
+  mailboxes plan [--strategy <id>] [--per-day <n>]   the mailboxes the project's leads need under the pairing
+                                         table (Gmail leads from Microsoft first; Outlook, gateway and other leads from
+                                         Google first, gateways on domains >=90d): leads by side, waiting and never
+                                         enrolled; need and have a day per host once warmed; how many Google, aged Google
+                                         and Microsoft mailboxes to buy, how many sit beyond the need; --per-day the first
+                                         emails a day to plan for (default: what the mailboxes send); --strategy its
+                                         waiting leads and its senders' mailboxes only
   mailbox connect --provider google|microsoft [--sender <id>] [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          prints the URL to open in a browser
   mailbox reconnect <id>                 a disconnected mailbox connected again: one a person signs in to prints the URL
@@ -4824,6 +4831,15 @@ async function main(argv: string[]): Promise<void> {
         )
       break
     case 'mailboxes':
+      if (sub === 'plan') {
+        const q = new URLSearchParams({
+          ...(o.strategy ? { strategy: String(o.strategy) } : {}),
+          ...(o['per-day'] ? { perDay: String(Number(o['per-day'])) } : {}),
+        })
+        return out(
+          await call(config, 'GET', `/projects/${p()}/mailbox-plan${q.size ? `?${q}` : ''}`),
+        )
+      }
       return out(await call(config, 'GET', `/projects/${p()}/mailboxes`))
     case 'domains':
       return out(await call(config, 'GET', `/projects/${p()}/domains`))
