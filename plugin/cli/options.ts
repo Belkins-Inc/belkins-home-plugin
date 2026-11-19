@@ -528,7 +528,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     remove: [],
     rename: ['name', 'slug'],
     role: ['role'],
-    tier: ['price'],
+    tier: ['grant', 'note', 'price'],
   },
   orgs: {
     '*': [],

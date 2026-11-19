@@ -138,6 +138,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          tenants and domains let go, its personal data erased 30 days later (its admin; final)
   org leaving <slug>                   when it left, what is still waited on, when its data is erased
   org tier <slug> [--price <price_…>]   its platform tier and this month's leads; with --price, a Checkout link to subscribe
+  org tier <slug> --grant <leads> --note <text>   a tier of that many new leads a month with no payment, until it
+                                         subscribes (platform admin; a partner's before payments open)
   wallet [--org <slug>] [--limit <n>]   a signed-up organisation's balance and ledger, newest first
   wallet top-up <dollars> [--org <slug>]   a Checkout link that adds to the wallet once paid (its admin)
   wallet credit <dollars> --org <slug> --note <text>   money into the wallet with no payment, the note shown to the
@@ -1748,6 +1750,7 @@ const FLAGS = {
   slug: { type: 'string' },
   billing: { type: 'string' },
   price: { type: 'string' },
+  grant: { type: 'string' },
   timezone: { type: 'string' },
   limit: { type: 'string' },
   hours: { type: 'string' },
@@ -3183,12 +3186,24 @@ async function main(argv: string[]): Promise<void> {
             `/orgs/${seg(arg)}/erasures${o.limit ? `?limit=${o.limit}` : ''}`,
           ),
         )
-      if (sub === 'tier')
+      if (sub === 'tier') {
+        if (o.grant !== undefined) {
+          const leads = Number(o.grant)
+          if (!Number.isInteger(leads) || leads < 1 || !o.note)
+            throw new BhError('bh org tier <slug> --grant <leads> --note <text>', {}, 2)
+          return out(
+            await call(config, 'POST', `/orgs/${seg(arg)}/tier/grant`, {
+              leadsPerMonth: leads,
+              note: o.note,
+            }),
+          )
+        }
         return out(
           o.price
             ? await call(config, 'POST', `/orgs/${seg(arg)}/tier`, { priceId: o.price })
             : await call(config, 'GET', `/orgs/${seg(arg)}/tier`),
         )
+      }
       if (sub === 'dialer' && pos[3] === 'new')
         return out(await call(config, 'POST', `/orgs/${seg(arg)}/dialer`))
       if (sub === 'dialer')
