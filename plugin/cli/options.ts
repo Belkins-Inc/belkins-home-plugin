@@ -253,7 +253,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     closeouts: ['age-min', 'limit', 'names', 'price-max-cents', 'query', 'tld'],
     dkim: ['record', 'selector'],
     dmarc: ['dry-run', 'policy'],
-    dns: ['content', 'host', 'ttl', 'type'],
+    dns: ['content', 'host', 'priority', 'ttl', 'type'],
     move: ['confirm', 'tenant', 'with-mailboxes'],
     platform: [],
     quote: [],

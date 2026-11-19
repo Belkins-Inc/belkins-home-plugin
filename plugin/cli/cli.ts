@@ -792,8 +792,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          client's own site, or none (a person only)
   domain dns <name>                      its DNS records and redirects at the registrar (also on a bought domain
                                          that failed on its way into a tenant: add the TXT Google asks for)
-  domain dns <name> add --type A|AAAA|CNAME|ALIAS|TXT|CAA --host <@|sub> --content <value> [--ttl <s>]
-  domain dns <name> delete <record id>   (a person only; MX, SPF, DMARC and DKIM are the engine's and refused)
+  domain dns <name> add --type A|AAAA|CNAME|ALIAS|TXT|CAA|MX --host <@|sub> --content <value> [--ttl <s>] [--priority <n>]
+  domain dns <name> delete <record id>   (a person only; the apex's MX, SPF, DMARC and DKIM are the engine's and refused)
   domain dmarc <name> --policy none|quarantine|reject [--dry-run]
                                          what receivers do with mail failing DMARC (a person only): bought
                                          domains start at none; raise it once the reports show only our mail.
@@ -4796,6 +4796,7 @@ async function main(argv: string[]): Promise<void> {
               host: o.host ?? '@',
               content: o.content,
               ...(o.ttl ? { ttl: Number(o.ttl) } : {}),
+              ...(o.priority ? { priority: Number(o.priority) } : {}),
             }),
           )
         if (action === 'delete') {
