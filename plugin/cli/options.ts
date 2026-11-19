@@ -608,6 +608,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     update: [
       'brief',
       'brief-file',
+      'copy-allow',
       'domain-cap',
       'lead-cost-alert',
       'max-live-per-company',

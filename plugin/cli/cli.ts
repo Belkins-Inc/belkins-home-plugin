@@ -254,6 +254,8 @@ hidden at a terminal, so it stays out of the shell's history.
        [--max-live-per-company <n>|off]  people of one company live at once across all its strategies (default 3);
                                          enroll skips the next one; a strategy whose own cap at the company is
                                          larger fills its own; off: each strategy's own caps alone
+       [--copy-allow <term>,<term>]      products and brands its copy quotes as written ("seamless tubing"): bh
+                                         copy check's hype, phrase and spelling rules leave them alone ("" for none)
   brief [--project <slug>]              read this first, every session
   behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
                                          the topics, one topic's entries, or the entries with every word;
@@ -1927,6 +1929,7 @@ const FLAGS = {
   'domain-cap': { type: 'string' },
   'reply-bcc': { type: 'string' },
   'reply-cc': { type: 'string' },
+  'copy-allow': { type: 'string' },
   reviewer: { type: 'string' },
   'lead-cost-alert': { type: 'string' },
   'max-live-per-company': { type: 'string' },
@@ -2212,6 +2215,15 @@ async function main(argv: string[]): Promise<void> {
             ...(o['domain-cap'] ? { dailyDomainCap: Number(o['domain-cap']) } : {}),
             ...(o['reply-bcc'] !== undefined ? { replyBcc: addresses(o['reply-bcc']) } : {}),
             ...(o['reply-cc'] !== undefined ? { replyCc: addresses(o['reply-cc']) } : {}),
+            // Products and brands the copy check's word rules leave alone, comma-separated; '' for none.
+            ...(o['copy-allow'] !== undefined
+              ? {
+                  copyAllowed: String(o['copy-allow'])
+                    .split(',')
+                    .map((t) => t.trim())
+                    .filter(Boolean),
+                }
+              : {}),
             ...(o['lead-cost-alert'] !== undefined
               ? {
                   leadCostAlertUsd:

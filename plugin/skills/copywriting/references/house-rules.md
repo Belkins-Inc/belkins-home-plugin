@@ -104,8 +104,10 @@ Step guidance may fix the question word for word per persona; then use it word f
   the contact record, or with the strategy's own greeting when it sets one (`greeting` in
   `bh strategy show` and in each copy queue item): "Hey {first},", "Guten Tag {full}," (first and
   last name), "Добрий день, {name}!" (`{name}`: the name as the language writes it, a vocative or
-  another script, which the check does not compare with the record). No first name, no greeting;
-  never "Hi there". Not on LinkedIn.
+  another script, which the check does not compare with the record). Copy in the lead's language
+  greets in it without a strategy greeting: "Hola Ana,", "Olá Ana," / "Oi Ana,", "Bonjour Ana,",
+  "Hallo Ana,", "Ciao Ana,", "Hej Ana,", "Cześć Ana,", "Dzień dobry, Panie Piotrze,", "Добрий
+  день, Юрію!". No first name, no greeting; never "Hi there". Not on LinkedIn.
 - **First sentence** (checked; under the greeting) is about them: it does not begin with "I" or
   "We". The reason-first opener "I'm writing to you because <company> <the reason>" passes: it
   is about them.
@@ -117,7 +119,8 @@ Step guidance may fix the question word for word per persona; then use it word f
 - **Links** (checked): none on step 1. Later only if the guidance calls for one.
 - **Spelling** (checked): American for a recipient in the United States (the contact's country, or
   the company's): center, fueled, program, organize, color. Elsewhere follow the brief. The lead's
-  own names (their company's name and domain) are written as they are: "Berkshire Grey" stays.
+  own names (their company's name and domain) and any capitalised proper name are written as they
+  are: "Berkshire Grey", "the Grey Owl range" stay.
 - **Ending**: the body ends on its last sentence. No valediction, no name, title or company: the
   engine appends the sender's signature. No unsubscribe footer or link, no postal address. Where
   the law asks for a way out (an organisation that signed itself up, writing to the EU or the UK),
@@ -160,6 +163,12 @@ cutting-edge, state-of-the-art, world-class, best-in-class, seamless, synergy, "
 "leverage our", "to leverage", skyrocket, effortless, "in today's fast-paced", "fast-paced world",
 "take it to the next level". Not looked for inside the lead's own company name or domain: a
 company called "Synergy ..." is named as it is.
+
+Allowed terms: a product or brand the copy quotes as its owner writes it ("seamless tubing", a
+brand with "Grey" in it) can break a word rule without being hype. Rather than rewriting the fact,
+list it on the project: `bh project update --copy-allow "seamless tubing,Grey Owl"` (whole
+words, any case; `""` clears). The hype, burned-phrase, sign-off and spelling checks then pass over
+those terms, and only those: "a seamless switch" elsewhere is still hype.
 
 Valedictions: "Best regards", "Kind regards", "Warm regards", "Warmest regards", "Sincerely",
 "Yours truly", "Looking forward to hearing from you".
