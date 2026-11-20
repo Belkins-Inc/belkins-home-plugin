@@ -363,6 +363,9 @@ hidden at a terminal, so it stays out of the shell's history.
                  [--limit <n>] [--stuck]    at most n leads of the strategy (stuck ones first), so a new mailbox
                                          is filled with a few days of what it starts; only leads stuck on
                                          mailbox_room. With --to-sender too.
+                 [--enrollment <id,…>]      only these leads; with --to-sender they move whatever the load (undoes
+                                         a wrong move). A referral or re-engagement lead keeps the sender of the
+                                         thread it follows: it moves to another sender only back to that one
                                          The engine itself moves a lead off a mailbox that will never send it
                                          (held on its side, bad placement, paused, archived, disconnected) to
                                          another of its sender's; leads waiting a day get a task per strategy
@@ -1815,6 +1818,7 @@ const FLAGS = {
   'to-provider': { type: 'string' },
   'change-sender': { type: 'boolean' },
   'to-sender': { type: 'string' },
+  enrollment: { type: 'string' },
   stuck: { type: 'boolean' },
   summary: { type: 'string' },
   for: { type: 'string' },
@@ -2546,6 +2550,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o['to-sender'] ? { toSender: o['to-sender'] } : {}),
             ...(o.limit ? { limit: Number(o.limit) } : {}),
             ...(o.stuck ? { stuck: true } : {}),
+            ...(o.enrollment ? { enrollments: list(o.enrollment) } : {}),
           }),
         )
       if (sub === 'launch')

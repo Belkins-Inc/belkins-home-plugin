@@ -470,7 +470,8 @@ their contacts are free for another strategy; the history stays.
 - Enrolling several hundred leads against one or two fresh mailboxes without the capacity
   arithmetic — messages queue for weeks and the month's goal slips.
 - Launching before plans are final — the templates are then frozen for this strategy.
-- `strategy update` with a partial `personas` list — it replaces the list and drops the rest.
+- `strategy update` with a partial `personas` list — it replaces the list and drops the rest (an
+  entry's own fields it leaves out, `angle` or `maxPerCompany`, keep their value; `null` clears one).
 - An `email_and_linkedin` template in a project with no LinkedIn account.
 - `guidance` that references a conditional step ("as I said on LinkedIn").
 - Skipping `--dry-run`; enrolling people already live elsewhere and reading the skips as failures.

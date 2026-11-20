@@ -16,7 +16,7 @@
 | `catchAllPolicy` | `hold` / `linkedin_only` / `send` | `hold` | what to do with catch-all addresses |
 | `holdUnserved` | bool | false | a lead whose mail provider its mailbox does not write to (`--recipients` names others) waits, stuck `unserved_provider`, for a mailbox that does, instead of going from any; a person's to change once launched |
 | `segments` | segment ids | | replaces the list |
-| `personas` | `[{personaId, maxPerCompany?, angle?}]` in priority order | | replaces the list; position = array order |
+| `personas` | `[{personaId, maxPerCompany?, angle?}]` in priority order | | replaces the list; position = array order; a persona already on the list keeps the `maxPerCompany` and `angle` its entry leaves out, `null` clears one |
 | `senders` | sender ids | | replaces the list; each brings its mailboxes and LinkedIn account |
 
 Ids must belong to the current project (`bh use <slug>` in this session), or the call is refused.
