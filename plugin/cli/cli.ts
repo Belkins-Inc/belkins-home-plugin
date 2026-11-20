@@ -408,7 +408,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          whose data picks that kind get it (a person only)
   plan remove <strategy-id> <step-id>   take the plan's last step out, frozen templates too: its unsent messages are
                                          cancelled, a lead whose next step it was ends there (a person only)
-  companies upsert --file <json|jsonl|->               [{"domain","name","employeeCount","country","facts"}]
+  companies upsert --file <json|jsonl|->               [{"domain","name","linkedinUrl","employeeCount","country","facts"}]
+                                         a company with no site of its own (or only a bit.ly, a social page):
+                                         its "linkedinUrl" company page, no "domain"; kept by that page
                                          every --file of rows: a JSON array, or JSONL (a .jsonl file always is);
                                          sent 500 rows or 512 KB at a time, answered as one; a refused row exits 1
   companies judge <segment-id> --file <json|jsonl|->   [{"domain","status":"new|qualified|disqualified","reason","questionId","signal":{…},"sourceId","searchId",
@@ -485,7 +487,7 @@ hidden at a terminal, so it stays out of the shell's history.
   calls outcome <list-id> --contact <contact-id> --outcome no_answer|voicemail|wrong_number|not_interested|call_back|meeting|other|none [--note <t>]
   goals | goal set <YYYY-MM> --target <meetings> [--counts qualified|held] | goal done <YYYY-MM> --done <n>   (a person only)
   goal remove <YYYY-MM>                  the month has no goal, as though none were set (a person only)
-  contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts",
+  contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","companyLinkedinUrl","emailStatus","facts",
                                           "country","timezone"}]   country: ISO 3166 two letters (PL); timezone: IANA
                                          (Europe/Warsaw) — the lead's send window and meeting times go by them
                                          a contact already at a company stays there and the row is warned; add

@@ -88,8 +88,9 @@ Decide before spending, and write the reason in one sentence (a note or the sess
    already in `companies` (check with `bh sql` before recording).
 5. **Upsert** (`bh companies upsert --file rows.jsonl`): `domain` (the company's own site: a
    provider's `website` is often a bit.ly, linktr.ee, a jobs portal or a LinkedIn page, which the
-   engine refuses with `not_a_company_domain` — take the site from the company's page or a search,
-   or leave the company out), `name`, `country` from
+   engine refuses with `not_a_company_domain` — take the site from the company's page or a search;
+   a company with no site of its own is still saved by its `linkedinUrl` alone, `domain` left out:
+   the answer says `keptBy: "linkedin"` and every other field is kept), `name`, `country` from
    `hq_country_code` (ISO-2), `employeeCount` from `headcount_exact`, `industry`, `linkedinUrl`
    (`https://www.linkedin.com/company/<linkedin_urn>` — the lead search needs it), `timezone` when
    the HQ city makes it plain, `source: "generect"`, and `facts` as `{key: {value, source, note}}`
@@ -161,7 +162,8 @@ Decide before spending, and write the reason in one sentence (a note or the sess
    rung first. People who do not fit are not stored — the search's counts and `dropped` keep the
    record.
 5. **Upsert contacts**: `linkedinUrl` (the vanity `/in/<slug>` form, no query, no trailing slash),
-   `firstName` / `lastName` from `full_name`, `title`, `companyDomain`, `country` / `timezone` from
+   `firstName` / `lastName` from `full_name`, `title`, `companyDomain` (or, for an employer with no
+   site of its own, `companyLinkedinUrl`: its LinkedIn company page), `country` / `timezone` from
    `location` when plain, `source: "generect"`, `facts` (e.g. how long in role, which persona rung
    the title matched). No email yet — leave `email` and `emailStatus` out. Then mark each kept
    person for the strategy: `bh stand <strategy-id> --contact <id> --status candidate` (one call per

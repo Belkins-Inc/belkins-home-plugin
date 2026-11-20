@@ -331,7 +331,8 @@ bh call generect POST /enrich/database/company/ --company <id> --body '{"linkedi
 ```
 
 A company enrich adds nothing a search row lacks — buy it only for a company no search found (e.g.
-one imported by domain). The database enrich can refuse a firm the search returned (`400 Company
+one imported by domain), or one kept by its LinkedIn page because it has no site of its own
+(Apollo's organisation enrichment needs a domain). The database enrich can refuse a firm the search returned (`400 Company
 does not exist`).
 
 **Answered from the cache when it can.** Every person and company any Generect answer carried is
