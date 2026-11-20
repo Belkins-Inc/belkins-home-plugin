@@ -168,15 +168,6 @@ a person at a consumer brand — is not the contact's work address:
    a group page) → record it on the company first, then write the address:
    `bh companies upsert` with `{"domain":"<company>","facts":{"related_domains":{"value":["<group domain>"],"source":"web","note":"parent group, <url>"}}}`.
 
-**The company columns come from whichever provider returned them.** An employer whose only site
-is a link shortener, a social profile or nothing is not a reason to leave the contact without a
-company: save the company by its LinkedIn page (`bh companies upsert` with `linkedinUrl` and no
-`domain`, with the name, industry, country, region and headcount the provider gave) and place the
-contact on it with `companyLinkedinUrl`. Apollo's organisation enrichment needs a domain; for a
-company kept by its LinkedIn page, enrich it with Generect's company by LinkedIn URL
-([generect](../providers/references/generect.md), "A company by LinkedIn URL"). No email is guessed
-for such a company: it has no domain to guess at.
-
 An address at a platform — a link shortener, a link-in-bio page, a social network, a jobs portal, a
 scheduling tool, a site builder's host (bit.ly, linktr.ee, linkedin.com, calendly.com, wixsite.com)
 — is nobody's own mailbox, whatever Bouncer says: a provider guessed it from a company saved at the

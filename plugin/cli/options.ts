@@ -810,7 +810,6 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     'repick-mailboxes': [
       'change-sender',
       'dry-run',
-      'enrollment',
       'even',
       'limit',
       'only',

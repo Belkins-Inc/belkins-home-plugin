@@ -77,12 +77,6 @@ Gotchas:
   page is the end of the selection.**
 - **Past 10,000 rows**, walk by exclusion: send the domains you already hold in `exclude_domains`
   with `offset_by: 0` — it returns exactly the rows a plain offset would, and more.
-- **Realtime people search ignores `company_industries`** (count and search; checked 2026-11-19:
-  HR Director in Ukraine counted 243 with five IT industries and 243 without, and the rows were
-  banks, retail and consulting), and its rows carry no employer industry. The engine refuses such a
-  body before paying. Narrow by industry on the database index (`/search/database/leads/`, free
-  count: 400 → 54 for the same body), or find the companies by industry and ask realtime one
-  company at a time with `company_link`.
 - Realtime exclusions are applied after the page is cut (an empty page that is not the end) — never
   walk realtime by exclusion.
 - **`headcounts` narrows the count, not the rows.** `Data Infrastructure and Analytics`, United
@@ -331,8 +325,7 @@ bh call generect POST /enrich/database/company/ --company <id> --body '{"linkedi
 ```
 
 A company enrich adds nothing a search row lacks — buy it only for a company no search found (e.g.
-one imported by domain), or one kept by its LinkedIn page because it has no site of its own
-(Apollo's organisation enrichment needs a domain). The database enrich can refuse a firm the search returned (`400 Company
+one imported by domain). The database enrich can refuse a firm the search returned (`400 Company
 does not exist`).
 
 **Answered from the cache when it can.** Every person and company any Generect answer carried is

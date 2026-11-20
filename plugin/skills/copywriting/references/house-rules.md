@@ -144,9 +144,6 @@ Step guidance may fix the question word for word per persona; then use it word f
 - Follow-ups in a thread go out as "Re: <the thread's first subject>" whatever you write; repeat it
   exactly (one subject across a thread). The thread is step 1's unless the step says `threadOf`
   (that earlier step's thread); a `newThread` step starts its own.
-- No "Re:" on an email that opens its thread: it goes out as written, a reply to nothing. The one
-  exception is a step marked `earlierThread`, a lead continued from another platform or an earlier
-  sequence: its subject is that thread's "Re: <the subject sent then>", and its follow-ups repeat it.
 - Proper names keep their capitals: companies, brands, people and places ("clinics across Acme
   Dental", "rates on Northwind lanes", "hiring in Nampa and Twin Falls"). Everything else stays
   lower case. `bh copy check` judges Title Case on the other words only.
