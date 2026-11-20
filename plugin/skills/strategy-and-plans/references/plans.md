@@ -135,6 +135,9 @@ before they reach it (telegram-peers skill).
 - One follow-up's thread: `{"threadOf": 3}` (continue email 3's thread), `{"threadOf": null}` (the
   first email's) or `{"newThread": true}` (its own), a person only. Every email of it not yet sent
   follows.
+- An email opening a thread that continues one from before the plan (leads picked up from another
+  platform or an earlier sequence): `{"earlierThread": true}`, a person only. Its "Re: …" subject
+  then passes `bh copy check`.
 
 - A draft with leads enrolled and nothing sent: `bh plan set` again with the whole new file (a
   person only). Every lead's plan is copied again; written copy stays where a step keeps its

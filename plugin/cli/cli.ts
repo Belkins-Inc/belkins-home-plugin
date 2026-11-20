@@ -381,7 +381,7 @@ hidden at a terminal, so it stays out of the shell's history.
                                          on a draft that has sent nothing, its enrolled leads' plans are copied again,
                                          written copy kept where a step keeps its channel and the lead its variant; a lead keeps its
                                          variant where the step still has one of that name, else that copy is written again (a person only)
-  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","withdrawAfterDays","newThread","threadOf","delayDays","track"}: one step's,
+  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","withdrawAfterDays","newThread","threadOf","earlierThread","delayDays","track"}: one step's,
                                          frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
                                          withdrawAfterDays (a LinkedIn invite, 1-30 or null; a person only): withdraw its invitations
@@ -389,6 +389,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          newThread (a follow-up email; a person only): true starts its own thread; false answers
                                          in the thread of threadOf, the position of an earlier email step (null: the first email's),
                                          as "Re: <that thread's first subject>"; every email not yet sent follows
+                                         earlierThread (an email opening a thread in the plan; a person only): true when it
+                                         continues a thread opened before the plan (another platform, an earlier sequence),
+                                         so its subject is that thread's "Re: …" and bh copy check lets it stand
                                          delayDays (not the first step; a person only): send days after the step before;
                                          leads enrolled later get it and every lead's unsent message of the step moves
                                          track ("main" | "linkedin"; a LinkedIn step; a person only): unsent messages of the step move

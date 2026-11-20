@@ -158,6 +158,11 @@ Accepted values:
   `{"newThread": false}` or `{"threadOf": 3}` moves a frozen template's follow-up into another
   thread (a person only); every email of it not yet sent follows, written ones included (their own
   subject is then not used).
+- `earlierThread` (an email opening a thread in the plan, default false): it continues a thread
+  opened before the plan, on another platform or in an earlier sequence, so its subject is that
+  thread's "Re: <the subject sent then>" and `bh copy check` lets it stand. Set it on a plan that
+  picks leads up where another platform left them; `bh plan step … --file` with
+  `{"earlierThread": true}` sets it on a frozen template (a person only).
 - `withoutNote` (`linkedin_invite` only, default **true**): an invitation goes as a bare
   connection request unless its step says `"withoutNote": false`. LinkedIn caps invitations with a
   note far below bare ones (a free account runs out after a handful, and LinkedIn then answers
