@@ -31,7 +31,7 @@ wrote is refused with who wrote it and when: read theirs (`bh preview`), and rep
    reads every page, for a batch of more than 200 messages). Each item is one message still
    `needs_copy`, ordered by lead then step: `messageId`, `enrollmentId`, `kind` (`first`,
    `re_engagement`, `referral`), `followsEnrollmentId`, `position`, `channel`, `condition`,
-   `guidance`, `hypothesis`, `newThread`, `threadOf`, `strategyBrief`, `greeting` (the strategy's own, or null for
+   `guidance`, `hypothesis`, `newThread`, `threadOf`, `earlierThread`, `strategyBrief`, `greeting` (the strategy's own, or null for
    "Hi {first},"), the contact (`firstName`, `lastName`,
    `title`, `email`, `timezone`, `contactFacts`, `referredBy` — the referrer's name or null), the
    company (`company`, `domain`, `companyFacts`, `signal` — why it is in the segment, null when
@@ -181,6 +181,10 @@ These are the floor. The house rules below are stricter; `bh copy write` does no
   subject `Re: <that thread's first email's subject>` and threading headers. Still give every email
   a valid subject (the check requires it); use that thread's first subject so the record reads
   cleanly (`bh copy check` compares them).
+- `earlierThread`: the step continues a thread opened before the plan (another platform, an
+  earlier sequence). Its subject is that thread's, "Re: <the subject sent then>", exactly as sent;
+  its follow-ups repeat it. Anywhere else a "Re:" on an email opening its thread is a reply to
+  nothing, and `bh copy check` says so.
 - A follow-up does not repeat the opening, reuse the earlier observation or restate the same point
   in other words; it moves to a different side of the brief. No "just following up", "bumping this".
 - **Every step must read on its own and reference only steps sure to have gone out.** A

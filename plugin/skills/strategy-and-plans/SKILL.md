@@ -158,6 +158,11 @@ Accepted values:
   `{"newThread": false}` or `{"threadOf": 3}` moves a frozen template's follow-up into another
   thread (a person only); every email of it not yet sent follows, written ones included (their own
   subject is then not used).
+- `earlierThread` (an email opening a thread in the plan, default false): it continues a thread
+  opened before the plan, on another platform or in an earlier sequence, so its subject is that
+  thread's "Re: <the subject sent then>" and `bh copy check` lets it stand. Set it on a plan that
+  picks leads up where another platform left them; `bh plan step … --file` with
+  `{"earlierThread": true}` sets it on a frozen template (a person only).
 - `withoutNote` (`linkedin_invite` only, default **true**): an invitation goes as a bare
   connection request unless its step says `"withoutNote": false`. LinkedIn caps invitations with a
   note far below bare ones (a free account runs out after a handful, and LinkedIn then answers
@@ -465,7 +470,8 @@ their contacts are free for another strategy; the history stays.
 - Enrolling several hundred leads against one or two fresh mailboxes without the capacity
   arithmetic — messages queue for weeks and the month's goal slips.
 - Launching before plans are final — the templates are then frozen for this strategy.
-- `strategy update` with a partial `personas` list — it replaces the list and drops the rest.
+- `strategy update` with a partial `personas` list — it replaces the list and drops the rest (an
+  entry's own fields it leaves out, `angle` or `maxPerCompany`, keep their value; `null` clears one).
 - An `email_and_linkedin` template in a project with no LinkedIn account.
 - `guidance` that references a conditional step ("as I said on LinkedIn").
 - Skipping `--dry-run`; enrolling people already live elsewhere and reading the skips as failures.

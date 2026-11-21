@@ -363,6 +363,9 @@ hidden at a terminal, so it stays out of the shell's history.
                  [--limit <n>] [--stuck]    at most n leads of the strategy (stuck ones first), so a new mailbox
                                          is filled with a few days of what it starts; only leads stuck on
                                          mailbox_room. With --to-sender too.
+                 [--enrollment <id,…>]      only these leads; with --to-sender they move whatever the load (undoes
+                                         a wrong move). A referral or re-engagement lead keeps the sender of the
+                                         thread it follows: it moves to another sender only back to that one
                                          The engine itself moves a lead off a mailbox that will never send it
                                          (held on its side, bad placement, paused, archived, disconnected) to
                                          another of its sender's; leads waiting a day get a task per strategy
@@ -381,7 +384,7 @@ hidden at a terminal, so it stays out of the shell's history.
                                          on a draft that has sent nothing, its enrolled leads' plans are copied again,
                                          written copy kept where a step keeps its channel and the lead its variant; a lead keeps its
                                          variant where the step still has one of that name, else that copy is written again (a person only)
-  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","withdrawAfterDays","newThread","threadOf","delayDays","track"}: one step's,
+  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","withdrawAfterDays","newThread","threadOf","earlierThread","delayDays","track"}: one step's,
                                          frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
                                          withdrawAfterDays (a LinkedIn invite, 1-30 or null; a person only): withdraw its invitations
@@ -389,6 +392,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          newThread (a follow-up email; a person only): true starts its own thread; false answers
                                          in the thread of threadOf, the position of an earlier email step (null: the first email's),
                                          as "Re: <that thread's first subject>"; every email not yet sent follows
+                                         earlierThread (an email opening a thread in the plan; a person only): true when it
+                                         continues a thread opened before the plan (another platform, an earlier sequence),
+                                         so its subject is that thread's "Re: …" and bh copy check lets it stand
                                          delayDays (not the first step; a person only): send days after the step before;
                                          leads enrolled later get it and every lead's unsent message of the step moves
                                          track ("main" | "linkedin"; a LinkedIn step; a person only): unsent messages of the step move
@@ -402,7 +408,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          whose data picks that kind get it (a person only)
   plan remove <strategy-id> <step-id>   take the plan's last step out, frozen templates too: its unsent messages are
                                          cancelled, a lead whose next step it was ends there (a person only)
-  companies upsert --file <json|jsonl|->               [{"domain","name","employeeCount","country","facts"}]
+  companies upsert --file <json|jsonl|->               [{"domain","name","linkedinUrl","employeeCount","country","facts"}]
+                                         a company with no site of its own (or only a bit.ly, a social page):
+                                         its "linkedinUrl" company page, no "domain"; kept by that page
                                          every --file of rows: a JSON array, or JSONL (a .jsonl file always is);
                                          sent 500 rows or 512 KB at a time, answered as one; a refused row exits 1
   companies judge <segment-id> --file <json|jsonl|->   [{"domain","status":"new|qualified|disqualified","reason","questionId","signal":{…},"sourceId","searchId",
@@ -479,7 +487,7 @@ hidden at a terminal, so it stays out of the shell's history.
   calls outcome <list-id> --contact <contact-id> --outcome no_answer|voicemail|wrong_number|not_interested|call_back|meeting|other|none [--note <t>]
   goals | goal set <YYYY-MM> --target <meetings> [--counts qualified|held] | goal done <YYYY-MM> --done <n>   (a person only)
   goal remove <YYYY-MM>                  the month has no goal, as though none were set (a person only)
-  contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","emailStatus","facts",
+  contacts upsert --file <json|jsonl|->                [{"email","linkedinUrl","firstName","lastName","title","companyDomain","companyLinkedinUrl","emailStatus","facts",
                                           "country","timezone"}]   country: ISO 3166 two letters (PL); timezone: IANA
                                          (Europe/Warsaw) — the lead's send window and meeting times go by them
                                          a contact already at a company stays there and the row is warned; add
@@ -834,8 +842,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          client's own site, or none (a person only)
   domain dns <name>                      its DNS records and redirects at the registrar (also on a bought domain
                                          that failed on its way into a tenant: add the TXT Google asks for)
-  domain dns <name> add --type A|AAAA|CNAME|ALIAS|TXT|CAA|MX --host <@|sub> --content <value> [--ttl <s>] [--priority <n>]
-  domain dns <name> delete <record id>   (a person only; the apex's MX, SPF, DMARC and DKIM are the engine's and refused)
+  domain dns <name> add --type A|AAAA|CNAME|ALIAS|TXT|CAA|MX|SRV|TLSA|HTTPS|SVCB|SSHFP --host <@|sub> --content <value> [--ttl <s>] [--priority <n>]
+  domain dns <name> delete <record id>   (a person only; NS is refused, and on our domains the apex's MX, SPF, DMARC and DKIM)
   domain dmarc <name> --policy none|quarantine|reject [--dry-run]
                                          what receivers do with mail failing DMARC (a person only): bought
                                          domains start at none; raise it once the reports show only our mail.
@@ -1812,6 +1820,7 @@ const FLAGS = {
   'to-provider': { type: 'string' },
   'change-sender': { type: 'boolean' },
   'to-sender': { type: 'string' },
+  enrollment: { type: 'string' },
   stuck: { type: 'boolean' },
   summary: { type: 'string' },
   for: { type: 'string' },
@@ -2543,6 +2552,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o['to-sender'] ? { toSender: o['to-sender'] } : {}),
             ...(o.limit ? { limit: Number(o.limit) } : {}),
             ...(o.stuck ? { stuck: true } : {}),
+            ...(o.enrollment ? { enrollments: list(o.enrollment) } : {}),
           }),
         )
       if (sub === 'launch')
