@@ -380,7 +380,6 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   lead: {
     '*': [],
     pause: ['note', 'until'],
-    restart: ['dry-run', 'file'],
     resume: [],
     show: [],
     stop: ['reason'],
