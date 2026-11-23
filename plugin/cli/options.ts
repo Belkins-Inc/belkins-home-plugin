@@ -452,6 +452,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     hold: [],
     import: ['file', 'paused'],
     jmap: ['file'],
+    move: ['sender', 'to'],
     order: ['file', 'first-name', 'last-name', 'sender', 'username'],
     orders: [],
     reconnect: [],
@@ -611,6 +612,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   project: {
     '*': [],
     archive: ['undo'],
+    copy: ['dry-run', 'name'],
     create: ['name', 'org', 'owner', 'timezone'],
     member: ['role'],
     members: [],

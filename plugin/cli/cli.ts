@@ -119,6 +119,12 @@ hidden at a terminal, so it stays out of the shell's history.
   projects [--org <slug>] [--all] | project create <slug> --name <name> [--timezone <tz>] [--org <slug>] [--owner <user-id>]
   project members | project member <user-id> [--role owner|member] | project member remove <user-id>
   project move <slug> --org <org>        move a project and all it owns to another organisation (platform admin)
+  project copy <from> <to> [--name <name>] [--dry-run]
+                                         a new project of the same organisation with <from>'s setup: brief, personas,
+                                         segments, companies and contacts with what providers found (emails checked,
+                                         phones looked up: nothing is bought again), labels, do-not-contact, notes,
+                                         hypotheses, strategies (as drafts) with plans and copy; never leads, senders,
+                                         mailboxes, threads, meetings or tasks (bh behaviour projects). An admin of it
   project setup [--project <slug>]       the set-up checklist the web app's Setup shows: each step, done or not,
                                          and what is left before the first launch (also: bh setup status)
   project setup skip <step> [--undo]     go without an optional step (rules, linkedin, agent), or take it back up
@@ -843,6 +849,12 @@ hidden at a terminal, so it stays out of the shell's history.
                  domain registered 30 days ago or more
                                          (bh esp names them); a lead no mailbox of its sender serves may use any.
                                          Leads already enrolled keep theirs until strategy repick-mailboxes
+  mailbox move <id> --to <project> [--sender <id>]
+                                         a mailbox whose leads have all ended (none live, no step or answer left to
+                                         send) goes to another project of the same organisation, writing as its
+                                         sender (--sender; the project's only one when left out); its old threads stay
+                                         in the first project, its domain follows once no other mailbox is left on it.
+                                         An admin of the organisation
   domains                                the project's bought domains: state, tenant, DNS, cost, expiry
   domain quote <name> [<name>…]          availability and price at the registrar (free), and its credit
                                          (balanceCents; null with balanceError when the registrar does not say),
@@ -2287,6 +2299,22 @@ async function main(argv: string[]): Promise<void> {
         )
       if (sub === 'move')
         return out(await call(config, 'PUT', `/projects/${seg(arg)}/organisation`, { org: o.org }))
+      if (sub === 'copy')
+        return out(
+          await call(config, 'POST', `/projects/${seg(arg)}/copy`, {
+            slug:
+              pos[3] ??
+              (() => {
+                throw new BhError(
+                  'The new project’s slug?',
+                  { hint: 'bh project copy <from> <to>' },
+                  2,
+                )
+              })(),
+            ...(o.name ? { name: o.name } : {}),
+            ...(o['dry-run'] ? { dryRun: true } : {}),
+          }),
+        )
       if (sub === 'remove')
         return out(
           await call(config, 'POST', `/projects/${seg(arg)}/remove`, {
@@ -5369,6 +5397,17 @@ async function main(argv: string[]): Promise<void> {
           throw new BhError('Which order?', { hint: 'bh mailbox orders lists them, with ids' }, 2)
         return out(await call(config, 'POST', `/mailbox-orders/${seg(arg)}/${seg(sub)}`, {}))
       }
+      if (sub === 'move')
+        return out(
+          await call(config, 'POST', `/mailboxes/${seg(arg)}/move`, {
+            project:
+              o.to ??
+              (() => {
+                throw new BhError('To which project?', { hint: '--to <project>' }, 2)
+              })(),
+            ...(o.sender ? { senderId: o.sender } : {}),
+          }),
+        )
       if (sub === 'update')
         return out(
           await call(config, 'PATCH', `/mailboxes/${seg(arg)}`, {
