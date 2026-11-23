@@ -265,7 +265,7 @@ real limits:
 - **The engine's protection** — when a domain's seed notes slip into spam, its ladder stops
   climbing; when they fall below 70% in the inbox at Google (60% at Microsoft), the engine holds the
   domain's outreach to that side's leads only (Google-hosted; Microsoft-hosted and behind a gateway;
-  other providers wait while either side is held), opens an urgent task for the project's owner and
+  other providers wait only once both sides are), opens an urgent task for the project's owner and
   lets outreach to that side go again once its notes are back for five days. Where each one stands,
   held ones with `outreachHeldSides`, `outreachHeldAt` and why: `bh mailboxes`, or for a set of
   senders `bh sql "select address, daily_limit, warmed, sending_days, placement_state,
