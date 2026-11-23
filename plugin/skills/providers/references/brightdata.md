@@ -105,3 +105,21 @@ Rows of one company are contiguous; one busy listing can fill a small wave on it
 one company). The sample leans to large consumer brands (median 1,063 reviews) unless you set a
 category or a review ceiling. Density measured: about 1.03–1.25 rows per company for a thin market
 with a 12-month window.
+
+## LinkedIn post engagement: not available
+
+Who reacted to or commented on a company's LinkedIn posts (issue 1059) is not something any provider
+we hold returns, and `bh call brightdata` does not reach Bright Data's LinkedIn scrapers.
+
+- Bright Data's LinkedIn posts scraper (dataset `gd_lyy3tktm25m4avu764`, discover by company URL,
+  $1.50 per 1,000 posts) returns each post with `num_likes` and `num_comments` only. Its
+  `top_visible_comments` is what a logged-out visitor sees, and came back `null` on every post
+  measured (2026-11-23, three Belkins posts with 86–106 likes and one comment, $0.0045). It has no
+  list of the people who reacted, and Bright Data has no other scraper that does.
+- Generect and Apollo search companies and people; neither has posts or reactions. Firecrawl does
+  not read LinkedIn.
+- Collecting reactors through the managed LinkedIn accounts' remote browser would automate a
+  logged-in account against LinkedIn's terms and put the account at risk; it is not done.
+
+Until a person decides otherwise, a client is not promised "people who engaged with a competitor's
+LinkedIn page".
