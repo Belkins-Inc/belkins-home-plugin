@@ -268,6 +268,11 @@ hidden at a terminal, so it stays out of the shell's history.
        [--seed-hold on|off]              on (default): outreach from its own mailboxes to Google or Microsoft stops
                                          by itself while their domain's seed notes there go to spam; off: it goes
                                          on, the ladder only stops climbing, and holding is yours (bh placement)
+       [--pairing-wait <days>|off]       send days a lead waits for its better mailboxes (an aged domain, the
+                                         pairing table's first host) before the next ones take it: they fill to
+                                         that many days and only the overflow goes on; gateway leads go to a
+                                         younger Google domain, never to Microsoft. off (default): the engine's
+                                         rule, the next ones only when they start it 3 send days sooner
   brief [--project <slug>]              read this first, every session
   behaviour [<topic>] | behaviour --search <words>   how the engine behaves ("When …, the engine …"):
                                          the topics, one topic's entries, or the entries with every word;
@@ -1987,6 +1992,7 @@ const FLAGS = {
   'reply-cc': { type: 'string' },
   'copy-allow': { type: 'string' },
   'seed-hold': { type: 'string' },
+  'pairing-wait': { type: 'string' },
   reviewer: { type: 'string' },
   'lead-cost-alert': { type: 'string' },
   'max-live-per-company': { type: 'string' },
@@ -2326,6 +2332,20 @@ async function main(argv: string[]): Promise<void> {
                 ? { seedHold: o['seed-hold'] === 'on' }
                 : (() => {
                     throw new BhError('--seed-hold is on or off', { hint: '--seed-hold off' }, 2)
+                  })()),
+            // NaN would reach the engine as null and clear the setting: refused here.
+            ...(o['pairing-wait'] === undefined
+              ? {}
+              : o['pairing-wait'] === 'off' || /^\d+$/.test(o['pairing-wait'])
+                ? {
+                    pairingWaitDays: o['pairing-wait'] === 'off' ? null : Number(o['pairing-wait']),
+                  }
+                : (() => {
+                    throw new BhError(
+                      '--pairing-wait is a number of send days (1-30) or off',
+                      { hint: '--pairing-wait 5' },
+                      2,
+                    )
                   })()),
             ...(o['brief-file']
               ? { brief: await readFile(o['brief-file'], 'utf8') }

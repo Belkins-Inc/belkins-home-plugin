@@ -620,6 +620,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'lead-cost-alert',
       'max-live-per-company',
       'name',
+      'pairing-wait',
       'reply-bcc',
       'reply-cc',
       'seed-hold',

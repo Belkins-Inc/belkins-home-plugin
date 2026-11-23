@@ -408,7 +408,9 @@ advisory (`blocks: false`) warnings in `beforeLaunch` before asking a person to 
 for the hold to lift), `young_gateway_domains` (>30% Microsoft/gateway leads with 0 clear aged
 >= 90d mailboxes), `mailbox_mix` (the senders' mailboxes sit on the wrong hosts for the leads: a
 fifth of the first emails would go from the host the pairing table puts second — `bh mailboxes plan
---strategy <id>` says what to buy), `queue_depth` (first-email queue exceeds 7 send days of clear mailbox capacity),
+--strategy <id>` says what to buy; a client who rules how long a lead may wait for its better
+mailboxes before the next ones take it sets that with `bh project update --pairing-wait <days>`,
+`bh behaviour email-sending`), `queue_depth` (first-email queue exceeds 7 send days of clear mailbox capacity),
 `unverified_emails`, `copy_quality`, `linkedin` (no LinkedIn account for LinkedIn steps that sit
 beside email in a template), and `zones` (missing
 contact/company time zones). Also check: client's DNC list received (`bh questions`), exclusions set
