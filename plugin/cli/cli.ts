@@ -1286,6 +1286,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          client channel (private, ours) unless it has one, adds the
                                          project's team, and asks the client in through Slack Connect:
                                          these addresses and every client granted the project
+  slack client-channel briefs-only <on|off>   on: the client channel gets booked meetings' briefs
+                                         only, and the summary after a meeting goes to the team
+                                         channel instead of under the brief
   slack disconnect [--team <workspace>]  takes the bot out of one workspace (an admin only)
   slack post (--body <text> | --body-file <path|->) [--blocks-file <path|->] [--to <#channel|email>]
              [--thread <link|ts>] [--mention <email|name|member id, ...>] [--team <workspace>]
@@ -6174,6 +6177,20 @@ async function main(argv: string[]): Promise<void> {
             ...(o.invite ? { invite: list(o.invite) } : {}),
           }),
         )
+      if (sub === 'client-channel' && arg === 'briefs-only') {
+        const to = pos[3]
+        if (to !== 'on' && to !== 'off')
+          throw new BhError(
+            'On or off?',
+            { hint: 'bh slack client-channel briefs-only <on|off> --project <slug>' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/projects/${p()}/slack/client-channel/briefs-only`, {
+            on: to === 'on',
+          }),
+        )
+      }
       if (sub === 'channel' && o.client)
         return out(
           await call(config, 'POST', `/projects/${p()}/slack/client-channel`, {
