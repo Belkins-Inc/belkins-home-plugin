@@ -538,6 +538,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     '*': ['email'],
     agreement: ['email', 'first-name', 'last-name', 'note'],
     key: ['email', 'name'],
+    placement: ['days'],
     set: [
       'google-key',
       'google-scopes',
@@ -578,6 +579,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     domain: ['days', 'limit'],
     look: ['days', 'from', 'message-id'],
     mailbox: ['days', 'limit'],
+    room: ['days'],
     seed: ['env'],
     seeds: [],
     show: [],

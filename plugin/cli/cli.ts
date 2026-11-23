@@ -194,6 +194,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          admin consent in each tenant, the Graph application permissions granted
                                          (Folderly Network's six unless said), how many tenants it may order in 30
                                          days and in any 24 hours, the seats one may hold (platform admin)
+  partner placement <org> [--days <n>]  its placement tests day by day: tests, notes wanted and given, turned
+                                         away for room or for its ceiling, where they landed (platform admin)
   partner set <org> --placement-notes <n>   its placement tests on our seeds: how many notes it may
                                          reserve in a UTC day (0 stops them) (platform admin;
                                          docs/decisions/partner-placement.md)
@@ -985,6 +987,9 @@ hidden at a terminal, so it stays out of the shell's history.
   agent stats [--hours <n>]              across projects: runs, cost, queued / running, wait from reply to run
   placement [--days <n>]                 inbox placement on our own seeds, per environment, over the last days (an admin)
   placement seeds                        the seed mailboxes: environment, status, last note
+  placement room [--days <n>]            each environment's seeds against the notes they took a day, ours and
+                                         partners', and partners' notes turned away for room: when to add seeds
+                                         (platform admin; 14 days unless said)
   placement seed connect --env google|m365|m365_defender|m365_proofpoint
                                          the URL to sign in to as the seed; it is only ever read (an admin)
   placement seed add <address> --env google|m365|m365_defender|m365_proofpoint
@@ -3070,7 +3075,7 @@ async function main(argv: string[]): Promise<void> {
     }
     case 'partner': {
       const usage =
-        'bh partner <org> | partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none] [--max-licences <n>] [--microsoft-app <id>] [--microsoft-permissions <a,b>] [--max-tenants <n>] [--max-tenants-day <n>|none] [--max-seats <n>] [--placement-notes <n>] | partner agreement <org> --first-name <f> --last-name <l> --email <e> --note <n> | partner key <org> --email <e> [--name <n>]'
+        'bh partner <org> | partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none] [--max-licences <n>] [--microsoft-app <id>] [--microsoft-permissions <a,b>] [--max-tenants <n>] [--max-tenants-day <n>|none] [--max-seats <n>] [--placement-notes <n>] | partner placement <org> [--days <n>] | partner agreement <org> --first-name <f> --last-name <l> --email <e> --note <n> | partner key <org> --email <e> [--name <n>]'
       if (sub === 'set' && arg) {
         // Microsoft's flags set the organisation's Microsoft side; any other, or none, its Google's.
         const microsoftGiven =
@@ -3148,6 +3153,14 @@ async function main(argv: string[]): Promise<void> {
             note: o.note,
           }),
         )
+      if (sub === 'placement' && arg)
+        return out(
+          await call(
+            config,
+            'GET',
+            `/partners/${seg(arg)}/placement${o.days ? `?days=${Number(o.days)}` : ''}`,
+          ),
+        )
       if (sub === 'key' && arg && o.email)
         return out(
           await call(config, 'POST', `/partners/${seg(arg)}/keys`, {
@@ -3155,7 +3168,14 @@ async function main(argv: string[]): Promise<void> {
             ...(o.name ? { name: o.name } : {}),
           }),
         )
-      if (sub && !arg && sub !== 'set' && sub !== 'key' && sub !== 'agreement')
+      if (
+        sub &&
+        !arg &&
+        sub !== 'set' &&
+        sub !== 'key' &&
+        sub !== 'agreement' &&
+        sub !== 'placement'
+      )
         return out(await call(config, 'GET', `/partners/${seg(sub)}`))
       throw new BhError(usage, { hint: 'bh partner <org> shows one' }, 2)
     }
@@ -5282,6 +5302,10 @@ async function main(argv: string[]): Promise<void> {
           await call(config, 'GET', `/placement${o.days ? `?days=${Number(o.days)}` : ''}`),
         )
       if (sub === 'seeds') return out(await call(config, 'GET', '/placement/seeds'))
+      if (sub === 'room')
+        return out(
+          await call(config, 'GET', `/placement/room${o.days ? `?days=${Number(o.days)}` : ''}`),
+        )
       if (sub === 'seed') {
         if (arg === 'connect') {
           if (!o.env)
