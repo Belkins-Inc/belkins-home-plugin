@@ -97,7 +97,12 @@ The engine sends it to the dialer for each lead its call step lists, with `{firs
 dialer calls each lead is the strategy's too, set before launch: `{"callPolicy": {"attempts": 5,
 "spacingMinutes": 1440, "openForDays": 14}}` in the same file (3 tries a day apart for 14 days for
 what is left out; `bh behaviour calls-and-phones`, "A call step in a plan"); a second call step in the
-plan adds no tries. Find the numbers before that point
+plan adds no tries unless it carries its own. To call in blocks between emails (emails 1 to 3, five
+tries, emails 4 to 6, five more), give each block's call step its own `"callPolicy"` (on the step in
+`bh plan set`, or `bh plan step <strategy-id> <step-id> --file` with `{"callPolicy": {...}}`, a
+person): its leads go on that step's own list with those tries, what it leaves out the strategy's,
+and joining it ends the block before; keep `openForDays` short enough that a block ends before the
+next emails (`bh behaviour enrollment-and-plans`, "Calling in blocks between emails"). Find the numbers before that point
 (`bh phones`; a paid phone lookup is quoted to a person before it runs). For leads enrolled before
 the plan had a call step, build the list by hand from "Leads with their first steps sent" in
 [references/queries.md](references/queries.md) with `bh calls create` (a person only).
@@ -140,7 +145,9 @@ Accepted values:
   else skipped (`no_telegram_peer`); it takes no `anchor`, `condition` or `track`. A `call` step puts the
   lead on the strategy's call list when the lead reaches it (one list a strategy, handed to the
   dialer when the project is linked); its `guidance` is the caller's brief (why we call now), the
-  strategy's `callScript` what they say, its `callPolicy` how many tries the dialer gives them, and it has no copy. A lead with no live number off do-not-call has it skipped (`no_phone`). Numbers come before
+  strategy's `callScript` what they say, its `callPolicy` how many tries the dialer gives them (or
+  the step's own `callPolicy`, `{"attempts","spacingMinutes","openForDays"}`, on a list of its own:
+  a block of calls), and it has no copy. A lead with no live number off do-not-call has it skipped (`no_phone`). Numbers come before
   the step falls due: `bh phones` (a paid lookup is quoted to a person first).
 - `delayDays` (default 3): send days after the anchor; forced to 0 on step 1.
 - `delayHours` (0 to 23, default 0): hours on top of `delayDays`, then the next moment the send

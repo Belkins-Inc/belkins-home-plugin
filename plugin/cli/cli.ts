@@ -321,7 +321,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          "callPolicy": {"attempts":5,"spacingMinutes":1440,"openForDays":14}, the tries of
                                          its call-step list in the dialer (1-10, 15-10080 minutes apart, open 1-90 days; 3 a
                                          day apart for 14 days for what is left out), set before any lead reaches a call
-                                         step; changed later, the dialer's list gets it within five minutes; null takes it off
+                                         step; changed later, the dialer's list gets it within five minutes; null takes it off;
+                                         a call step with its own "callPolicy" (bh plan step) calls its leads from a list of its own
   strategy launch <id> | strategy pause <id> [--reason <t>] | strategy archive <id>   (a person only); launch
                                          answers firstTouches: leads starting on each day, beside the daily limit;
                                          archive is for good: its live leads stop (strategy_archived), unsent messages cancelled
@@ -389,6 +390,10 @@ hidden at a terminal, so it stays out of the shell's history.
   plan set <strategy-id> --file <json>                 {"plans":[{"appliesWhen":"email_only","steps":[{"channel":"email"},…]}]}
                                          a "call" step puts the lead on the strategy's call list when reached
                                          (handed to the dialer when the project is linked); its guidance is the brief;
+                                         "callPolicy": {"attempts":5,"spacingMinutes":1440,"openForDays":5} on a call step
+                                         gives it tries of its own on a list of its own (what it leaves out: the strategy's
+                                         callPolicy), so a plan calls in blocks between emails; joining it ends the
+                                         lead's block before; a call step without one shares the strategy's list and tries;
                                          a "telegram_message" step goes from the sender's own Telegram to a lead it
                                          knows (a peer matched to the contact: bh telegram match), else it is skipped;
                                          a linkedin_invite step goes without a note unless it says "withoutNote": false;
@@ -400,11 +405,14 @@ hidden at a terminal, so it stays out of the shell's history.
                                          on a draft that has sent nothing, its enrolled leads' plans are copied again,
                                          written copy kept where a step keeps its channel and the lead its variant; a lead keeps its
                                          variant where the step still has one of that name, else that copy is written again (a person only)
-  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","withdrawAfterDays","newThread","threadOf","earlierThread","delayDays","track"}: one step's,
+  plan step <strategy-id> <step-id> --file <json>      {"guidance","hypothesis","withoutNote","withdrawAfterDays","callPolicy","newThread","threadOf","earlierThread","delayDays","track"}: one step's,
                                          frozen templates too; step ids in strategy show
                                          withoutNote (a LinkedIn invite; a person only): send it with no note; unsent invites follow
                                          withdrawAfterDays (a LinkedIn invite, 1-30 or null; a person only): withdraw its invitations
                                          still unaccepted after that many days, those already out included
+                                         callPolicy (a call step, {attempts,spacingMinutes,openForDays} or null; a person only):
+                                         leads reaching it from then on go on its own list with these tries; null shares the
+                                         strategy's list again (leads on its own list keep their block)
                                          newThread (a follow-up email; a person only): true starts its own thread; false answers
                                          in the thread of threadOf, the position of an earlier email step (null: the first email's),
                                          as "Re: <that thread's first subject>"; every email not yet sent follows
@@ -490,7 +498,8 @@ hidden at a terminal, so it stays out of the shell's history.
   calls push <list-id> [--attempts …] [--caller <email|none>]   hand the list to the dialer again after a push that
                                          failed (a person only); --attempts, --spacing, --open-days change the tries of a
                                          list the dialer already has (what is left out stays as it has it; a strategy's
-                                         call-step list takes them from the strategy's "callPolicy"); --caller moves the
+                                         call-step list takes them from the strategy's "callPolicy", a call step's own list
+                                         from the step's); --caller moves the
                                          list to that caller's own queue, none back to the project's
   calls remove <list-id>                take back a list nobody called from: off the dialer's queue and archived there,
                                          its people's leads on no other live list archived too (leadsArchived),

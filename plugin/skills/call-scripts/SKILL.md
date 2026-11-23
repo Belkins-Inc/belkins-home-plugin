@@ -135,7 +135,8 @@ listed after, and `bh calls briefs` changes the others.
    a list's people to one caller, add `--caller <their email>` (their own queue, made the first
    time; `bh behaviour dialer`, "A call list given to one caller"). `bh calls push <list-id>
    --caller <email|none>` moves a list, and `--attempts/--spacing/--open-days` change its tries in
-   the dialer (a call-step list's are the strategy's `callPolicy`).
+   the dialer (a call-step list's are the strategy's `callPolicy`, a call step's own list the
+   step's `callPolicy`, set with `bh plan step`).
    A list that exists (a call-step list, one made earlier, scripts to fix):
    `bh calls briefs <list-id> --file rows.json`; `null` clears a field, a field left out stays.
 4. Read the answer's `dialer`: `scripts` and `briefs` sent, `skipped` (people the dialer left out
