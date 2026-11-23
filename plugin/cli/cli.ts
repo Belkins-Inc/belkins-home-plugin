@@ -335,6 +335,11 @@ hidden at a terminal, so it stays out of the shell's history.
                                          begins (UTC), as after an out-of-office; pausing it again changes the date;
                                          a lead held for an away note is held longer with a later --until and --note
   lead stop <enrollment-id> --reason <t> end a lead for good; frees the contact for another strategy (a person only)
+  lead restart <enrollment-id>... [--file <json|jsonl|->] [--dry-run]   send a lead already written to again from step 1
+                                         as a new lead of its strategy, its copy kept: on its mailbox while that sends
+                                         to it, else on the one of its sender's that would start it soonest; its first
+                                         email goes before the mailbox's never-emailed leads; the caps do not count it
+                                         again; --file: [{"enrollmentId"}] (a person only)
   strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent (a person only)
   strategy respread <id> [--dry-run]     count again the start dates of a launched strategy's leads that sent nothing,
                                          on its send days, colleagues companyStaggerDays apart: earlier as well as
@@ -581,7 +586,12 @@ hidden at a terminal, so it stays out of the shell's history.
                                          found by address or added, each thing written once, a meeting or email
                                          whose state changed updated; runs pass after pass until done
   crm sync <crm> --auto on|off           the same every hour by itself, until switched off (a person)
-  enroll <strategy-id> --file <json|jsonl|-> [--dry-run] [--allow-namesakes]    [{"contactId","segmentId","personaId"}]
+  enroll <strategy-id> --file <json|jsonl|-> [--dry-run] [--allow-namesakes]    [{"contactId","segmentId","personaId","senderId"?}]
+                                         senderId: write as that sender of the strategy (skipped with why when they
+                                         cannot carry the plan); each result names its senderId and mailbox;
+                                         a contact written to here before and stopped is a restart (restartOf):
+                                         its own earlier lead takes no second place under the caps, and its first
+                                         email goes before the mailbox's never-emailed leads
                                          a lead goes first to a sender with a mailbox for its mail provider,
                                          and on an aged domain (>=90d) for gateway and Microsoft leads when one sends;
                                          unserved counts leads no sender's mailboxes serve (put on any; with the
@@ -4778,6 +4788,25 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'POST', `/enrollments/${seg(arg)}/stop`, { reason: o.reason }),
         )
+      if (sub === 'restart') {
+        const ids = o.file
+          ? (await readRows(o.file)).map((r) =>
+              typeof r === 'string' ? r : (r as { enrollmentId?: unknown }).enrollmentId,
+            )
+          : pos.slice(2)
+        if (!ids.length)
+          throw new BhError(
+            'Which leads?',
+            { hint: 'bh lead restart <enrollment-id>..., or --file [{"enrollmentId"}]' },
+            2,
+          )
+        return out(
+          await call(config, 'POST', '/enrollments/restart', {
+            enrollmentIds: ids,
+            dryRun: Boolean(o['dry-run']),
+          }),
+        )
+      }
       break
     case 'calendars':
       return out(await call(config, 'GET', `/projects/${p()}/calendars`))
