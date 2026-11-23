@@ -283,6 +283,12 @@ hidden at a terminal, so it stays out of the shell's history.
   note add --kind <decision|insight|client_feedback|rule|todo> --title <t> [--body <b> | --body-file <path|->] [--supersedes <id,id>]
        [--strategy <id>] [--segment <id>]
   note list [--kind <k>] [--all]
+  history                               what the project holds from another platform (legacy BH): imported
+                                         threads and their messages, calls and transcripts, leads continuing a thread
+  history continue [--strategy <id,id>] [--enrollment <id,id>] [--dry-run]
+                                         a live lead not yet emailed here whose contact has an imported email thread
+                                         on the lead's mailbox sends its first email into that thread, answering it
+                                         under its subject (a person); without --strategy or --enrollment, every such lead
   issue report --title <t> --body <b> | --body-file <path|->  [--kind bug|question|wish]
                                          a defect, a question or a wish about the platform, to the people who
                                          fix it; the session's project goes with it when there is one. Name
@@ -600,7 +606,7 @@ hidden at a terminal, so it stays out of the shell's history.
                                          found by address or added, each thing written once, a meeting or email
                                          whose state changed updated; runs pass after pass until done
   crm sync <crm> --auto on|off           the same every hour by itself, until switched off (a person)
-  enroll <strategy-id> --file <json|jsonl|-> [--dry-run] [--allow-namesakes]    [{"contactId","segmentId","personaId","senderId"?}]
+  enroll <strategy-id> --file <json|jsonl|-> [--dry-run] [--allow-namesakes] [--allow-written-before]    [{"contactId","segmentId","personaId","senderId"?}]
                                          senderId: write as that sender of the strategy (skipped with why when they
                                          cannot carry the plan); each result names its senderId and mailbox;
                                          a contact written to here before and stopped is a restart (restartOf):
@@ -613,7 +619,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          skips a company at the project's cap of people live across strategies
                                          (bh project update --max-live-per-company), and a contact whose namesake at
                                          the company is live (likely one person: bh contacts merge; --allow-namesakes
-                                         if they are two people)
+                                         if they are two people); a contact who answered on another platform or was
+                                         written to there in the last 90 days (bh history; --allow-written-before when
+                                         this lead continues that conversation, then bh history continue)
                                          youngDomain counts gateway leads placed on a domain under 90 days old;
                                          zoneWarning on a lead timed by the project's zone or a guess at its
                                          country's (US, CA, AU…): set its timezone or the company's hq_state
@@ -2006,6 +2014,7 @@ const FLAGS = {
   'lead-cost-alert': { type: 'string' },
   'max-live-per-company': { type: 'string' },
   'allow-namesakes': { type: 'boolean' },
+  'allow-written-before': { type: 'boolean' },
   stop: { type: 'string' },
   class: { type: 'string' },
   keep: { type: 'boolean' },
@@ -2395,6 +2404,23 @@ async function main(argv: string[]): Promise<void> {
       return out(
         await call(config, 'GET', `/schema${sub ? `?${new URLSearchParams({ table: sub })}` : ''}`),
       )
+    case 'history':
+      if (sub === 'continue') {
+        const ids = (v: string | undefined) =>
+          v
+            ?.split(',')
+            .map((x) => x.trim())
+            .filter(Boolean)
+        return out(
+          await call(config, 'POST', `/projects/${p()}/history/continue`, {
+            dryRun: Boolean(o['dry-run']),
+            ...(o.strategy ? { strategyIds: ids(o.strategy) } : {}),
+            ...(o.enrollment ? { enrollmentIds: ids(o.enrollment) } : {}),
+          }),
+        )
+      }
+      if (!sub) return out(await call(config, 'GET', `/projects/${p()}/history`))
+      break
     case 'note':
       if (sub === 'add') {
         return out(
@@ -3893,6 +3919,7 @@ async function main(argv: string[]): Promise<void> {
           leads: await readRows(need(o.file)),
           dryRun: Boolean(o['dry-run']),
           ...(o['allow-namesakes'] ? { allowNamesakes: true } : {}),
+          ...(o['allow-written-before'] ? { allowWrittenBefore: true } : {}),
         }),
       )
     case 'stand':

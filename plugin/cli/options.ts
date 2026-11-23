@@ -279,7 +279,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     seeds: [],
   },
   enroll: {
-    '*': ['allow-namesakes', 'dry-run', 'file'],
+    '*': ['allow-namesakes', 'allow-written-before', 'dry-run', 'file'],
   },
   esp: {
     '*': [],
@@ -334,6 +334,11 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     boards: ['domain', 'file', 'source'],
     companies: [],
     postings: [],
+  },
+  history: {
+    '': [],
+    '*': [],
+    continue: ['dry-run', 'enrollment', 'strategy'],
   },
   hypothesis: {
     '*': [
