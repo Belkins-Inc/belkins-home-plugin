@@ -190,6 +190,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     duplicates: [],
     employer: ['clear-linkedin', 'confirm', 'note', 'unconfirm'],
     merge: ['dry-run', 'stop'],
+    namesakes: ['note'],
     upsert: ['file'],
   },
   contacts: {
@@ -198,6 +199,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     duplicates: [],
     employer: ['clear-linkedin', 'confirm', 'note', 'unconfirm'],
     merge: ['dry-run', 'stop'],
+    namesakes: ['note'],
     upsert: ['file'],
   },
   copy: {
@@ -377,7 +379,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   },
   lead: {
     '*': [],
-    pause: ['until'],
+    pause: ['note', 'until'],
     resume: [],
     show: [],
     stop: ['reason'],

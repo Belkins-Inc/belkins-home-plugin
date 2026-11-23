@@ -329,10 +329,11 @@ hidden at a terminal, so it stays out of the shell's history.
   lead show <enrollment-id>              one lead's plan step by step
   lead resume <enrollment-id>            put back a lead a reply stopped when the reply needed nothing, or one stopped as
                                          the wrong person once they are known to be at the company (a person only)
-  lead pause <enrollment-id> [--until <YYYY-MM-DD>] | lead unpause <enrollment-id>   hold a lead by hand, and let it
-                                         go on (a person only; unpause also lets go one paused with thread
-                                         pause-colleagues); with --until the engine lets it go on when that day
-                                         begins (UTC), as after an out-of-office; pausing it again changes the date
+  lead pause <enrollment-id> [--until <YYYY-MM-DD>] [--note <why>] | lead unpause <enrollment-id>   hold a lead by
+                                         hand, and let it go on (a person only; unpause also lets go one paused with
+                                         thread pause-colleagues); with --until the engine lets it go on when that day
+                                         begins (UTC), as after an out-of-office; pausing it again changes the date;
+                                         a lead held for an away note is held longer with a later --until and --note
   lead stop <enrollment-id> --reason <t> end a lead for good; frees the contact for another strategy (a person only)
   strategy unlaunch <id>                 undo a launch or resume within a minute, before anything is sent (a person only)
   strategy respread <id> [--dry-run]     count again the start dates of a launched strategy's leads that sent nothing,
@@ -504,6 +505,8 @@ hidden at a terminal, so it stays out of the shell's history.
   contacts duplicates                    contacts likely one person, with their live leads: one LinkedIn profile
                                          (match linkedin), or the same full name at one company (match name);
                                          bothLive: each has a live lead, so the merge stops one
+  contacts namesakes <id> <other-id> --note <why>   two contacts of one name at one company are two people:
+                                         duplicates leaves the pair out and enroll starts both (a person only)
   contacts merge <keep-id> <drop-id> [--dry-run] [--stop <lead-id>]   one person: leads, conversations, meetings,
                                          calls, numbers, labels, standings and history move to the kept contact,
                                          which fills what it lacks; the other is deleted (a person only). When both
@@ -3601,6 +3604,22 @@ async function main(argv: string[]): Promise<void> {
       if (sub === 'upsert') return batch(`/projects/${p()}/contacts`)
       if (sub === 'duplicates')
         return out(await call(config, 'GET', `/projects/${p()}/contacts/duplicates`))
+      if (sub === 'namesakes') {
+        if (!arg || !pos[3] || !o.note)
+          throw new BhError(
+            'Which two contacts are two people, and how do you know?',
+            {
+              hint: 'bh contacts namesakes <id> <other-id> --note <why>; bh contacts duplicates lists pairs',
+            },
+            2,
+          )
+        return out(
+          await call(config, 'POST', `/contacts/${seg(arg)}/namesakes`, {
+            other: pos[3],
+            note: o.note,
+          }),
+        )
+      }
       if (sub === 'merge') {
         if (!arg || !pos[3])
           throw new BhError(
@@ -4736,12 +4755,10 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'POST', `/enrollments/${seg(arg)}/resume`, {}))
       if (sub === 'pause')
         return out(
-          await call(
-            config,
-            'POST',
-            `/enrollments/${seg(arg)}/pause`,
-            o.until ? { until: o.until } : {},
-          ),
+          await call(config, 'POST', `/enrollments/${seg(arg)}/pause`, {
+            ...(o.until ? { until: o.until } : {}),
+            ...(o.note ? { note: o.note } : {}),
+          }),
         )
       if (sub === 'unpause')
         return out(await call(config, 'POST', `/enrollments/${seg(arg)}/unpause`, {}))

@@ -139,7 +139,9 @@ or another employer's domain passes a check of the company's own domain.
    enrolled again. One person held by two contacts (one profile, or the same name at the
    company under two profiles): `bh contacts duplicates`, then a person decides and runs `bh
    contacts merge <keep-id> <drop-id>`; when both are live, `--stop <lead-id>` names the lead the
-   merge stops (the answer without it suggests one).
+   merge stops (the answer without it suggests one). Two people of one name (two profiles, two
+   valid addresses) are never merged: `bh contacts namesakes <id> <other-id> --note "<how you
+   know>"` takes the pair off the list, and enroll starts both.
    A row whose address already belongs to a contact who is someone else — another name, another
    profile — is `refused` in the answer and nothing of it is saved: a provider gave two people one
    address, and saving it would turn the contact (and the copy written to greet them) into the
