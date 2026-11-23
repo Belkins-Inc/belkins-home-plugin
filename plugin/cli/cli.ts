@@ -183,7 +183,7 @@ hidden at a terminal, so it stays out of the shell's history.
                                          the customer the terms link and carries on (platform admin)
   partner <org>                         a partner (Folderly): its Google service account, scopes, ceiling and the
                                          organisations it ordered; its Microsoft app, permissions, ceiling, Customer
-                                         Agreement and tenants — through the partner API (platform admin)
+                                         Agreement and tenants; its placement ceiling — through the partner API (platform admin)
   partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none]
        [--max-licences <n>]              makes the organisation a partner, or changes it: --google-key - reads its
                                          service account's JSON key from stdin; --max-orgs is how many organisations
@@ -194,6 +194,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          admin consent in each tenant, the Graph application permissions granted
                                          (Folderly Network's six unless said), how many tenants it may order in 30
                                          days and in any 24 hours, the seats one may hold (platform admin)
+  partner set <org> --placement-notes <n>   its placement tests on our seeds: how many notes it may
+                                         reserve in a UTC day (0 stops them) (platform admin;
+                                         docs/decisions/partner-placement.md)
   partner agreement <org> --first-name <f> --last-name <l> --email <e> --note "<how it was given>"
                                          records, once, who of the partner accepted the Microsoft Customer
                                          Agreement, on their word: every Microsoft tenant it orders names them
@@ -2027,6 +2030,7 @@ const FLAGS = {
   'max-tenants': { type: 'string' },
   'max-tenants-day': { type: 'string' },
   'max-seats': { type: 'string' },
+  'placement-notes': { type: 'string' },
   'per-day': { type: 'string' },
   'max-microsoft': { type: 'string' },
   'for-seeds': { type: 'boolean' },
@@ -3066,7 +3070,7 @@ async function main(argv: string[]): Promise<void> {
     }
     case 'partner': {
       const usage =
-        'bh partner <org> | partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none] [--max-licences <n>] [--microsoft-app <id>] [--microsoft-permissions <a,b>] [--max-tenants <n>] [--max-tenants-day <n>|none] [--max-seats <n>] | partner agreement <org> --first-name <f> --last-name <l> --email <e> --note <n> | partner key <org> --email <e> [--name <n>]'
+        'bh partner <org> | partner set <org> [--google-key -] [--google-scopes <url,…>] [--max-orgs <n>] [--max-orgs-day <n>|none] [--max-licences <n>] [--microsoft-app <id>] [--microsoft-permissions <a,b>] [--max-tenants <n>] [--max-tenants-day <n>|none] [--max-seats <n>] [--placement-notes <n>] | partner agreement <org> --first-name <f> --last-name <l> --email <e> --note <n> | partner key <org> --email <e> [--name <n>]'
       if (sub === 'set' && arg) {
         // Microsoft's flags set the organisation's Microsoft side; any other, or none, its Google's.
         const microsoftGiven =
@@ -3081,6 +3085,14 @@ async function main(argv: string[]): Promise<void> {
           o['max-orgs'] !== undefined ||
           o['max-orgs-day'] !== undefined ||
           o['max-licences'] !== undefined
+        // Its placement tests on our seeds: a ceiling of their own, set apart from either side.
+        const placement =
+          o['placement-notes'] !== undefined
+            ? await call(config, 'PUT', `/partners/${seg(arg)}/placement`, {
+                notesADay: Number(o['placement-notes']),
+              })
+            : null
+        if (placement && !microsoftGiven && !googleGiven) return out(placement)
         const microsoft = microsoftGiven
           ? await call(config, 'PUT', `/partners/${seg(arg)}/microsoft`, {
               ...(o['microsoft-app'] ? { appId: o['microsoft-app'] } : {}),

@@ -549,6 +549,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'max-tenants-day',
       'microsoft-app',
       'microsoft-permissions',
+      'placement-notes',
     ],
   },
   persona: {
