@@ -3,8 +3,11 @@
 Reads web pages through a real browser and returns markdown; lists a site's pages. Base
 `https://api.firecrawl.dev/v2`; key as `Authorization: Bearer …`.
 
-Price: one credit per call, $0.0009 ($90 for 100,000 credits) — for both scrape and map, whatever
-the map's `limit`. Cheap per call, and **neither endpoint guards repeats**. A scrape with exactly the
+Price: one credit, $0.0009 ($90 for 100,000 credits), per scrape and per map whatever the map's
+`limit`; a page that takes more (a PDF's pages, a stealth proxy) is booked at the credits its answer
+states. A search takes two credits for every ten results, plus a page's credits for each result it
+opens with `scrapeOptions`; it is booked at the `creditsUsed` its answer states. Cheap per call, and
+**no endpoint guards repeats**. A scrape with exactly the
 body below (`url`, `formats: ["markdown"]`, `onlyMainContent: true`) of a page anyone read in the last
 14 days is answered free from the data cache (`# from the cache`); `--again` reads it anew. Any other
 scrape, and every map, is paid each time: check `provider_calls` before re-reading.
@@ -46,6 +49,15 @@ bh call firecrawl POST /map --company <company-id> --body '{
 - The limit bounds what you read back, not what you pay. The pages worth reading are rarely at the
   end of a long list, and the vendor's order is not relevance (a conference's current speakers sat
   at positions 204–226 of 362). Choose from titles and descriptions, not from position.
+
+## Search the web
+
+```sh
+bh call firecrawl POST /search --body '{"query": "acme revit plugin", "limit": 10}'
+```
+
+- Answer: `{ "success": true, "data": { "web": [ { "url", "title", "description" }, … ] }, "creditsUsed": 2 }`.
+- Leave `scrapeOptions` out unless every result's page is needed: each one opened is a scrape.
 
 ## Whose failure is it
 

@@ -129,7 +129,7 @@ Check it before a large order and mention it in `bh session end`.
 | Is this address deliverable, is the domain catch-all | Bouncer, $0.0056/address | [bouncer](references/bouncer.md) |
 | Does this phone number exist, is it a mobile, whose name is it registered to | `bh phones check <phone-id>` (Twilio Lookup), $0.018 | [twilio](references/twilio.md) |
 | Settle a catch-all / unknown address, confirm a guess | **off for now** — such an address goes by LinkedIn | [scrubby](references/scrubby.md) |
-| A web page as text, a site's page list | Firecrawl scrape / map, $0.0009 each | [firecrawl](references/firecrawl.md) |
+| A web page as text, a site's page list, a web search | Firecrawl scrape / map, $0.0009 each; search $0.0018 per 10 results | [firecrawl](references/firecrawl.md) |
 | Companies with bad (or good) Trustpilot reviews | Bright Data Trustpilot dataset, $2.50 / 1,000 rows | [brightdata](references/brightdata.md) |
 | Companies hiring for given roles now (a hiring signal), with the job posts | `bh hiring companies` first (free, our copy of Greenhouse, Lever, Ashby and Workable boards); then TheirStack company search with `job_filters`, $0.06/company, for Workday and job-site postings; or Apollo company search with job titles, one credit ($0.0065) a page | [segment-design hiring](../segment-design/references/hiring.md), [theirstack](references/theirstack.md), [apollo](references/apollo.md) |
 | People with given titles in a segment defined by industry, country and size | Apollo people search (free), then `bulk_match` by id, $0.0065 a match | [apollo](references/apollo.md) |
