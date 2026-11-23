@@ -821,7 +821,8 @@ hidden at a terminal, so it stays out of the shell's history.
                                          the engine buys, dresses DNS and puts each in a Workspace tenant
                                          (--tenant names it; default: the oldest in the default pool with room)
   domain dkim <name> --record <TXT value> [--selector google]   publish the DKIM record minted in the
-                                         Admin console (the task the engine opened says when)
+                                         Admin console (the task the engine opened says when), or
+                                         another service's key under its selector, exactly as given
   domain release <name>                  let it lapse at expiry; refused while a mailbox sends from it (a person only)
   domain transfer <name>                 a signed-up organisation's bought domain: ask for its transfer code, to move it
                                          to a registrar of its own; it renews until it has moved (its admin)
