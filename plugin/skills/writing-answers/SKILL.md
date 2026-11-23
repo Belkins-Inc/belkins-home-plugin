@@ -51,6 +51,10 @@ day: a lead who wants to talk waits for the next pass, not for the morning.
      (`inbox-triage`, Procedure 1); never pause them yourself.
      It goes under "Re: " and the lead's last subject; when that subject says what the project's
      rules keep out (a client's name), add `--subject "<s>"` with one that does not.
+     It goes to whoever wrote last. A colleague the lead introduced in an email of its own in the
+     thread is answered under that email: `--to <their address>` (or `--in-reply-to <messageId>`),
+     the lead copied; one answer per person, each in turn, since a thread holds one draft.
+     A reply with no lead (`lead` is an address) is someone outside writing into a thread of ours.
      A fact only the client has: a holding answer, and the question — tie the thread to one already
      waiting that asks the same (`bh questions`, `bh question link <id> --thread <threadId>`), else
      `bh question add --thread <threadId> --body "<question>"` (references/answers.md says how to

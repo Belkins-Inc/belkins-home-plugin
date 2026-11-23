@@ -380,6 +380,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   lead: {
     '*': [],
     pause: ['note', 'until'],
+    restart: ['dry-run', 'file'],
     resume: [],
     show: [],
     stop: ['reason'],
@@ -686,6 +687,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'calendar',
       'cc',
       'contact',
+      'in-reply-to',
       'mailbox',
       'no-attach',
       'note',
@@ -694,6 +696,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'sender',
       'slots',
       'subject',
+      'to',
     ],
     reschedule: ['send-at'],
     resend: ['approve-by', 'mailbox', 'reason', 'reviewer', 'send-at', 'subject'],
