@@ -136,8 +136,6 @@ hidden at a terminal, so it stays out of the shell's history.
   orgs | org create <slug> --name <name> [--billing external|metered]   organisations you belong to (the platform admin: all); metered: a Dylan organisation of our own, for testing
   org billing <slug> external|stripe   external: billed outside the platform (the agencies); stripe is retired (platform admin)
   org rename <slug> [--slug <new>] [--name <new>]   a new slug or name (platform admin)
-  org delete <slug> [--to <org>] [--dry-run]   delete an organisation its projects left, for good; its issues and
-                                         erasures move to --to; --dry-run only counts (platform admin)
   org protections [<slug>]             whether the engine pauses its unhealthy strategies, its daily lead cap, today's count;
                                          with no slug, the organisation of the current project
   org autopause <slug> on|off          on: a strategy past a health limit is paused by the engine, not only flagged (platform admin)
@@ -3437,13 +3435,6 @@ async function main(argv: string[]): Promise<void> {
           }),
         )
       }
-      if (sub === 'delete')
-        return out(
-          await call(config, 'POST', `/orgs/${seg(arg)}/remove`, {
-            dryRun: Boolean(o['dry-run']),
-            ...(o.to ? { to: o.to } : {}),
-          }),
-        )
       if (sub === 'protections') {
         // No slug: the organisation of the project this command acts on (plugin#205).
         let org = arg
