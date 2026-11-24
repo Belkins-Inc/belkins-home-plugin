@@ -696,9 +696,10 @@ hidden at a terminal, so it stays out of the shell's history.
                                          a password mailbox of theirs (rows as for mailbox smtp)
   agency jmap <org> --sender <id> --file <json|jsonl|-> [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
                                          a JMAP mailbox of theirs (rows as for mailbox jmap)
-  agency linkedin <org> <unipile-account-id> --sender <id> [--invite-limit <n>] [--message-limit <n>] [--ramp yes|no]
+  agency linkedin <org> <unipile-account-id> --sender <id> [--invite-limit <n>] [--message-limit <n>] [--ramp yes|no] [--workspace main|legacy]
                                          --ramp: invitations climb from 5 a day, 5 more a week, to the limit
-                                         (default yes for a person of an agency company)
+                                         (default yes for a person of an agency company); --workspace legacy:
+                                         an account of legacy BH's Unipile, kept with its id and chats
   agency domains <org> | agency quote <org> <name>…   the agency's own domains, for its own senders
   agency closeouts <org> [--query <word>] [--age-min <years>] [--price-max-cents <n>] [--tld <tld>] [--limit <n>]
        [--names any|company]
@@ -1099,9 +1100,11 @@ hidden at a terminal, so it stays out of the shell's history.
   linkedin                               this project's LinkedIn accounts, with today's invites and messages;
                                          notesOffUntil: LinkedIn's custom-note limit reached, invitations go
                                          without their note until then
-  linkedin available                     accounts linked in Unipile that no project has attached
-  linkedin connect <unipile-account-id> [--sender <id>] [--invite-limit <n>] [--message-limit <n>]
-                                         attaches it to the sender named like its owner unless --sender
+  linkedin available [--workspace main|legacy]   accounts linked in Unipile that no project has attached
+                                         (legacy: legacy BH's Unipile workspace, production only)
+  linkedin connect <unipile-account-id> [--sender <id>] [--invite-limit <n>] [--message-limit <n>] [--workspace main|legacy]
+                                         attaches it to the sender named like its owner unless --sender;
+                                         legacy: an account of legacy BH's Unipile, kept with its id and chats
   linkedin invite --sender <id>          a link for the sender's owner to sign in to their LinkedIn without
                                          access to the tool; a disconnected account is signed in again
   linkedin update <id> [--invite-limit <n>] [--message-limit <n>] [--delay-min <s>] [--delay-max <s>] [--status active|paused|archived]
@@ -2023,6 +2026,7 @@ const FLAGS = {
   'daily-limit': { type: 'string' },
   'invite-limit': { type: 'string' },
   'message-limit': { type: 'string' },
+  workspace: { type: 'string' },
   'likes-a-day': { type: 'string' },
   'comments-a-day': { type: 'string' },
   topics: { type: 'string' },
@@ -3703,6 +3707,7 @@ async function main(argv: string[]): Promise<void> {
             ...(o['invite-limit'] ? { dailyInviteLimit: Number(o['invite-limit']) } : {}),
             ...(o['message-limit'] ? { dailyMessageLimit: Number(o['message-limit']) } : {}),
             ...yesNo('ramp', o.ramp),
+            ...(o.workspace ? { workspace: o.workspace } : {}),
           }),
         )
       break
@@ -5948,13 +5953,21 @@ async function main(argv: string[]): Promise<void> {
         ...(o['message-limit'] ? { dailyMessageLimit: Number(o['message-limit']) } : {}),
       }
       if (!sub) return out(await call(config, 'GET', `/projects/${p()}/linkedin-accounts`))
-      if (sub === 'available') return out(await call(config, 'GET', '/linkedin/available'))
+      if (sub === 'available')
+        return out(
+          await call(
+            config,
+            'GET',
+            `/linkedin/available${o.workspace ? `?${new URLSearchParams({ workspace: o.workspace })}` : ''}`,
+          ),
+        )
       if (sub === 'connect')
         return out(
           await call(config, 'POST', `/projects/${p()}/linkedin-accounts`, {
             unipileAccountId: arg,
             ...(o.sender ? { senderId: o.sender } : {}),
             ...limits,
+            ...(o.workspace ? { workspace: o.workspace } : {}),
           }),
         )
       if (sub === 'invite')
