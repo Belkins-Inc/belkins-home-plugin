@@ -526,6 +526,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     autopause: [],
     billing: [],
     create: ['billing', 'name'],
+    delete: ['dry-run', 'to'],
     dialer: [],
     erase: ['email', 'linkedin', 'note'],
     erasures: ['limit'],
