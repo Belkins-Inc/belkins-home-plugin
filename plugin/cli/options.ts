@@ -678,6 +678,11 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   refer: {
     '*': ['email', 'first-name', 'last-name', 'title'],
   },
+  registrar: {
+    '*': [],
+    card: [],
+    'card-fixed': [],
+  },
   replies: {
     '*': ['status'],
   },

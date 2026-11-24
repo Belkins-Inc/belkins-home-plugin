@@ -77,6 +77,10 @@ bh domain approve getacme.com tryacme.com --max-cents 1500 --redirect https://ac
   means that top-up failed too (its reason is in the message): a person fixes the card or adds
   credit at porkbun.com/account/credit and the same command is run again — nothing was half-done.
   Do not retry it in a loop: it will not pass by itself.
+- "Porkbun's saved card was declined" means the card is held: after one decline the engine charges
+  and buys nothing at Porkbun (each declined charge counts toward Porkbun flagging the account).
+  Tell a platform admin; once the card has room they run `bh registrar card-fixed`, and every
+  waiting domain is bought on the next pass by itself. Do not approve again meanwhile.
 - `<name> is already …` means it is ours or in flight: `bh domains`.
 
 Nothing is bought by the command itself: the row is the approval, and the engine buys on its next

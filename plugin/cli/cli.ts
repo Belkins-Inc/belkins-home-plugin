@@ -884,6 +884,10 @@ hidden at a terminal, so it stays out of the shell's history.
                                          Admin console (the task the engine opened says when), or
                                          another service's key under its selector, exactly as given
   domain release <name>                  let it lapse at expiry; refused while a mailbox sends from it (a person only)
+  registrar card                         whether the registrar's saved card is held: declined once, after which
+                                         nothing is charged or bought there (an admin)
+  registrar card-fixed                   the card has room again, or a working one is primary at the registrar:
+                                         the next pass charges and buys what waited (an admin)
   domain transfer <name>                 a signed-up organisation's bought domain: ask for its transfer code, to move it
                                          to a registrar of its own; it renews until it has moved (its admin)
   domain move <name> --tenant <name|id> [--with-mailboxes] [--confirm]   a bought domain goes to another Google tenant, one
@@ -5012,6 +5016,10 @@ async function main(argv: string[]): Promise<void> {
       })
       return out(await call(config, 'GET', `/projects/${p()}/slots${q.size ? `?${q}` : ''}`))
     }
+    case 'registrar':
+      if (sub === 'card') return out(await call(config, 'GET', '/registrar/card'))
+      if (sub === 'card-fixed') return out(await call(config, 'POST', '/registrar/card-fixed', {}))
+      break
     case 'meetbot': {
       if (!sub) return out(await call(config, 'GET', '/meetbot'))
       if (sub === 'login') return out(await meetbotLogin(config))
