@@ -248,8 +248,9 @@ hidden at a terminal, so it stays out of the shell's history.
   dialer agents <email,…> --project <p>  who works the project's queue; replaces the set (its organisation's admin)
   dialer orgs                           the dialer organizations our key can see, and the organisation linked to each (platform admin)
   dialer workspaces <dialer-org-id>     its workspaces and their queues, and the project linked to each (platform admin)
-  dialer link <workspace-id> [--queue <queue-id>] | dialer link none   link the project to a dialer workspace: its new
-                                         call lists go there and are attached to the queue (platform admin)
+  dialer link <workspace-id> [--queue <queue-id>] [--take] | dialer link none   link the project to a dialer workspace: its new
+                                         call lists go there and are attached to the queue; --take claims one another
+                                         app's externalRef holds (platform admin)
   billing [--project <slug>]           the project's Stripe subscription, as Stripe last said it
   billing link <cus_…>                 link the project to its Stripe customer (a stripe organisation's project only)
   client-access | client-access add <email> | client-access remove <user-id>   who watches the project in the
@@ -2096,6 +2097,7 @@ const FLAGS = {
   'open-days': { type: 'string' },
   caller: { type: 'string' },
   queue: { type: 'string' },
+  take: { type: 'boolean' },
   feedback: { type: 'string' },
   notes: { type: 'string' },
   upcoming: { type: 'boolean' },
@@ -3137,7 +3139,11 @@ async function main(argv: string[]): Promise<void> {
             `/projects/${p()}/dialer`,
             arg === 'none'
               ? { workspaceId: null }
-              : { workspaceId: arg, ...(o.queue ? { queueId: o.queue } : {}) },
+              : {
+                  workspaceId: arg,
+                  ...(o.queue ? { queueId: o.queue } : {}),
+                  ...(o.take ? { take: true } : {}),
+                },
           ),
         )
       }
