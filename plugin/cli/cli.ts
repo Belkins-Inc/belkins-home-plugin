@@ -991,7 +991,7 @@ hidden at a terminal, so it stays out of the shell's history.
                                          three days of warm-up alone, a trickle of 1–3 outreach a day to day 14,
                                          then 3 a day to 15 beside 15 notes (every other one the project's copy);
                                          warmed once its domain's notes are in the inbox, it keeps 8 notes a day
-                                         going. Notes in spam hold the ladder; below 70% in the inbox at Google (60%
+                                         going. Notes in spam hold the ladder; below 50% in the inbox at Google (60%
                                          at Microsoft) the engine holds the domain's outreach to that side's leads.
                                          Per mailbox: today's rung, the warm-up due
                                          by now, placement tests today (they count against the daily limit, not
