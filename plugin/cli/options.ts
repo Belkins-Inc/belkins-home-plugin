@@ -94,7 +94,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     archive: [],
     connect: ['address', 'event-type', 'freebusy', 'hours-only', 'ics', 'key', 'sender'],
     invite: ['sender'],
-    update: ['event-type', 'name', 'owner', 'priority', 'sender', 'timezone'],
+    update: ['event-type', 'name', 'owner', 'priority', 'sales-email', 'sender', 'timezone'],
   },
   calendars: {
     '*': [],
@@ -487,6 +487,8 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
       'thread',
       'through',
     ],
+    recording: [],
+    reinvite: [],
     retry: [],
     text: ['file', 'text'],
     transcript: [],

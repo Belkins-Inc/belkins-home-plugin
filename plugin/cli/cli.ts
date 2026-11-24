@@ -766,6 +766,8 @@ hidden at a terminal, so it stays out of the shell's history.
                   [--name <t>] [--minutes <n>]   (name and minutes: an external calendar's or one of our own)
                   [--hours <spec>] [--buffer <min>] [--notice <min>] [--cap <n>|none] [--window <days>]
                                          (one of our own's rules)
+                  [--sales-email <address>|none]   the client's salesperson invited to every meeting on it
+                                         beside its owner (one of our own); booked ones: bh meeting reinvite
   calendar archive <id>                  out of booking for good; connecting again writes a new row
   slots [--days <n>] [--calendar <id>] [--limit <n>]   free slots, soonest first (not yet offered to anyone)
   slots offer <thread-id> --slots <iso,iso> [--calendar <id>]
@@ -793,6 +795,10 @@ hidden at a terminal, so it stays out of the shell's history.
   meeting cancel <id> [--reason <t>]     after 60 s, on the calendar too; the lead is told (a person only)
   meeting uncancel <id>                  keep it: within the 60 s after cancel
   meeting retry <id>                     write the event again after a calendar error (found, not doubled)
+  meeting reinvite <id>                  send the invitation again, the time unchanged, as things are now: the
+                                         calendar's owner and salesperson, the project's recording (a person only)
+  meeting recording [on|off]             whether our host bot joins and records the project's meetings through the
+                                         organizer, for those booked from now on (a person only)
   meeting transcript <id>                what a meeting through the organizer left: who came and how long, the
                                          host bot's comings and goings, the transcript, Meet's Docs
   meeting text [--text <t> | --file <path>]   the project's own text on its meetings' invitations, in place of
@@ -2046,6 +2052,7 @@ const FLAGS = {
   'in-reply-to': { type: 'string' },
   'send-at': { type: 'string' },
   'lead-timezone': { type: 'string' },
+  'sales-email': { type: 'string' },
   'delay-min': { type: 'string' },
   'delay-max': { type: 'string' },
   warmed: { type: 'boolean' },
@@ -4968,6 +4975,9 @@ async function main(argv: string[]): Promise<void> {
             ...(o['event-type'] ? { eventType: o['event-type'] } : {}),
             ...(o.sender ? { senderId: o.sender } : {}),
             ...(o.name ? { name: o.name } : {}),
+            ...(o['sales-email']
+              ? { salesEmail: o['sales-email'] === 'none' ? null : o['sales-email'] }
+              : {}),
             ...rules,
           }),
         )
@@ -5068,6 +5078,19 @@ async function main(argv: string[]): Promise<void> {
           ),
         )
       if (sub === 'retry') return out(await call(config, 'POST', `/meetings/${seg(arg)}/retry`, {}))
+      if (sub === 'reinvite')
+        return out(await call(config, 'POST', `/meetings/${seg(arg)}/reinvite`, {}))
+      if (sub === 'recording') {
+        if (arg === undefined)
+          return out(await call(config, 'GET', `/projects/${p()}/meeting-recording`))
+        if (arg !== 'on' && arg !== 'off')
+          throw new BhError('On or off?', { hint: 'bh meeting recording off' }, 2)
+        return out(
+          await call(config, 'PUT', `/projects/${p()}/meeting-recording`, {
+            recording: arg === 'on',
+          }),
+        )
+      }
       if (sub === 'text')
         return out(
           o.text === undefined && !o.file
