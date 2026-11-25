@@ -611,10 +611,15 @@ hidden at a terminal, so it stays out of the shell's history.
                                          source belkins-home:<project>, activity_id stable; --per-person one row a
                                          person; --json by person; --since keeps what happened from then on
   crm sync <crm> [--since <date>] [--limit <n>] [--dry-run]
-                                         the same written into the client's CRM (hubspot; a person): each person
-                                         found by address or added, each thing written once, a meeting or email
-                                         whose state changed updated; runs pass after pass until done
-  crm sync <crm> --auto on|off           the same every hour by itself, until switched off (a person)
+                                         the same written into the client's CRM (hubspot; a person): every lead
+                                         found by address or added with its Belkins fields, each thing written
+                                         once, a meeting or email whose state changed updated; runs pass after
+                                         pass until done, or until the CRM's day is spent (paused)
+  crm sync <crm> --auto on|off           the same every ten minutes by itself, until switched off (a person)
+  crm settings <crm> [--body <json> | --body-file <path|->]
+                                         what the connection syncs: kinds of activity, every lead or those with
+                                         activity, each field's property (null: none), since, owner, dnc read
+                                         back daily; with a body, changes what it names (a person)
   enroll <strategy-id> --file <json|jsonl|-> [--dry-run] [--allow-namesakes] [--allow-written-before]    [{"contactId","segmentId","personaId","senderId"?}]
                                          senderId: write as that sender of the strategy (skipped with why when they
                                          cannot carry the plan); each result names its senderId and mailbox;
@@ -4180,19 +4185,23 @@ async function main(argv: string[]): Promise<void> {
           return out(await call(config, 'POST', `${base()}/activity`, { ...body, dryRun: true }))
         // Pass after pass until nothing is left: each writes up to its budget.
         type Pass = {
-          contacts: { found: number; created: number }
+          contacts: { found: number; created: number; updated?: number }
           created: number
           updated: number
           failed: number
           errors: string[]
           more: boolean
+          paused?: { until: string; reason: string } | null
+          notes?: string[]
         }
         const total = {
-          contacts: { found: 0, created: 0 },
+          contacts: { found: 0, created: 0, updated: 0 },
           created: 0,
           updated: 0,
           failed: 0,
           errors: [] as string[],
+          notes: [] as string[],
+          paused: null as Pass['paused'],
           passes: 0,
         }
         for (;;) {
@@ -4200,11 +4209,15 @@ async function main(argv: string[]): Promise<void> {
           total.passes++
           total.contacts.found += r.contacts.found
           total.contacts.created += r.contacts.created
+          total.contacts.updated += r.contacts.updated ?? 0
           total.created += r.created
           total.updated += r.updated
           total.failed = r.failed
           total.errors = r.errors
-          if (!r.more) break
+          total.notes = r.notes ?? []
+          // The CRM's day is spent: the connection waits, and so does this.
+          total.paused = r.paused ?? null
+          if (!r.more || r.paused) break
           process.stderr.write(`${total.created + total.updated} written so far…\n`)
         }
         return out(total)
@@ -4222,6 +4235,16 @@ async function main(argv: string[]): Promise<void> {
         return out(await call(config, 'POST', base(), { token }))
       }
       if (sub === 'disconnect') return out(await call(config, 'DELETE', base()))
+      if (sub === 'settings') {
+        const change = o['body-file']
+          ? await readInput(o['body-file'])
+          : o.body
+            ? JSON.parse(o.body)
+            : undefined
+        return out(
+          await call(config, change === undefined ? 'GET' : 'PUT', `${base()}/settings`, change),
+        )
+      }
       if (sub === 'call') {
         const [, , , method, target] = pos
         if (!method || !target)

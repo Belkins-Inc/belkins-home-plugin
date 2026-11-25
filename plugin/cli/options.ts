@@ -221,6 +221,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     disconnect: [],
     dnc: ['dry-run', 'no-domains', 'no-emails', 'no-phones'],
     export: ['json', 'out', 'per-person', 'since'],
+    settings: ['body', 'body-file'],
     sync: ['auto', 'dry-run', 'limit', 'since'],
   },
   dialer: {
