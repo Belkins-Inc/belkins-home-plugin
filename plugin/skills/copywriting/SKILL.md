@@ -101,6 +101,15 @@ A `ready` message can also be cleared back to `needs_copy` by a person (`bh copy
   or en dash, or a hyphen standing between words (`word - word`) or opening a line, in the body or
   the subject. Hyphens inside words stay. This holds for copy a client approved with a dash too:
   write it with a comma, a colon or two sentences.
+- any channel: "two spaces between words: a value was left out of the copy" for two spaces or
+  more between two letters in the body or the subject (a variable the template did not fill). Two
+  spaces after a full stop are allowed.
+- any channel: "an invisible character (a zero-width space, a soft hyphen or the like); take it
+  out" for a zero-width space or joiner, a word joiner, a byte-order mark, a soft hyphen or a
+  direction mark. Do not hide a domain from autolinking with one: write it as the client's name.
+- any channel: "broken characters, text decoded twice (…); write them as they are" for `Ã`
+  followed by a Latin-1 byte (`ClÃ­nica`), `â€` (`â€™`) or `Â` before one: a name from the data
+  that was decoded twice. Write the name with its real letters (`La Clínica de La Raza`).
 - `angle` is required (non-empty) on every message.
 
 These are the floor. The house rules below are stricter; `bh copy write` does not refuse on them
