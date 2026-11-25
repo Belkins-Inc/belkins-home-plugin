@@ -589,6 +589,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
     codes: ['code', 'days', 'env', 'moved', 'source'],
     digests: ['all', 'days'],
     domain: ['days', 'limit'],
+    grow: ['max-seeds', 'off'],
     look: ['days', 'from', 'message-id'],
     mailbox: ['days', 'limit'],
     room: ['days'],

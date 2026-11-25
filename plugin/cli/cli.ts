@@ -1057,6 +1057,10 @@ hidden at a terminal, so it stays out of the shell's history.
                                          a mailbox of a seed tenant the engine reads as a whole (domain-wide
                                          delegation, the tenant's app) made a seed, no sign-in (an admin)
   placement seed activate|suspect|archive <id>   put a seed back in the tests, set it aside, or retire it (an admin)
+  placement grow                         each environment's ceiling on the seeds the engine adds by itself when
+                                         short of room, its seeds, and the seeds it ordered this month (an admin)
+  placement grow <environment> --max-seeds <n> | --off   let the engine grow an environment to n seeds, buying a
+                                         seat each in its seed tenant; --off stops it (an admin)
   placement test <our address> [--per-environment <n>]   notes from that mailbox to n seeds in each environment
                                          (default 2), queued and sent at the mailbox's own pace; they count
                                          toward its daily limit; once a week a mailbox, whoever asks
@@ -2119,6 +2123,8 @@ const FLAGS = {
   'placement-notes': { type: 'string' },
   'per-day': { type: 'string' },
   'max-microsoft': { type: 'string' },
+  'max-seeds': { type: 'string' },
+  off: { type: 'boolean' },
   'for-seeds': { type: 'boolean' },
   'free-users': { type: 'string' },
   'free-domains': { type: 'string' },
@@ -5513,6 +5519,21 @@ async function main(argv: string[]): Promise<void> {
         return out(
           await call(config, 'GET', `/placement/room${o.days ? `?days=${Number(o.days)}` : ''}`),
         )
+      if (sub === 'grow') {
+        if (!arg) return out(await call(config, 'GET', '/placement/growth'))
+        if (o.off) return out(await call(config, 'DELETE', `/placement/growth/${seg(arg)}`))
+        if (!o['max-seeds'])
+          throw new BhError(
+            'How many seeds at most?',
+            { hint: `--max-seeds <n> lets the engine grow ${arg} to n seeds; --off stops it` },
+            2,
+          )
+        return out(
+          await call(config, 'PUT', `/placement/growth/${seg(arg)}`, {
+            max: Number(o['max-seeds']),
+          }),
+        )
+      }
       if (sub === 'seed') {
         if (arg === 'connect') {
           if (!o.env)
