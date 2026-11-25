@@ -5,7 +5,8 @@ description: Your own Claude writes every answer to your leads and every follow-
 
 # Writing answers
 
-The engine reads every reply and classifies it; its server agent confirms the class. Neither writes
+The engine reads every reply and classifies it; you confirm or correct the class as you answer (its
+server agent triages only a reply the classifier could not read). Neither writes
 a word to a lead: a run on the server knows nothing of the people it writes for, and its answers
 read like it. You do — you run on the computer of the person whose leads they are, with their
 memory of the project, the client and how they write. Every answer, every rewrite and every

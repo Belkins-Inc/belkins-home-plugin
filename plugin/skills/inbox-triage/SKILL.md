@@ -204,8 +204,9 @@ there are many:
 
 A server run triages and writes nothing a lead reads: every answer, rewrite and follow-up copy is
 written by the Claude of the person whose lead it is, on their computer (`writing-answers` skill);
-`bh reply draft`, `bh reply revise` and `bh copy write` refuse a run's token. A run is told which replies are its
-own; confirm or correct each class with its note, and leave the answer to the person's Claude.
+`bh reply draft`, `bh reply revise` and `bh copy write` refuse a run's token. A run is given only the
+replies the classifier could not read, and told which; give each its class with its note, and leave the
+answer to the person's Claude.
 
 A scheduled agent may: classify and re-classify, mark handled, add notes, questions,
 tasks, hypotheses and their evidence, check and replace bounced addresses, offer slots (`bh slots offer`), book or move a
