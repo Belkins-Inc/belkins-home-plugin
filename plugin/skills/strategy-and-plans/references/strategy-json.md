@@ -5,7 +5,8 @@
 | `name` | string | required on create | |
 | `brief` | markdown | null | Offer and call to action, tone, avoid, approved proof — the strategy level of Messaging |
 | `sendDays` | ISO weekdays 1–7 | `[1,2,3,4,5]` | days a message may go, in the lead's time zone; on a launched strategy a change counts the start dates of leads that sent nothing again |
-| `blackoutDates` | `"YYYY-MM-DD"` list | `[]` | dates nothing goes, in the lead's time zone (a client's holidays); days off like a weekend, so delays skip them. The list given replaces the one there |
+| `blackoutDates` | `"YYYY-MM-DD"` list | `[]` | dates nothing goes, in the lead's time zone (a client's own days off); days off like a weekend, so delays skip them. The list given replaces the one there |
+| `skipHolidays` | bool | true | the public holidays of each lead's country (its contact's, else its company's, else its time zone's) are days off like a weekend; nationwide ones only (US federal, UK bank holidays common to the UK…). A person's to change once launched |
 | `windowStart` / `windowEnd` | `"HH:MM"` | `09:00` / `17:00` | the lead's local sending window |
 | `dailyLimit` | int or null | null | first touches per day across the strategy; null = mailbox limits only |
 | `maxPerCompany` | int ≥ 1 | 2 | enrolled contacts per company, counted over every enrollment in the strategy; across all the project's strategies the project's cap on people live at once also holds (`bh project update --max-live-per-company`, default 3) |
@@ -29,9 +30,9 @@ when nothing did).
 ## Choosing the numbers
 
 - `sendDays`: weekdays unless the client's market works weekends.
-- Holidays: the engine keeps no holiday calendar, so it sends on public holidays that fall on a
-  send day. When the client wants none on a holiday or over a break, list the dates in
-  `blackoutDates` (each lead's own date).
+- Holidays: the engine skips each lead's country's public holidays by itself (`skipHolidays`).
+  When the client wants none on another day or over a break (Christmas Eve, a regional holiday),
+  list the dates in `blackoutDates` (each lead's own date).
 - Window: 08:00–17:00 local works for most B2B; narrow it for executives only if the client asks.
 - `maxPerCompany`: 2 for companies under ~200 people, 3 above — in one strategy with
   `"companySizeCaps": [{"minEmployees": 200, "maxPerCompany": 3}]` (companies need `employeeCount`); one per persona via the persona's

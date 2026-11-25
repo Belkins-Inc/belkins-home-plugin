@@ -301,9 +301,11 @@ real limits:
   launched strategy counts again the start dates of leads that have sent nothing (earlier as well
   as later; colleagues held apart by the old stagger move up behind each other). `bh strategy
   respread <id> [--dry-run]` does it again by hand (a person only).
-- **No sends on the client's holidays** — the engine skips no public holiday by itself;
-  `{"blackoutDates": ["2026-11-26", "2026-12-25"]}` in `bh strategy update` keeps those dates free
-  of sends in each lead's own zone (the list replaces the one there).
+- **Holidays** — the engine skips the public holidays of each lead's country by itself
+  (`skipHolidays`, on by default; `{"skipHolidays": false}` in `bh strategy update` sends on them,
+  a person only once launched). For a client's own days off, or a regional holiday the calendar
+  leaves out, `{"blackoutDates": ["2026-12-24", "2026-12-31"]}` keeps those dates free of sends in
+  each lead's own zone (the list replaces the one there).
 - **A step missing from a running plan** — `bh plan add-step <strategy-id> --after <position> --file
   step.json [--dry-run]` (a person only): later steps move one place on; leads enrolled later get it,
   and each live lead that has sent nothing past that point gets it, needing copy (`bh copy queue`).
