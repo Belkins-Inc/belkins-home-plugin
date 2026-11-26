@@ -81,6 +81,16 @@ bh domain approve getacme.com tryacme.com --max-cents 1500 --redirect https://ac
   and buys nothing at Porkbun (each declined charge counts toward Porkbun flagging the account).
   Tell a platform admin; once the card has room they run `bh registrar card-fixed`, and every
   waiting domain is bought on the next pass by itself. Do not approve again meanwhile.
+- A `buying` row whose `failure` names Porkbun's monthly API spending limit is held, not being
+  bought: the limit caps every API purchase and top-up of a month, and nothing was charged. The
+  domain keeps its name and its approval, a platform admin gets one urgent task per project listing
+  what waits, and the first pass after the account holder raises the limit buys it; its mailboxes
+  follow as ordered (`bh behaviour domain-purchases`, "The registrar's spending limit reached").
+  The quote shows the credit, never the month's room: read `failure` on every `buying` row before
+  saying a domain is being bought, tell a platform admin the total still to buy, and do not approve
+  again meanwhile. `bh domain release` lets a held name go, except the one whose purchase had
+  reached Porkbun when the limit stopped it: that one answers "being bought" until the limit
+  allows it, and is released once bought.
 - `<name> is already …` means it is ours or in flight: `bh domains`.
 
 Nothing is bought by the command itself: the row is the approval, and the engine buys on its next
