@@ -829,8 +829,9 @@ hidden at a terminal, so it stays out of the shell's history.
                                          the fewest leads the table puts there); --per-day the first
                                          emails a day to plan for (default: what the mailboxes send); --strategy its
                                          waiting leads and its senders' mailboxes only
-  mailbox connect --provider google|microsoft [--sender <id>] [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed]
-                                         prints the URL to open in a browser
+  mailbox connect --provider google|microsoft [--sender <id>] [--daily-limit <n>] [--delay-min <s>] [--delay-max <s>] [--warmed] [--paused]
+                                         prints the URL to open in a browser; --paused: it comes in switched off,
+                                         sending and warming nothing until made active
   mailbox reconnect <id>                 a disconnected mailbox connected again: one a person signs in to prints the URL
                                          to open; a seat in one of our Google tenants is tried at once and made
                                          active when Google gives its token (a person only)
@@ -5387,6 +5388,7 @@ async function main(argv: string[]): Promise<void> {
             provider: o.provider,
             ...(o.sender ? { senderId: o.sender } : {}),
             ...limits,
+            ...(o.paused ? { paused: true } : {}),
           }),
         )
       if (sub === 'reconnect') {

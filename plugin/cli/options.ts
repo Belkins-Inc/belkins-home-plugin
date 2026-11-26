@@ -448,7 +448,7 @@ export const OPTIONS: Record<string, Record<string, readonly string[]>> = {
   mailbox: {
     '*': ['daily-limit', 'delay-max', 'delay-min', 'not-warmed', 'warmed'],
     cancel: [],
-    connect: ['provider', 'sender'],
+    connect: ['paused', 'provider', 'sender'],
     'delete-user': ['confirm'],
     hold: [],
     import: ['file', 'paused'],
